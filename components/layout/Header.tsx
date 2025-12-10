@@ -79,30 +79,31 @@ export default function Header() {
 
   return (
     <header className="sticky top-0 z-50 bg-white shadow-sm">
-      {/* ROW 1: Logo + Navigation Links - Single Row, No Wrap */}
+      {/* SINGLE ROW: Logo (left) | Navigation (center) | Auth (right) */}
       <div className="border-b border-gray-200">
         <div className="container mx-auto px-4">
-          <div className="flex items-center justify-between h-20 lg:h-24">
-            {/* Logo - 3X LARGER */}
+          <div className="flex items-center justify-between h-24 lg:h-28">
+            
+            {/* Logo - MUCH LARGER */}
             <Link href="/" className="flex items-center flex-shrink-0">
               <Image
                 src="/craudiovizailogo.png"
                 alt="CR AudioViz AI"
-                width={480}
-                height={150}
-                className="h-16 lg:h-20 w-auto"
+                width={600}
+                height={180}
+                className="h-20 lg:h-24 w-auto"
                 priority
               />
             </Link>
 
-            {/* Desktop Navigation - Single Row, No Wrap */}
-            <nav className="hidden lg:flex items-center flex-nowrap overflow-x-auto">
-              <div className="flex items-center space-x-1 xl:space-x-3">
+            {/* Desktop Navigation - CENTERED with better spacing */}
+            <nav className="hidden lg:flex items-center justify-center flex-1 mx-8">
+              <div className="flex items-center space-x-2 xl:space-x-6">
                 {navLinks.filter(link => link.is_visible).map((link) => (
                   <Link
                     key={link.id}
                     href={link.href}
-                    className={`px-2 xl:px-3 py-2 text-sm whitespace-nowrap rounded-md transition-colors ${
+                    className={`px-3 xl:px-4 py-2 text-base font-medium whitespace-nowrap rounded-md transition-colors ${
                       isActive(link.href)
                         ? 'text-blue-600 font-semibold bg-blue-50'
                         : 'text-gray-700 hover:text-blue-600 hover:bg-gray-50'
@@ -113,6 +114,54 @@ export default function Header() {
                 ))}
               </div>
             </nav>
+
+            {/* Desktop Auth - Right side */}
+            <div className="hidden lg:flex items-center space-x-3 flex-shrink-0">
+              {!loading && (
+                <>
+                  {user ? (
+                    <div className="flex items-center space-x-2">
+                      {isAdmin && (
+                        <Link href="/admin">
+                          <Button variant="ghost" size="sm" className="text-sm text-gray-600 hover:text-purple-600">
+                            <Shield className="w-4 h-4 mr-1" />
+                            Admin
+                          </Button>
+                        </Link>
+                      )}
+                      <Link href="/dashboard">
+                        <Button variant="ghost" size="sm" className="text-sm text-gray-600 hover:text-blue-600">
+                          <User className="w-4 h-4 mr-1" />
+                          Dashboard
+                        </Button>
+                      </Link>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={handleSignOut}
+                        className="text-sm text-gray-600 hover:text-red-600"
+                      >
+                        <LogOut className="w-4 h-4 mr-1" />
+                        Sign Out
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center space-x-3">
+                      <Link href="/login">
+                        <Button variant="ghost" className="text-sm font-medium text-gray-700 hover:text-blue-600">
+                          Sign In
+                        </Button>
+                      </Link>
+                      <Link href="/signup">
+                        <Button className="text-sm font-semibold bg-gradient-to-r from-blue-600 to-green-600 hover:from-blue-700 hover:to-green-700 text-white px-5 py-2">
+                          Get Started Free
+                        </Button>
+                      </Link>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
 
             {/* Mobile Menu Button */}
             <MobileButton
@@ -130,61 +179,9 @@ export default function Header() {
         </div>
       </div>
 
-      {/* ROW 2: Auth/Login Bar */}
-      <div className="bg-gray-50 border-b border-gray-100">
-        <div className="container mx-auto px-4">
-          <div className="hidden lg:flex items-center justify-end h-10">
-            {!loading && (
-              <>
-                {user ? (
-                  <div className="flex items-center space-x-1">
-                    {isAdmin && (
-                      <Link href="/admin">
-                        <Button variant="ghost" size="sm" className="h-8 text-xs text-gray-600 hover:text-purple-600">
-                          <Shield className="w-3.5 h-3.5 mr-1" />
-                          Admin
-                        </Button>
-                      </Link>
-                    )}
-                    <Link href="/dashboard">
-                      <Button variant="ghost" size="sm" className="h-8 text-xs text-gray-600 hover:text-blue-600">
-                        <User className="w-3.5 h-3.5 mr-1" />
-                        Dashboard
-                      </Button>
-                    </Link>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={handleSignOut}
-                      className="h-8 text-xs text-gray-600 hover:text-red-600"
-                    >
-                      <LogOut className="w-3.5 h-3.5 mr-1" />
-                      Sign Out
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="flex items-center space-x-2">
-                    {/* FIXED: Changed from /auth/login to /login */}
-                    <Link href="/login">
-                      <Button variant="ghost" size="sm" className="h-8 text-xs text-gray-700 hover:text-blue-600">
-                        Sign In
-                      </Button>
-                    </Link>
-                    {/* FIXED: Changed from /auth/signup to /signup */}
-                    <Link href="/signup">
-                      <Button
-                        size="sm"
-                        className="h-8 text-xs bg-gradient-to-r from-blue-600 to-green-600 hover:from-blue-700 hover:to-green-700 text-white"
-                      >
-                        Get Started Free
-                      </Button>
-                    </Link>
-                  </div>
-                )}
-              </>
-            )}
-          </div>
-        </div>
+      {/* CR = Coordinated Rejuvenating Banner */}
+      <div className="bg-gradient-to-r from-blue-500 to-green-500 text-white text-center py-1.5 text-sm font-medium">
+        CR = Coordinated Rejuvenating
       </div>
 
       {/* Mobile Menu */}
@@ -208,7 +205,7 @@ export default function Header() {
               ))}
               
               {/* Mobile Auth */}
-              <div className="pt-3 mt-2 border-t border-gray-100 space-y-1">
+              <div className="pt-3 mt-2 border-t border-gray-100 space-y-2">
                 {!loading && (
                   <>
                     {user ? (
@@ -244,7 +241,6 @@ export default function Header() {
                       </>
                     ) : (
                       <>
-                        {/* FIXED: Changed from /auth/login to /login */}
                         <Link
                           href="/login"
                           onClick={() => setMobileMenuOpen(false)}
@@ -252,7 +248,6 @@ export default function Header() {
                         >
                           Sign In
                         </Link>
-                        {/* FIXED: Changed from /auth/signup to /signup */}
                         <Link
                           href="/signup"
                           onClick={() => setMobileMenuOpen(false)}
