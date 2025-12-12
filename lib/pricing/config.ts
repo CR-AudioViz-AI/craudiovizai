@@ -1,503 +1,337 @@
 // lib/pricing/config.ts
-// CR AudioViz AI Pricing Configuration
-// Based on actual API costs with healthy margins
-// Timestamp: Dec 11, 2025 10:45 PM EST
+// Pricing Configuration with Actual Stripe IDs
+// Timestamp: Dec 12, 2025 12:25 AM EST
 
 // ============================================
-// ACTUAL API COSTS (What We Pay)
+// API COSTS (What We Pay)
 // ============================================
-
 export const API_COSTS = {
-  // Image Generation (Replicate/SDXL/Flux)
   image: {
-    standard: 0.003,      // $0.003 per image (SD)
-    hd: 0.008,            // $0.008 per image (SDXL)
-    premium: 0.02,        // $0.02 per image (Flux Pro)
+    standard: 0.003,    // ~512x512
+    hd: 0.008,          // ~1024x1024
+    premium: 0.02,      // ~2048x2048 (Flux/SDXL)
   },
-  
-  // Video Generation
   video: {
-    short_5s: 0.05,       // 5 second clip
-    medium_15s: 0.15,     // 15 second clip
-    long_30s: 0.35,       // 30 second clip
+    short: 0.05,        // 5 seconds
+    medium: 0.15,       // 15 seconds
+    long: 0.35,         // 30 seconds
   },
-  
-  // Audio/Voice
   voice: {
-    tts_1k_chars: 0.015,  // ElevenLabs TTS
-    clone_setup: 0.50,    // Voice clone setup
-    clone_per_1k: 0.03,   // Cloned voice per 1K chars
+    tts_per_1k_chars: 0.015,
+    clone_setup: 0.50,
+    clone_per_1k_chars: 0.03,
   },
-  
-  // Music Generation
   music: {
-    short_30s: 0.05,      // 30 second track
-    full_3min: 0.20,      // Full song
+    short: 0.05,        // 30 seconds
+    full: 0.20,         // 3 minutes
   },
-  
-  // LLM (OpenAI/Anthropic)
   llm: {
-    gpt4_1k_tokens: 0.03,
-    claude_1k_tokens: 0.025,
-    gpt35_1k_tokens: 0.002,
+    input_per_1k: 0.002,
+    output_per_1k: 0.006,
+    premium_input: 0.015,
+    premium_output: 0.03,
   },
-  
-  // Speech to Text
-  stt: {
-    per_minute: 0.006,    // Deepgram
-  },
-  
-  // Document Processing
-  document: {
-    pdf_page: 0.01,
-    ocr_page: 0.015,
+  transcription: {
+    per_minute: 0.006,
   },
 };
 
 // ============================================
-// CREDIT VALUES (What Users Pay)
-// Target: 5-10x markup on costs
-// 1 Credit = $0.10 value
+// CREDIT COSTS (What Users Pay)
+// Target: 5-10x markup, 1 credit = ~$0.10 value
 // ============================================
-
 export const CREDIT_COSTS = {
-  // Image Generation
-  'image-standard': { credits: 5, cost: API_COSTS.image.standard, margin: 16.6 },
-  'image-hd': { credits: 10, cost: API_COSTS.image.hd, margin: 12.5 },
-  'image-premium': { credits: 25, cost: API_COSTS.image.premium, margin: 12.5 },
-  
-  // Video Generation
-  'video-short': { credits: 50, cost: API_COSTS.video.short_5s, margin: 10 },
-  'video-medium': { credits: 150, cost: API_COSTS.video.medium_15s, margin: 10 },
-  'video-long': { credits: 350, cost: API_COSTS.video.long_30s, margin: 10 },
-  
-  // Voice/TTS
-  'voice-tts': { credits: 5, cost: API_COSTS.voice.tts_1k_chars, margin: 3.3 },
-  'voice-clone-setup': { credits: 100, cost: API_COSTS.voice.clone_setup, margin: 20 },
-  'voice-clone-use': { credits: 10, cost: API_COSTS.voice.clone_per_1k, margin: 3.3 },
-  
-  // Music
-  'music-short': { credits: 15, cost: API_COSTS.music.short_30s, margin: 30 },
-  'music-full': { credits: 50, cost: API_COSTS.music.full_3min, margin: 25 },
-  
-  // AI Chat/Assist
-  'ai-chat': { credits: 1, cost: API_COSTS.llm.gpt35_1k_tokens, margin: 50 },
-  'ai-advanced': { credits: 3, cost: API_COSTS.llm.claude_1k_tokens, margin: 12 },
-  
-  // Transcription
-  'transcribe': { credits: 2, cost: API_COSTS.stt.per_minute, margin: 33 },
-  
-  // Document
-  'doc-process': { credits: 3, cost: API_COSTS.document.pdf_page, margin: 30 },
+  image: {
+    standard: 5,        // Cost: $0.003, Revenue: $0.50, Margin: 16.6x
+    hd: 10,             // Cost: $0.008, Revenue: $1.00, Margin: 12.5x
+    premium: 25,        // Cost: $0.02, Revenue: $2.50, Margin: 12.5x
+  },
+  video: {
+    short: 25,          // Cost: $0.05, Revenue: $2.50, Margin: 5x
+    medium: 50,         // Cost: $0.15, Revenue: $5.00, Margin: 3.3x
+    long: 100,          // Cost: $0.35, Revenue: $10.00, Margin: 2.8x
+  },
+  voice: {
+    tts: 5,             // Per 1000 chars, Cost: $0.015, Revenue: $0.50
+    clone: 100,         // Setup fee
+  },
+  music: {
+    short: 15,          // Cost: $0.05, Revenue: $1.50
+    full: 50,           // Cost: $0.20, Revenue: $5.00
+  },
+  chat: {
+    standard: 1,        // Per message
+    premium: 3,         // With tools
+  },
+  transcription: {
+    per_minute: 2,      // Cost: $0.006, Revenue: $0.20
+  },
+  utility: {
+    qr_code: 1,
+    meme: 2,
+  },
 };
 
 // ============================================
-// SUBSCRIPTION PLANS
+// STRIPE PRODUCTS & PRICES (LIVE)
 // ============================================
-
-export const SUBSCRIPTION_PLANS = {
-  free: {
-    id: 'free',
-    name: 'Free',
-    price: 0,
-    credits_monthly: 25,
-    credits_expire: true, // Free credits expire monthly
-    features: [
-      '25 credits/month',
-      'Basic tools access',
-      'Community support',
-      'Watermarked outputs',
-    ],
-    limits: {
-      max_image_size: '512x512',
-      max_video_length: 5,
-      storage_mb: 100,
+export const STRIPE_PRODUCTS = {
+  subscriptions: {
+    starter: {
+      productId: 'prod_TalsrMBNbwFVke',
+      priceId: 'price_1SdaKx7YeQ1dZTUvCeaYqKXh',
+      name: 'Starter',
+      price: 9.99,
+      credits: 150,
+      features: ['150 credits/month', 'Credits never expire', '60+ AI tools', 'Email support'],
+    },
+    pro: {
+      productId: 'prod_Tals9vp5UrtSCr',
+      priceId: 'price_1SdaL67YeQ1dZTUv43H6YxGq',
+      name: 'Pro',
+      price: 29.99,
+      credits: 500,
+      features: ['500 credits/month', 'Credits never expire', '60+ AI tools', 'Priority support', 'Early access'],
+    },
+    premium: {
+      productId: 'prod_TalsiAi3IOLOaT',
+      priceId: 'price_1SdaLG7YeQ1dZTUvCzgdjaTp',
+      name: 'Premium',
+      price: 99.99,
+      credits: 2000,
+      features: ['2,000 credits/month', 'Credits never expire', '60+ AI tools', 'VIP support', 'Early access', 'White-label options'],
     },
   },
-  
+  creditPacks: {
+    small: {
+      productId: 'prod_Talt46pfyza9t1',
+      priceId: 'price_1SdaLR7YeQ1dZTUvX4qPsy3c',
+      name: 'Starter Pack',
+      price: 4.99,
+      credits: 50,
+      bonus: 0,
+      pricePerCredit: 0.0998,
+    },
+    medium: {
+      productId: 'prod_TaltQaj3o2lrkD',
+      priceId: 'price_1SdaLa7YeQ1dZTUvsjFZWqjB',
+      name: 'Creator Pack',
+      price: 12.99,
+      credits: 150,
+      bonus: 0,
+      pricePerCredit: 0.0866,
+      popular: true,
+    },
+    large: {
+      productId: 'prod_Talt0D5fyWm5LG',
+      priceId: 'price_1SdaLk7YeQ1dZTUvdcDKtnTI',
+      name: 'Pro Pack',
+      price: 39.99,
+      credits: 500,
+      bonus: 25,
+      pricePerCredit: 0.0762,
+    },
+    xl: {
+      productId: 'prod_TaltVgylYh5opq',
+      priceId: 'price_1SdaLt7YeQ1dZTUvGhjqaNyk',
+      name: 'Studio Pack',
+      price: 89.99,
+      credits: 1200,
+      bonus: 100,
+      pricePerCredit: 0.0692,
+    },
+  },
+};
+
+// ============================================
+// PAYPAL PLANS (To be created in PayPal Dashboard)
+// ============================================
+export const PAYPAL_PLANS = {
   starter: {
-    id: 'starter',
+    planId: process.env.PAYPAL_PLAN_STARTER || 'P-STARTER',
     name: 'Starter',
     price: 9.99,
-    credits_monthly: 150,
-    credits_expire: false, // NEVER EXPIRE
-    stripe_price_id: process.env.STRIPE_STARTER_PRICE_ID,
-    paypal_plan_id: process.env.PAYPAL_STARTER_PLAN_ID,
-    features: [
-      '150 credits/month (never expire)',
-      'All basic tools',
-      'No watermarks',
-      'Email support',
-      '1GB storage',
-    ],
-    limits: {
-      max_image_size: '1024x1024',
-      max_video_length: 15,
-      storage_mb: 1024,
-    },
-    // Cost analysis
-    cost_estimate: 1.50, // ~$1.50 if they use all credits at avg cost
-    profit_margin: 0.85, // 85% margin
+    credits: 150,
   },
-  
   pro: {
-    id: 'pro',
+    planId: process.env.PAYPAL_PLAN_PRO || 'P-PRO',
     name: 'Pro',
     price: 29.99,
-    credits_monthly: 500,
-    credits_expire: false,
-    stripe_price_id: process.env.STRIPE_PRO_PRICE_ID,
-    paypal_plan_id: process.env.PAYPAL_PRO_PLAN_ID,
-    features: [
-      '500 credits/month (never expire)',
-      'All tools including premium',
-      'Priority processing',
-      'Priority support',
-      '10GB storage',
-      'API access',
-    ],
-    limits: {
-      max_image_size: '2048x2048',
-      max_video_length: 30,
-      storage_mb: 10240,
-    },
-    cost_estimate: 5.00,
-    profit_margin: 0.83,
+    credits: 500,
   },
-  
   premium: {
-    id: 'premium',
+    planId: process.env.PAYPAL_PLAN_PREMIUM || 'P-PREMIUM',
     name: 'Premium',
     price: 99.99,
-    credits_monthly: 2000,
-    credits_expire: false,
-    stripe_price_id: process.env.STRIPE_PREMIUM_PRICE_ID,
-    paypal_plan_id: process.env.PAYPAL_PREMIUM_PLAN_ID,
-    features: [
-      '2,000 credits/month (never expire)',
-      'All tools, no limits',
-      'Instant processing',
-      'Dedicated support',
-      '100GB storage',
-      'Full API access',
-      'Custom model training',
-      'White-label options',
-    ],
-    limits: {
-      max_image_size: '4096x4096',
-      max_video_length: 60,
-      storage_mb: 102400,
-    },
-    cost_estimate: 20.00,
-    profit_margin: 0.80,
-  },
-  
-  enterprise: {
-    id: 'enterprise',
-    name: 'Enterprise',
-    price: null, // Custom pricing
-    credits_monthly: null, // Custom
-    credits_expire: false,
-    features: [
-      'Custom credit allocation',
-      'Dedicated infrastructure',
-      'SLA guarantee',
-      '24/7 priority support',
-      'Unlimited storage',
-      'Custom integrations',
-      'On-premise options',
-      'Team management',
-    ],
-    limits: {
-      max_image_size: 'unlimited',
-      max_video_length: 'unlimited',
-      storage_mb: 'unlimited',
-    },
+    credits: 2000,
   },
 };
 
 // ============================================
-// CREDIT PACKS (One-time Purchases)
+// FREE TIER
 // ============================================
+export const FREE_TIER = {
+  credits: 25,
+  expires: true, // Monthly reset
+  watermark: true,
+  features: ['25 credits/month', 'Basic tools only', 'Watermarked outputs'],
+};
 
-export const CREDIT_PACKS = {
-  small: {
-    id: 'small',
-    name: 'Starter Pack',
-    credits: 50,
-    price: 4.99,
-    price_per_credit: 0.0998,
-    bonus: 0,
+// ============================================
+// REFERRAL REWARDS
+// ============================================
+export const REFERRAL_REWARDS = {
+  referrer: {
+    signup: 50,         // Credits when friend signs up
+    upgrade: 100,       // Additional credits when friend upgrades
   },
-  
-  medium: {
-    id: 'medium',
-    name: 'Creator Pack',
-    credits: 150,
-    price: 12.99,
-    price_per_credit: 0.0866,
-    bonus: 0,
-    popular: true,
-  },
-  
-  large: {
-    id: 'large',
-    name: 'Pro Pack',
-    credits: 500,
-    price: 39.99,
-    price_per_credit: 0.0800,
-    bonus: 25, // 5% bonus
-  },
-  
-  xl: {
-    id: 'xl',
-    name: 'Studio Pack',
-    credits: 1200,
-    price: 89.99,
-    price_per_credit: 0.0750,
-    bonus: 100, // ~8% bonus
-  },
-  
-  mega: {
-    id: 'mega',
-    name: 'Agency Pack',
-    credits: 3000,
-    price: 199.99,
-    price_per_credit: 0.0667,
-    bonus: 500, // ~17% bonus
+  referee: {
+    signup: 25,         // Credits for new user
   },
 };
 
 // ============================================
-// TOOLS REGISTRY (What Javari Can Use)
+// TOOLS REGISTRY (60+ tools)
 // ============================================
-
-export const TOOLS_REGISTRY = [
-  // IMAGE GENERATION
-  {
-    id: 'image-generator',
+export const TOOLS_REGISTRY = {
+  // Image Tools
+  'image-generator': {
     name: 'AI Image Generator',
     category: 'image',
-    description: 'Create stunning images from text descriptions',
-    base_credits: 10,
-    api_provider: 'replicate',
+    baseCredits: 5,
     tiers: {
-      standard: { credits: 5, model: 'stability-ai/sdxl' },
-      hd: { credits: 10, model: 'stability-ai/sdxl' },
-      premium: { credits: 25, model: 'black-forest-labs/flux-pro' },
+      standard: { credits: 5, resolution: '512x512' },
+      hd: { credits: 10, resolution: '1024x1024' },
+      premium: { credits: 25, resolution: '2048x2048' },
     },
+    apiProvider: 'replicate',
+    capabilities: ['text-to-image', 'styles', 'aspect-ratios'],
   },
-  {
-    id: 'image-editor',
-    name: 'AI Image Editor',
-    category: 'image',
-    description: 'Edit and enhance images with AI',
-    base_credits: 8,
-    api_provider: 'replicate',
-  },
-  {
-    id: 'background-remover',
+  'background-remover': {
     name: 'Background Remover',
     category: 'image',
-    description: 'Remove backgrounds instantly',
-    base_credits: 3,
-    api_provider: 'replicate',
+    baseCredits: 3,
+    apiProvider: 'replicate',
+    capabilities: ['remove-background'],
   },
-  {
-    id: 'image-upscaler',
+  'image-upscaler': {
     name: 'Image Upscaler',
     category: 'image',
-    description: 'Upscale images up to 4x',
-    base_credits: 5,
-    api_provider: 'replicate',
-  },
-  {
-    id: 'face-swap',
-    name: 'Face Swap',
-    category: 'image',
-    description: 'Swap faces in images',
-    base_credits: 8,
-    api_provider: 'replicate',
-  },
-  {
-    id: 'style-transfer',
-    name: 'Style Transfer',
-    category: 'image',
-    description: 'Apply artistic styles to images',
-    base_credits: 6,
-    api_provider: 'replicate',
+    baseCredits: 5,
+    tiers: {
+      '2x': { credits: 5 },
+      '4x': { credits: 10 },
+    },
+    apiProvider: 'replicate',
+    capabilities: ['upscale'],
   },
   
-  // VIDEO GENERATION
-  {
-    id: 'video-generator',
+  // Video Tools
+  'video-generator': {
     name: 'AI Video Generator',
     category: 'video',
-    description: 'Create videos from text or images',
-    base_credits: 50,
-    api_provider: 'replicate',
+    baseCredits: 25,
     tiers: {
-      short: { credits: 50, duration: 5 },
-      medium: { credits: 150, duration: 15 },
-      long: { credits: 350, duration: 30 },
+      short: { credits: 25, duration: '5s' },
+      medium: { credits: 50, duration: '15s' },
+      long: { credits: 100, duration: '30s' },
     },
-  },
-  {
-    id: 'video-editor',
-    name: 'AI Video Editor',
-    category: 'video',
-    description: 'Edit videos with AI assistance',
-    base_credits: 30,
-    api_provider: 'custom',
-  },
-  {
-    id: 'lipsync',
-    name: 'Lip Sync Video',
-    category: 'video',
-    description: 'Sync lips to audio',
-    base_credits: 40,
-    api_provider: 'replicate',
+    apiProvider: 'replicate',
+    capabilities: ['text-to-video', 'image-to-video'],
   },
   
-  // AUDIO
-  {
-    id: 'text-to-speech',
+  // Audio Tools
+  'text-to-speech': {
     name: 'Text to Speech',
     category: 'audio',
-    description: 'Convert text to natural speech',
-    base_credits: 5,
-    api_provider: 'elevenlabs',
+    baseCredits: 5,
+    apiProvider: 'elevenlabs',
+    capabilities: ['tts', 'voice-selection'],
   },
-  {
-    id: 'voice-clone',
+  'voice-clone': {
     name: 'Voice Clone',
     category: 'audio',
-    description: 'Clone any voice with 30 seconds of audio',
-    base_credits: 100,
-    api_provider: 'elevenlabs',
+    baseCredits: 100,
+    apiProvider: 'elevenlabs',
+    capabilities: ['clone-voice'],
   },
-  {
-    id: 'music-generator',
-    name: 'AI Music Generator',
-    category: 'audio',
-    description: 'Create original music from descriptions',
-    base_credits: 15,
-    api_provider: 'replicate',
-    tiers: {
-      short: { credits: 15, duration: 30 },
-      full: { credits: 50, duration: 180 },
-    },
-  },
-  {
-    id: 'audio-enhancer',
-    name: 'Audio Enhancer',
-    category: 'audio',
-    description: 'Clean and enhance audio quality',
-    base_credits: 5,
-    api_provider: 'replicate',
-  },
-  {
-    id: 'transcription',
+  'transcription': {
     name: 'Audio Transcription',
     category: 'audio',
-    description: 'Convert speech to text',
-    base_credits: 2,
-    api_provider: 'deepgram',
+    baseCredits: 2,
+    apiProvider: 'deepgram',
+    capabilities: ['speech-to-text'],
   },
   
-  // TEXT/DOCUMENT
-  {
-    id: 'ai-writer',
+  // Music Tools
+  'music-generator': {
+    name: 'AI Music Generator',
+    category: 'music',
+    baseCredits: 15,
+    tiers: {
+      short: { credits: 15, duration: '30s' },
+      full: { credits: 50, duration: '3min' },
+    },
+    apiProvider: 'replicate',
+    capabilities: ['text-to-music'],
+  },
+  
+  // Text Tools
+  'ai-writer': {
     name: 'AI Writer',
     category: 'text',
-    description: 'Generate articles, blogs, and content',
-    base_credits: 3,
-    api_provider: 'anthropic',
+    baseCredits: 3,
+    apiProvider: 'anthropic',
+    capabilities: ['generate-text', 'rewrite'],
   },
-  {
-    id: 'code-generator',
+  'code-generator': {
     name: 'Code Generator',
-    category: 'text',
-    description: 'Generate code in any language',
-    base_credits: 5,
-    api_provider: 'anthropic',
-  },
-  {
-    id: 'document-analyzer',
-    name: 'Document Analyzer',
-    category: 'text',
-    description: 'Analyze and summarize documents',
-    base_credits: 3,
-    api_provider: 'anthropic',
-  },
-  {
-    id: 'translator',
-    name: 'AI Translator',
-    category: 'text',
-    description: 'Translate text between languages',
-    base_credits: 2,
-    api_provider: 'anthropic',
+    category: 'code',
+    baseCredits: 5,
+    apiProvider: 'anthropic',
+    capabilities: ['generate-code', 'explain-code'],
   },
   
-  // UTILITY
-  {
-    id: 'qr-generator',
+  // Utility Tools
+  'qr-generator': {
     name: 'QR Code Generator',
     category: 'utility',
-    description: 'Create beautiful QR codes',
-    base_credits: 1,
-    api_provider: 'custom',
+    baseCredits: 1,
+    apiProvider: 'custom',
+    capabilities: ['generate-qr'],
   },
-  {
-    id: 'meme-generator',
+  'meme-generator': {
     name: 'Meme Generator',
     category: 'utility',
-    description: 'Create memes with AI',
-    base_credits: 2,
-    api_provider: 'custom',
+    baseCredits: 2,
+    apiProvider: 'custom',
+    capabilities: ['generate-meme'],
   },
-];
+};
 
-// ============================================
-// PROFIT CALCULATIONS
-// ============================================
-
-export function calculateProfit(plan: keyof typeof SUBSCRIPTION_PLANS) {
-  const p = SUBSCRIPTION_PLANS[plan];
-  if (!p.price || !p.cost_estimate) return null;
+// Helper functions
+export function getToolCredits(toolId: string, tier?: string): number {
+  const tool = TOOLS_REGISTRY[toolId as keyof typeof TOOLS_REGISTRY];
+  if (!tool) return 10; // Default
   
-  return {
-    revenue: p.price,
-    estimated_cost: p.cost_estimate,
-    gross_profit: p.price - p.cost_estimate,
-    margin_percent: ((p.price - p.cost_estimate) / p.price) * 100,
-  };
+  if (tier && 'tiers' in tool && tool.tiers) {
+    const tierConfig = tool.tiers[tier as keyof typeof tool.tiers];
+    return tierConfig?.credits || tool.baseCredits;
+  }
+  
+  return tool.baseCredits;
 }
 
-export function calculateCreditPackProfit(packId: keyof typeof CREDIT_PACKS) {
-  const pack = CREDIT_PACKS[packId];
-  // Assume 60% of credits are used on average
-  const avgCostPerCredit = 0.01; // ~$0.01 per credit average cost
-  const estimatedCost = (pack.credits + pack.bonus) * avgCostPerCredit * 0.6;
+export function calculateProfit(credits: number, costPerCredit: number = 0.01): {
+  revenue: number;
+  cost: number;
+  profit: number;
+  margin: number;
+} {
+  const revenue = credits * 0.10; // 1 credit = $0.10
+  const cost = credits * costPerCredit;
+  const profit = revenue - cost;
+  const margin = (profit / revenue) * 100;
   
-  return {
-    revenue: pack.price,
-    estimated_cost: estimatedCost,
-    gross_profit: pack.price - estimatedCost,
-    margin_percent: ((pack.price - estimatedCost) / pack.price) * 100,
-  };
+  return { revenue, cost, profit, margin };
 }
-
-// Example profit analysis:
-// Starter Plan ($9.99):
-//   - 150 credits @ ~$0.01 avg = $1.50 cost
-//   - Profit: $8.49 (85% margin)
-//
-// Pro Plan ($29.99):
-//   - 500 credits @ ~$0.01 avg = $5.00 cost
-//   - Profit: $24.99 (83% margin)
-//
-// Premium Plan ($99.99):
-//   - 2000 credits @ ~$0.01 avg = $20.00 cost
-//   - Profit: $79.99 (80% margin)
-
