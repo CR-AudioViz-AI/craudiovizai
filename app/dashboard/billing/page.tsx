@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 // app/dashboard/billing/page.tsx
 // Billing & Subscription Management
 // Timestamp: Dec 11, 2025 10:04 PM EST
