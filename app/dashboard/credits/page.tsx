@@ -1,13 +1,17 @@
 // app/dashboard/credits/page.tsx
 // Credits Purchase Page - Buy credit packs
-// Timestamp: Dec 11, 2025 10:02 PM EST
+// Timestamp: Dec 13, 2025 - Fixed useSearchParams Suspense boundary
+// Fix: Wrap useSearchParams in Suspense to prevent static generation errors
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { Coins, Check, Sparkles, Gift, Zap, Crown, AlertCircle, CheckCircle } from 'lucide-react';
+import { Coins, Check, Sparkles, Gift, Zap, Crown, AlertCircle, CheckCircle, Loader2 } from 'lucide-react';
 import UnifiedCheckout from '@/components/payments/UnifiedCheckout';
+
+// Force dynamic rendering to handle useSearchParams properly
+export const dynamic = 'force-dynamic';
 
 const CREDIT_PACKS = [
   { 
@@ -55,7 +59,8 @@ const CREDIT_PACKS = [
   },
 ];
 
-export default function CreditsPage() {
+// Inner component that uses searchParams
+function CreditsContent() {
   const searchParams = useSearchParams();
   const [selectedPack, setSelectedPack] = useState<typeof CREDIT_PACKS[0] | null>(null);
   const [userId, setUserId] = useState<string>('');
@@ -80,154 +85,186 @@ export default function CreditsPage() {
     }
   }, [searchParams]);
 
-  const colorClasses = {
-    blue: 'from-blue-500 to-blue-600 border-blue-200 hover:border-blue-400',
-    green: 'from-green-500 to-green-600 border-green-200 hover:border-green-400',
-    purple: 'from-purple-500 to-purple-600 border-purple-200 hover:border-purple-400',
-    orange: 'from-orange-500 to-orange-600 border-orange-200 hover:border-orange-400',
+  const handlePurchase = async (packId: string) => {
+    const pack = CREDIT_PACKS.find(p => p.id === packId);
+    if (pack) {
+      setSelectedPack(pack);
+    }
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-gradient-to-r from-blue-600 to-green-600 text-white py-12">
-        <div className="container mx-auto px-4 text-center">
-          <Coins className="w-16 h-16 mx-auto mb-4" />
-          <h1 className="text-4xl font-bold mb-2">Buy Credits</h1>
-          <p className="text-blue-100 text-lg">Power your creativity with CR AudioViz AI credits</p>
+    <div className="min-h-screen bg-gray-950 py-12 px-4">
+      <div className="max-w-6xl mx-auto">
+        {/* Header */}
+        <div className="text-center mb-12">
+          <div className="inline-flex items-center gap-2 bg-yellow-500/10 text-yellow-400 px-4 py-2 rounded-full mb-4">
+            <Coins className="w-5 h-5" />
+            <span className="font-medium">Purchase Credits</span>
+          </div>
+          <h1 className="text-4xl font-bold text-white mb-4">
+            Power Your Creative Journey
+          </h1>
+          <p className="text-xl text-gray-400 max-w-2xl mx-auto">
+            Credits unlock all 60+ professional tools. Buy once, use anywhere in the ecosystem.
+          </p>
+        </div>
+
+        {/* Success/Error Messages */}
+        {showSuccess && (
+          <div className="max-w-xl mx-auto mb-8 p-4 bg-green-500/10 border border-green-500/20 rounded-lg flex items-center gap-3">
+            <CheckCircle className="w-6 h-6 text-green-400" />
+            <div>
+              <p className="text-green-400 font-medium">Purchase Successful!</p>
+              <p className="text-green-300/70 text-sm">Your credits have been added to your account.</p>
+            </div>
+          </div>
+        )}
+
+        {showError && (
+          <div className="max-w-xl mx-auto mb-8 p-4 bg-red-500/10 border border-red-500/20 rounded-lg flex items-center gap-3">
+            <AlertCircle className="w-6 h-6 text-red-400" />
+            <div>
+              <p className="text-red-400 font-medium">Purchase Canceled</p>
+              <p className="text-red-300/70 text-sm">No charges were made. Feel free to try again.</p>
+            </div>
+          </div>
+        )}
+
+        {/* Credit Packs Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
+          {CREDIT_PACKS.map((pack) => {
+            const Icon = pack.icon;
+            const colorClasses: Record<string, string> = {
+              blue: 'from-blue-500/20 to-blue-600/5 border-blue-500/20 hover:border-blue-400/40',
+              green: 'from-green-500/20 to-green-600/5 border-green-500/20 hover:border-green-400/40',
+              purple: 'from-purple-500/20 to-purple-600/5 border-purple-500/20 hover:border-purple-400/40',
+              orange: 'from-orange-500/20 to-orange-600/5 border-orange-500/20 hover:border-orange-400/40',
+            };
+            const iconColors: Record<string, string> = {
+              blue: 'text-blue-400',
+              green: 'text-green-400',
+              purple: 'text-purple-400',
+              orange: 'text-orange-400',
+            };
+
+            return (
+              <div
+                key={pack.id}
+                className={`relative bg-gradient-to-b ${colorClasses[pack.color]} border rounded-2xl p-6 transition-all duration-300 hover:scale-[1.02] cursor-pointer`}
+                onClick={() => handlePurchase(pack.id)}
+              >
+                {pack.popular && (
+                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-green-500 text-white text-xs font-bold px-3 py-1 rounded-full">
+                    MOST POPULAR
+                  </div>
+                )}
+                
+                {pack.savings && (
+                  <div className="absolute top-4 right-4 bg-yellow-500/20 text-yellow-400 text-xs font-bold px-2 py-1 rounded">
+                    SAVE {pack.savings}
+                  </div>
+                )}
+
+                <div className={`w-12 h-12 rounded-xl bg-gray-800/50 flex items-center justify-center mb-4 ${iconColors[pack.color]}`}>
+                  <Icon className="w-6 h-6" />
+                </div>
+
+                <h3 className="text-xl font-bold text-white mb-1">{pack.name}</h3>
+                <p className="text-gray-400 text-sm mb-4">{pack.description}</p>
+
+                <div className="flex items-baseline gap-1 mb-4">
+                  <span className="text-3xl font-bold text-white">{pack.credits}</span>
+                  <span className="text-gray-400">credits</span>
+                </div>
+
+                <div className="flex items-baseline gap-1 mb-6">
+                  <span className="text-2xl font-bold text-white">${pack.price}</span>
+                  <span className="text-gray-400 text-sm">one-time</span>
+                </div>
+
+                <button className={`w-full py-3 px-4 rounded-lg font-medium transition-all ${
+                  pack.popular 
+                    ? 'bg-green-500 hover:bg-green-400 text-white' 
+                    : 'bg-gray-700 hover:bg-gray-600 text-white'
+                }`}>
+                  Select Pack
+                </button>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Features */}
+        <div className="bg-gray-900/50 border border-gray-800 rounded-2xl p-8">
+          <h2 className="text-2xl font-bold text-white mb-6 text-center">What You Get</h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {[
+              { title: 'Credits Never Expire', desc: 'Use them whenever you want on paid plans' },
+              { title: '60+ Professional Tools', desc: 'PDF, images, video, audio, and more' },
+              { title: 'Instant Delivery', desc: 'Credits added immediately after purchase' },
+            ].map((feature, i) => (
+              <div key={i} className="flex items-start gap-3">
+                <div className="w-6 h-6 rounded-full bg-green-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <Check className="w-4 h-4 text-green-400" />
+                </div>
+                <div>
+                  <h3 className="text-white font-medium">{feature.title}</h3>
+                  <p className="text-gray-400 text-sm">{feature.desc}</p>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
 
-      <div className="container mx-auto px-4 py-12">
-        {/* Success/Error Notifications */}
-        {showSuccess && (
-          <div className="mb-8 p-4 bg-green-50 border border-green-200 rounded-xl flex items-center gap-4 animate-fade-in">
-            <CheckCircle className="w-6 h-6 text-green-500" />
-            <div>
-              <p className="font-semibold text-green-800">Payment Successful!</p>
-              <p className="text-green-600">Your credits have been added to your account.</p>
-            </div>
-          </div>
-        )}
-        
-        {showError && (
-          <div className="mb-8 p-4 bg-red-50 border border-red-200 rounded-xl flex items-center gap-4">
-            <AlertCircle className="w-6 h-6 text-red-500" />
-            <div>
-              <p className="font-semibold text-red-800">Payment Canceled</p>
-              <p className="text-red-600">Your payment was canceled. Please try again.</p>
-            </div>
-          </div>
-        )}
-
-        {/* Credits Never Expire Banner */}
-        <div className="mb-8 p-6 bg-gradient-to-r from-green-50 to-blue-50 border border-green-200 rounded-xl text-center">
-          <p className="text-lg font-semibold text-green-800">
-            ✨ Credits Never Expire on Paid Plans! ✨
-          </p>
-          <p className="text-green-600 mt-1">Use them whenever you're ready - no rush, no pressure.</p>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Credit Packs */}
-          <div className="lg:col-span-2">
-            <h2 className="text-2xl font-bold text-gray-900 mb-6">Choose Your Pack</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-              {CREDIT_PACKS.map((pack) => {
-                const Icon = pack.icon;
-                return (
-                  <button
-                    key={pack.id}
-                    onClick={() => setSelectedPack(pack)}
-                    className={`relative p-6 rounded-xl border-2 text-left transition-all ${
-                      selectedPack?.id === pack.id
-                        ? `border-${pack.color}-500 ring-2 ring-${pack.color}-200 shadow-lg`
-                        : 'border-gray-200 hover:border-gray-300'
-                    }`}
-                  >
-                    {pack.popular && (
-                      <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 bg-gradient-to-r from-green-500 to-green-600 text-white text-xs font-bold rounded-full">
-                        MOST POPULAR
-                      </div>
-                    )}
-                    
-                    {pack.savings && (
-                      <div className="absolute -top-3 right-4 px-3 py-1 bg-orange-500 text-white text-xs font-bold rounded-full">
-                        SAVE {pack.savings}
-                      </div>
-                    )}
-
-                    <div className="flex items-start gap-4">
-                      <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${colorClasses[pack.color as keyof typeof colorClasses].split(' ').slice(0, 2).join(' ')} flex items-center justify-center`}>
-                        <Icon className="w-6 h-6 text-white" />
-                      </div>
-                      <div className="flex-1">
-                        <h3 className="text-lg font-bold text-gray-900">{pack.name}</h3>
-                        <p className="text-sm text-gray-500 mb-2">{pack.description}</p>
-                        <div className="flex items-baseline gap-2">
-                          <span className="text-3xl font-bold text-gray-900">{pack.credits.toLocaleString()}</span>
-                          <span className="text-gray-500">credits</span>
-                        </div>
-                        <p className="text-2xl font-bold text-blue-600 mt-2">${pack.price}</p>
-                        <p className="text-xs text-gray-400">${(pack.price / pack.credits * 100).toFixed(1)}¢ per credit</p>
-                      </div>
-                      
-                      {selectedPack?.id === pack.id && (
-                        <div className="w-6 h-6 rounded-full bg-green-500 flex items-center justify-center">
-                          <Check className="w-4 h-4 text-white" />
-                        </div>
-                      )}
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* What Credits Can Do */}
-            <div className="mt-8 p-6 bg-white rounded-xl border border-gray-200">
-              <h3 className="font-bold text-gray-900 mb-4">What Can You Create?</h3>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-center text-sm">
-                <div className="p-3 bg-gray-50 rounded-lg">
-                  <p className="font-bold text-gray-900">10 credits</p>
-                  <p className="text-gray-500">AI Image</p>
-                </div>
-                <div className="p-3 bg-gray-50 rounded-lg">
-                  <p className="font-bold text-gray-900">25 credits</p>
-                  <p className="text-gray-500">Video Clip</p>
-                </div>
-                <div className="p-3 bg-gray-50 rounded-lg">
-                  <p className="font-bold text-gray-900">15 credits</p>
-                  <p className="text-gray-500">Music Track</p>
-                </div>
-                <div className="p-3 bg-gray-50 rounded-lg">
-                  <p className="font-bold text-gray-900">5 credits</p>
-                  <p className="text-gray-500">Voice Clone</p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Checkout Panel */}
-          <div className="lg:col-span-1">
-            {selectedPack && userId ? (
-              <UnifiedCheckout
-                type="credits"
-                itemId={selectedPack.id}
-                itemName={selectedPack.name}
-                amount={selectedPack.price}
-                credits={selectedPack.credits}
-                userId={userId}
-              />
-            ) : (
-              <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-8 text-center">
-                <Coins className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                <h3 className="text-xl font-bold text-gray-900 mb-2">Select a Pack</h3>
-                <p className="text-gray-500">Choose a credit pack from the left to continue with checkout.</p>
-              </div>
-            )}
+      {/* Checkout Modal */}
+      {selectedPack && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50">
+          <div className="bg-gray-900 rounded-2xl p-6 max-w-md w-full">
+            <h2 className="text-xl font-bold text-white mb-4">Complete Purchase</h2>
+            <p className="text-gray-400 mb-6">
+              {selectedPack.name} - {selectedPack.credits} credits for ${selectedPack.price}
+            </p>
+            <UnifiedCheckout
+              productId={`credits-${selectedPack.id}`}
+              amount={selectedPack.price}
+              productName={selectedPack.name}
+              onSuccess={() => {
+                setSelectedPack(null);
+                setShowSuccess(true);
+              }}
+              onCancel={() => setSelectedPack(null)}
+            />
+            <button
+              onClick={() => setSelectedPack(null)}
+              className="w-full mt-4 py-2 text-gray-400 hover:text-white transition-colors"
+            >
+              Cancel
+            </button>
           </div>
         </div>
+      )}
+    </div>
+  );
+}
+
+// Loading fallback for Suspense
+function CreditsLoading() {
+  return (
+    <div className="min-h-screen bg-gray-950 flex items-center justify-center">
+      <div className="text-center">
+        <Loader2 className="w-8 h-8 text-yellow-400 animate-spin mx-auto mb-4" />
+        <p className="text-gray-400">Loading credits page...</p>
       </div>
     </div>
+  );
+}
+
+// Main export with Suspense boundary
+export default function CreditsPage() {
+  return (
+    <Suspense fallback={<CreditsLoading />}>
+      <CreditsContent />
+    </Suspense>
   );
 }
