@@ -36,6 +36,10 @@
       "schedule": "*/5 * * * *"
     },
     {
+      "path": "/api/cron/autofix",
+      "schedule": "*/3 * * * *"
+    },
+    {
       "path": "/api/cron/mortgage-rates",
       "schedule": "0 * * * *"
     },
