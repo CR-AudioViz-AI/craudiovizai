@@ -5,14 +5,64 @@ import { NextRequest, NextResponse } from 'next/server'
 // Force dynamic rendering
 export const dynamic = 'force-dynamic';
 
+// ============================================================================
+// ALLOWED ORIGINS - All CR AudioViz AI satellite apps
+// Updated: December 20, 2025 - Added CrochetAI
+// ============================================================================
 const ALLOWED_ORIGINS = [
-  'https://cravbarrels.com',
+  // Main platforms
+  'https://craudiovizai.com',
+  'https://www.craudiovizai.com',
+  'https://javariai.com',
+  'https://www.javariai.com',
+  
+  // Subdomains
   'https://cardverse.craudiovizai.com',
   'https://games.craudiovizai.com',
-  'https://javariai.com',
-  'https://craudiovizai.com',
+  'https://crochet.craudiovizai.com',
+  'https://admin.craudiovizai.com',
+  'https://api.craudiovizai.com',
+  
+  // Satellite apps
+  'https://cravbarrels.com',
+  'https://crochet-platform.vercel.app',
+  'https://crav-games.vercel.app',
+  'https://crav-cardverse.vercel.app',
+  'https://crav-market-oracle.vercel.app',
+  'https://crav-legalease.vercel.app',
+  'https://crav-news-compare.vercel.app',
+  'https://crav-ebook-creator.vercel.app',
+  'https://crav-pdf-builder.vercel.app',
+  'https://crav-logo-studio.vercel.app',
+  'https://crav-social-graphics.vercel.app',
+  'https://crav-music-builder.vercel.app',
+  'https://crav-site-builder.vercel.app',
+  'https://crav-invoice-generator.vercel.app',
+  'https://crav-verifyforge.vercel.app',
+  'https://crav-scrapbook.vercel.app',
+  
+  // Development
   'http://localhost:3000',
+  'http://localhost:3001',
+  'http://localhost:3002',
 ]
+
+// OPTIONS handler for CORS preflight
+export async function OPTIONS(request: NextRequest) {
+  const origin = request.headers.get('origin') || ''
+  
+  const response = new NextResponse(null, { status: 204 })
+  
+  if (ALLOWED_ORIGINS.some(o => origin.startsWith(o))) {
+    response.headers.set('Access-Control-Allow-Origin', origin)
+    response.headers.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
+    response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization')
+    response.headers.set('Access-Control-Allow-Credentials', 'true')
+    response.headers.set('Access-Control-Max-Age', '86400')
+  }
+  
+  return response
+}
 
 export async function GET(request: NextRequest) {
   const origin = request.headers.get('origin') || ''
