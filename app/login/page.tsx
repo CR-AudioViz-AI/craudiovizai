@@ -59,7 +59,7 @@ const OAUTH_PROVIDERS = [
   {
     id: 'azure',
     name: 'Microsoft',
-    enabled: false, // Will be enabled when configured
+    enabled: true, // Will be enabled when configured
     icon: (
       <svg className="w-5 h-5" viewBox="0 0 24 24">
         <path fill="#F25022" d="M1 1h10v10H1z"/>
