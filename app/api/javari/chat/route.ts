@@ -1,203 +1,106 @@
-// app/api/javari/chat/route.ts
-// Javari Chat API - Processes user messages and executes tools
-// Timestamp: Dec 11, 2025 11:00 PM EST
-
-import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { NextRequest, NextResponse } from "next/server";
+import { createClient } from "@supabase/supabase-js";
+import Anthropic from "@anthropic-ai/sdk";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-// System prompt that defines Javari's capabilities
-const JAVARI_SYSTEM_PROMPT = `You are Javari, the AI assistant for CR AudioViz AI platform.
+const SYSTEM_PROMPT = `You are Javari, the AI assistant for CR AudioViz AI (CRAIverse). You help users with:
+1. Product Questions - features, pricing, capabilities of 60+ AI-powered tools
+2. Technical Support - troubleshoot issues, guide through features
+3. Account Help - billing, subscriptions, credits
+4. App Guidance - help users find the right tools
 
-CORE IDENTITY:
-- You are helpful, creative, and efficient
-- You help users create images, videos, music, and more using AI tools
-- You manage credits and explain features clearly
-- You embody "Your Story. Our Design" philosophy
+Key Info:
+- Free: 100 credits/month, Pro: $19/mo 1000 credits, Business: $49/mo unlimited
+- Support available at /dashboard/tickets
+- Be helpful, friendly, and concise
+- Never make up information`;
 
-CAPABILITIES YOU CAN USE:
-- Image generation (image-generator, image-editor, background-remover, upscaler)
-- Video creation (video-generator, lipsync)
-- Audio/Voice (text-to-speech, voice-clone, music-generator, transcription)
-- Text/Documents (ai-writer, code-generator, document-analyzer, translator)
-- Utility (qr-generator, meme-generator)
-
-CREDIT SYSTEM:
-- Every action costs credits
-- Credits NEVER expire on paid plans
-- Always confirm credit cost before executing
-- Automatically refund if operations fail
-
-COMMUNICATION STYLE:
-- Be concise but friendly
-- Explain costs before actions
-- Offer alternatives if user lacks credits
-- Celebrate user creations
-
-When user asks to create something:
-1. Confirm what they want
-2. Tell them the credit cost
-3. Execute if they agree (or if implicit)
-4. Show the result
-
-TOOLS FORMAT:
-To use a tool, respond with JSON in this format:
-{"tool": "tool-id", "params": {...}, "credits": X}
-
-User context will be provided with each message.`;
-
-export async function POST(request: NextRequest) {
+export async function POST(req: NextRequest) {
   try {
-    const body = await request.json();
-    const { session_id, user_id, message, context } = body;
+    const body = await req.json();
+    const { message, conversation_id, user_id, session_id, context } = body;
 
-    // 1. Log the user message
-    await supabase.from('javari_messages').insert({
-      session_id,
-      user_id,
-      role: 'user',
-      content: message,
-    });
+    if (!message) {
+      return NextResponse.json({ error: "Message required" }, { status: 400 });
+    }
 
-    // 2. Get conversation history
-    const { data: history } = await supabase
-      .from('javari_messages')
-      .select('role, content')
-      .eq('session_id', session_id)
-      .order('created_at', { ascending: true })
-      .limit(20);
+    // Get or create conversation
+    let convId = conversation_id || session_id;
+    if (!convId) {
+      const { data: conv } = await supabase
+        .from("craiverse_javari_conversations")
+        .insert({
+          user_id: user_id || null,
+          source_app: context?.source_app || "chat"
+        })
+        .select("id")
+        .single();
+      convId = conv?.id;
+    }
 
-    // 3. Build messages for LLM
-    const messages = [
-      { role: 'system', content: JAVARI_SYSTEM_PROMPT },
-      { 
-        role: 'system', 
-        content: `User context:
-- Credits available: ${context.credits_available}
-- Current page: ${context.current_page}
-- User preferences: ${JSON.stringify(context.preferences || {})}` 
-      },
-      ...(history || []).map(m => ({
-        role: m.role as 'user' | 'assistant',
-        content: m.content,
-      })),
-    ];
-
-    // 4. Call Anthropic API
-    const llmResponse = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'x-api-key': process.env.ANTHROPIC_API_KEY!,
-        'Content-Type': 'application/json',
-        'anthropic-version': '2024-01-01',
-      },
-      body: JSON.stringify({
-        model: 'claude-3-5-sonnet-20241022',
-        max_tokens: 2048,
-        system: JAVARI_SYSTEM_PROMPT + `\n\nUser context:
-- Credits available: ${context.credits_available}
-- Current page: ${context.current_page}`,
-        messages: messages.slice(1).filter(m => m.role !== 'system'),
-      }),
-    });
-
-    const llmData = await llmResponse.json();
-    let responseText = llmData.content?.[0]?.text || 'I apologize, I encountered an issue.';
-    let toolCalls: any[] = [];
-    let creditsUsed = 0;
-
-    // 5. Check if response contains tool calls
-    const toolMatch = responseText.match(/\{"tool":\s*"([^"]+)",\s*"params":\s*(\{[^}]+\}),\s*"credits":\s*(\d+)\}/);
-    
-    if (toolMatch) {
-      const toolId = toolMatch[1];
-      const toolParams = JSON.parse(toolMatch[2]);
-      const toolCredits = parseInt(toolMatch[3]);
-
-      // Execute the tool
-      try {
-        const toolResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'https://craudiovizai.com'}/api/tools/execute`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            tool_id: toolId,
-            input: toolParams,
-            user_id,
-            session_id,
-          }),
-        });
-
-        const toolResult = await toolResponse.json();
-
-        if (toolResult.success) {
-          toolCalls.push({
-            name: toolId,
-            result: toolResult,
-          });
-          creditsUsed = toolResult.credits_used;
-
-          // Generate a friendly response about the result
-          const followUpResponse = await fetch('https://api.anthropic.com/v1/messages', {
-            method: 'POST',
-            headers: {
-              'x-api-key': process.env.ANTHROPIC_API_KEY!,
-              'Content-Type': 'application/json',
-              'anthropic-version': '2024-01-01',
-            },
-            body: JSON.stringify({
-              model: 'claude-3-5-sonnet-20241022',
-              max_tokens: 512,
-              messages: [{
-                role: 'user',
-                content: `The tool "${toolId}" completed successfully. Result: ${JSON.stringify(toolResult)}. Generate a brief, friendly response to the user about their creation. Include the output URL if available.`,
-              }],
-            }),
-          });
-          
-          const followUp = await followUpResponse.json();
-          responseText = followUp.content?.[0]?.text || `Done! I used ${creditsUsed} credits. Here's your result.`;
-        } else {
-          responseText = `I tried to help, but encountered an issue: ${toolResult.error}. Your credits were not charged.`;
-        }
-      } catch (toolError) {
-        responseText = `I apologize, I couldn't complete that action. Please try again.`;
+    // Get history
+    let messages: any[] = [];
+    if (convId) {
+      const { data: history } = await supabase
+        .from("craiverse_javari_messages")
+        .select("role, content")
+        .eq("conversation_id", convId)
+        .order("created_at", { ascending: true })
+        .limit(10);
+      
+      if (history) {
+        messages = history.map(m => ({ role: m.role, content: m.content }));
       }
     }
 
-    // 6. Log assistant response
-    await supabase.from('javari_messages').insert({
-      session_id,
-      user_id,
-      role: 'assistant',
-      content: responseText,
-      tool_calls: toolCalls.length > 0 ? toolCalls : null,
-    });
+    messages.push({ role: "user", content: message });
 
-    // 7. Update session stats
-    await supabase
-      .from('javari_sessions')
-      .update({
-        messages_count: supabase.sql`messages_count + 2`,
-        credits_used: supabase.sql`credits_used + ${creditsUsed}`,
-        tasks_created: toolCalls.length > 0 ? supabase.sql`tasks_created + 1` : undefined,
-      })
-      .eq('id', session_id);
+    // Call Anthropic
+    let response = "";
+    let provider = "anthropic";
+
+    try {
+      const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+      const completion = await anthropic.messages.create({
+        model: "claude-3-haiku-20240307",
+        max_tokens: 500,
+        system: SYSTEM_PROMPT,
+        messages: messages.map(m => ({ 
+          role: m.role as "user" | "assistant", 
+          content: m.content 
+        }))
+      });
+      response = completion.content[0].type === "text" ? completion.content[0].text : "";
+    } catch (e: any) {
+      console.error("Anthropic error:", e.message);
+      return NextResponse.json({ 
+        error: "AI service temporarily unavailable",
+        fallback_response: "I apologize, I am having trouble responding. Please try again."
+      }, { status: 503 });
+    }
+
+    // Save messages
+    if (convId) {
+      await supabase.from("craiverse_javari_messages").insert([
+        { conversation_id: convId, role: "user", content: message },
+        { conversation_id: convId, role: "assistant", content: response, provider }
+      ]);
+    }
 
     return NextResponse.json({
-      response: responseText,
-      tool_calls: toolCalls,
-      credits_used: creditsUsed,
+      response,
+      conversation_id: convId,
+      provider
     });
 
-  } catch (error) {
-    console.error('Javari chat error:', error);
-    return NextResponse.json(
-      { error: 'Failed to process message' },
-      { status: 500 }
-    );
+  } catch (error: any) {
+    console.error("Javari chat error:", error);
+    return NextResponse.json({ error: "Failed to process message" }, { status: 500 });
   }
 }
+
+export const dynamic = "force-dynamic";
