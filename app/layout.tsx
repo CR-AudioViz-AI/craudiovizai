@@ -44,7 +44,7 @@ export const viewport: Viewport = {
 
 export const metadata: Metadata = {
   title: "CR AudioViz AI - Create Apps, Games, Websites & More with AI",
-  description: "Empower your creativity with 60+ AI-powered tools, 1200+ games, and Javari AI assistant. Build apps, websites, games, and digital content with no coding required.",
+  description: "Empower your creativity with AI-powered creative tools, games, and Javari AI assistant. Build apps, websites, games, and digital content with no coding required.",
   keywords: "AI tools, app builder, game creator, website builder, Javari AI, no-code platform, creative tools, CR AudioViz AI",
   authors: [{ name: "CR AudioViz AI, LLC" }],
   openGraph: {
@@ -144,3 +144,4 @@ export default function RootLayout({
     </html>
   );
 }
+
