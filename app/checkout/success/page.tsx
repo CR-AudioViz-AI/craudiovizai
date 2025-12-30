@@ -1,7 +1,7 @@
+'use client';
+
 // /app/checkout/success/page.tsx
 export const dynamic = 'force-dynamic';
-
-'use client';
 
 import React, { useEffect, useState, Suspense } from 'react';
 import Link from 'next/link';
@@ -14,7 +14,6 @@ function SuccessContent() {
 
   useEffect(() => {
     if (sessionId) {
-      // Verify session
       fetch(`/api/stripe/checkout?session_id=${sessionId}`)
         .then(res => res.json())
         .then(data => setStatus(data.success ? 'success' : 'error'))
@@ -42,7 +41,7 @@ function SuccessContent() {
           <>
             <div className="text-6xl mb-6">⚠️</div>
             <h1 className="text-2xl font-bold mb-4 text-yellow-600">Verification Issue</h1>
-            <p className="text-gray-600 mb-8">We couldn't verify your payment. Please contact support if you were charged.</p>
+            <p className="text-gray-600 mb-8">We could not verify your payment. Please contact support if you were charged.</p>
           </>
         )}
         <Link href="/dashboard" className="inline-block px-8 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
