@@ -1,8 +1,8 @@
+'use client';
+
 // /app/socials/page.tsx
 // Social Media Links - CR AudioViz AI
 export const dynamic = 'force-dynamic';
-
-'use client';
 
 import React from 'react';
 import Link from 'next/link';
