@@ -6,7 +6,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Onboarding } from '@/components/Onboarding';
+import JavariOnboarding from '@/components/Onboarding';
 
 export default function OnboardingPage() {
   const router = useRouter();
