@@ -5,6 +5,37 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 const FROM_EMAIL = 'CRAIverse <noreply@craudiovizai.com>';
 const SUPPORT_EMAIL = 'support@craudiovizai.com';
 
+// Generic send email function
+export async function sendEmail({
+  to,
+  subject,
+  html,
+  from = FROM_EMAIL
+}: {
+  to: string;
+  subject: string;
+  html: string;
+  from?: string;
+}) {
+  try {
+    const { data, error } = await resend.emails.send({
+      from,
+      to,
+      subject,
+      html
+    });
+    if (error) {
+      console.error('Email send error:', error);
+      return { success: false, error };
+    }
+    return { success: true, data };
+  } catch (err) {
+    console.error('Email send exception:', err);
+    return { success: false, error: err };
+  }
+}
+
+
 // Email template styles
 const baseStyles = `
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
