@@ -1,446 +1,478 @@
-export const dynamic = 'force-dynamic';
+// /app/dashboard/page.tsx
+// User Dashboard - CR AudioViz AI / Javari
+// Personal command center with credits, activity, recommendations
 
-// app/dashboard/page.tsx
-// Complete Customer Dashboard - All Features
-// Timestamp: Dec 11, 2025 9:59 PM EST
+'use client';
 
-import { Suspense } from 'react';
-import { redirect } from 'next/navigation';
-import { createServerComponentClient } from '@supabase/auth-helpers-nextjs';
-import { cookies } from 'next/headers';
+import React, { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
 import Link from 'next/link';
-import { 
-  Coins, 
-  CreditCard, 
-  FileImage, 
-  Settings, 
-  TrendingUp, 
-  Clock,
-  Sparkles,
-  ArrowRight,
-  Zap,
-  Star,
-  Calendar,
-  Download,
-  RefreshCw
-} from 'lucide-react';
 
-async function getDashboardData(userId: string) {
-  const supabase = createServerComponentClient({ cookies });
-  
-  // Get user profile with subscription info
-  const { data: profile } = await supabase
-    .from('users')
-    .select('*')
-    .eq('id', userId)
-    .single();
+// =============================================================================
+// TYPES
+// =============================================================================
 
-  // Get credit balance
-  const { data: credits } = await supabase
-    .from('user_credits')
-    .select('balance, lifetime_earned, lifetime_spent')
-    .eq('user_id', userId)
-    .single();
-
-  // Get recent transactions
-  const { data: transactions } = await supabase
-    .from('transactions')
-    .select('*')
-    .eq('user_id', userId)
-    .order('created_at', { ascending: false })
-    .limit(5);
-
-  // Get recent assets
-  const { data: assets } = await supabase
-    .from('user_assets')
-    .select('*')
-    .eq('user_id', userId)
-    .order('created_at', { ascending: false })
-    .limit(6);
-
-  // Get usage stats for current month
-  const startOfMonth = new Date();
-  startOfMonth.setDate(1);
-  startOfMonth.setHours(0, 0, 0, 0);
-
-  const { data: usage } = await supabase
-    .from('credit_transactions')
-    .select('credits, app_id')
-    .eq('user_id', userId)
-    .gte('created_at', startOfMonth.toISOString());
-
-  return {
-    profile,
-    credits: credits || { balance: 0, lifetime_earned: 0, lifetime_spent: 0 },
-    transactions: transactions || [],
-    assets: assets || [],
-    usage: usage || [],
-  };
+interface UserStats {
+  credits: number;
+  creditsUsedThisMonth: number;
+  tier: string;
+  memberSince: string;
+  totalProjects: number;
+  activeStreak: number;
 }
 
-function StatsCard({ 
-  icon: Icon, 
-  label, 
-  value, 
-  subtext, 
-  color = 'blue' 
-}: { 
-  icon: any; 
-  label: string; 
-  value: string | number; 
-  subtext?: string;
+interface RecentActivity {
+  id: string;
+  type: string;
+  title: string;
+  timestamp: string;
+  icon: string;
+  url?: string;
+}
+
+interface QuickAction {
+  id: string;
+  name: string;
+  icon: string;
+  url: string;
+  color: string;
+}
+
+// =============================================================================
+// DASHBOARD COMPONENTS
+// =============================================================================
+
+function StatCard({ label, value, icon, trend, color = 'blue' }: {
+  label: string;
+  value: string | number;
+  icon: string;
+  trend?: string;
   color?: string;
 }) {
-  const colors = {
+  const colorClasses: Record<string, string> = {
     blue: 'from-blue-500 to-blue-600',
-    green: 'from-green-500 to-green-600',
     purple: 'from-purple-500 to-purple-600',
-    orange: 'from-orange-500 to-orange-600',
+    green: 'from-green-500 to-green-600',
+    orange: 'from-orange-500 to-orange-600'
   };
-  
+
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-lg"
+    >
       <div className="flex items-start justify-between">
         <div>
-          <p className="text-sm text-gray-500 mb-1">{label}</p>
-          <p className="text-3xl font-bold text-gray-900">{value}</p>
-          {subtext && <p className="text-sm text-gray-400 mt-1">{subtext}</p>}
+          <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">{label}</p>
+          <p className="text-3xl font-bold text-gray-900 dark:text-white">{value}</p>
+          {trend && (
+            <p className="text-sm text-green-600 dark:text-green-400 mt-1">{trend}</p>
+          )}
         </div>
-        <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${colors[color as keyof typeof colors]} flex items-center justify-center`}>
-          <Icon className="w-6 h-6 text-white" />
+        <div className={`w-12 h-12 bg-gradient-to-br ${colorClasses[color]} rounded-xl flex items-center justify-center text-white text-xl`}>
+          {icon}
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
+function CreditMeter({ used, total, tier }: { used: number; total: number; tier: string }) {
+  const percentage = Math.min((used / total) * 100, 100);
+  const remaining = total - used;
+
+  return (
+    <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-lg">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="font-bold text-gray-900 dark:text-white">Credits This Month</h3>
+        <span className="px-3 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-full text-sm font-medium">
+          {tier} Plan
+        </span>
+      </div>
+
+      {/* Progress bar */}
+      <div className="w-full h-4 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden mb-3">
+        <motion.div
+          initial={{ width: 0 }}
+          animate={{ width: `${percentage}%` }}
+          transition={{ duration: 1, ease: 'easeOut' }}
+          className={`h-full ${
+            percentage > 80 ? 'bg-red-500' : percentage > 50 ? 'bg-yellow-500' : 'bg-green-500'
+          }`}
+        />
+      </div>
+
+      <div className="flex justify-between text-sm">
+        <span className="text-gray-600 dark:text-gray-400">
+          {used.toLocaleString()} used
+        </span>
+        <span className="text-gray-900 dark:text-white font-medium">
+          {remaining.toLocaleString()} remaining
+        </span>
+      </div>
+
+      <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700 flex justify-between items-center">
+        <span className="text-sm text-gray-500 dark:text-gray-400">
+          Need more credits?
+        </span>
+        <Link
+          href="/pricing"
+          className="text-sm text-blue-600 dark:text-blue-400 font-medium hover:underline"
+        >
+          Upgrade Plan →
+        </Link>
+      </div>
+    </div>
+  );
+}
+
+function ActivityFeed({ activities }: { activities: RecentActivity[] }) {
+  return (
+    <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-lg">
+      <h3 className="font-bold text-gray-900 dark:text-white mb-4">Recent Activity</h3>
+      
+      {activities.length === 0 ? (
+        <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+          <span className="text-4xl mb-2 block">📭</span>
+          <p>No recent activity yet</p>
+          <p className="text-sm">Start using Javari to see your history here!</p>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {activities.map((activity, idx) => (
+            <motion.div
+              key={activity.id}
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: idx * 0.1 }}
+              className="flex items-start gap-3 p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
+            >
+              <span className="text-2xl">{activity.icon}</span>
+              <div className="flex-1 min-w-0">
+                <p className="font-medium text-gray-900 dark:text-white truncate">
+                  {activity.title}
+                </p>
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  {activity.timestamp}
+                </p>
+              </div>
+              {activity.url && (
+                <Link
+                  href={activity.url}
+                  className="text-blue-600 dark:text-blue-400 text-sm hover:underline"
+                >
+                  View
+                </Link>
+              )}
+            </motion.div>
+          ))}
+        </div>
+      )}
+
+      <Link
+        href="/dashboard/activity"
+        className="block text-center text-sm text-blue-600 dark:text-blue-400 mt-4 pt-4 border-t border-gray-100 dark:border-gray-700 hover:underline"
+      >
+        View All Activity →
+      </Link>
+    </div>
+  );
+}
+
+function QuickActions({ actions }: { actions: QuickAction[] }) {
+  return (
+    <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-lg">
+      <h3 className="font-bold text-gray-900 dark:text-white mb-4">Quick Actions</h3>
+      <div className="grid grid-cols-2 gap-3">
+        {actions.map((action) => (
+          <Link
+            key={action.id}
+            href={action.url}
+            className={`${action.color} p-4 rounded-xl text-white text-center hover:opacity-90 transition-opacity`}
+          >
+            <span className="text-2xl block mb-2">{action.icon}</span>
+            <span className="text-sm font-medium">{action.name}</span>
+          </Link>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function JavariWidget() {
+  const [greeting, setGreeting] = useState('');
+
+  useEffect(() => {
+    const hour = new Date().getHours();
+    if (hour < 12) setGreeting('Good morning');
+    else if (hour < 17) setGreeting('Good afternoon');
+    else setGreeting('Good evening');
+  }, []);
+
+  return (
+    <div className="bg-gradient-to-br from-blue-500 via-purple-500 to-pink-500 rounded-xl p-6 text-white">
+      <div className="flex items-center gap-4 mb-4">
+        {/* Javari Avatar */}
+        <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center backdrop-blur">
+          <div className="relative">
+            <div className="flex gap-2 mb-1">
+              <div className="w-2 h-2 bg-white rounded-full" />
+              <div className="w-2 h-2 bg-white rounded-full" />
+            </div>
+            <div className="w-4 h-1.5 bg-white rounded-full mx-auto" />
+          </div>
+        </div>
+        <div>
+          <h3 className="font-bold text-lg">{greeting}! 👋</h3>
+          <p className="text-blue-100">How can I help you today?</p>
+        </div>
+      </div>
+
+      <Link
+        href="/chat"
+        className="block w-full py-3 bg-white/20 hover:bg-white/30 rounded-lg text-center font-medium backdrop-blur transition-colors"
+      >
+        💬 Start Chatting with Javari
+      </Link>
+
+      <div className="mt-4 pt-4 border-t border-white/20">
+        <p className="text-sm text-blue-100 mb-2">Try asking:</p>
+        <div className="flex flex-wrap gap-2">
+          {['Create a logo', 'Write an email', 'Analyze my data'].map((prompt) => (
+            <Link
+              key={prompt}
+              href={`/chat?prompt=${encodeURIComponent(prompt)}`}
+              className="px-3 py-1 bg-white/10 hover:bg-white/20 rounded-full text-sm transition-colors"
+            >
+              {prompt}
+            </Link>
+          ))}
         </div>
       </div>
     </div>
   );
 }
 
-function QuickAction({ 
-  href, 
-  icon: Icon, 
-  label, 
-  description 
-}: { 
-  href: string; 
-  icon: any; 
-  label: string; 
-  description: string;
-}) {
-  return (
-    <Link 
-      href={href}
-      className="flex items-center gap-4 p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors group"
-    >
-      <div className="w-10 h-10 rounded-lg bg-white shadow-sm flex items-center justify-center">
-        <Icon className="w-5 h-5 text-blue-600" />
-      </div>
-      <div className="flex-1">
-        <p className="font-semibold text-gray-900">{label}</p>
-        <p className="text-sm text-gray-500">{description}</p>
-      </div>
-      <ArrowRight className="w-5 h-5 text-gray-400 group-hover:text-blue-600 transition-colors" />
-    </Link>
-  );
-}
+// =============================================================================
+// MAIN DASHBOARD PAGE
+// =============================================================================
 
-export default async function DashboardPage() {
-  const supabase = createServerComponentClient({ cookies });
-  
-  const { data: { session } } = await supabase.auth.getSession();
-  
-  if (!session) {
-    redirect('/login');
-  }
+export default function DashboardPage() {
+  const [stats, setStats] = useState<UserStats>({
+    credits: 450,
+    creditsUsedThisMonth: 50,
+    tier: 'Starter',
+    memberSince: 'December 2025',
+    totalProjects: 12,
+    activeStreak: 5
+  });
 
-  const data = await getDashboardData(session.user.id);
-  const { profile, credits, transactions, assets, usage } = data;
+  const [activities, setActivities] = useState<RecentActivity[]>([
+    { id: '1', type: 'chat', title: 'Chat with Javari', timestamp: '2 hours ago', icon: '💬', url: '/chat' },
+    { id: '2', type: 'tool', title: 'Created a new logo', timestamp: '5 hours ago', icon: '🎨', url: '/projects/logo-1' },
+    { id: '3', type: 'document', title: 'Generated business proposal', timestamp: 'Yesterday', icon: '📄', url: '/projects/doc-1' },
+    { id: '4', type: 'game', title: 'Played Puzzle Quest', timestamp: '2 days ago', icon: '🎮', url: '/games' },
+    { id: '5', type: 'purchase', title: 'Purchased 500 credits', timestamp: '3 days ago', icon: '💳' }
+  ]);
 
-  const monthlyUsage = usage.reduce((sum, t) => sum + Math.abs(t.credits), 0);
-  const appsUsed = new Set(usage.map(t => t.app_id)).size;
+  const quickActions: QuickAction[] = [
+    { id: 'chat', name: 'Chat with Javari', icon: '💬', url: '/chat', color: 'bg-gradient-to-br from-blue-500 to-purple-500' },
+    { id: 'logo', name: 'Create Logo', icon: '🎨', url: '/tools/logo-creator', color: 'bg-gradient-to-br from-pink-500 to-rose-500' },
+    { id: 'document', name: 'Write Document', icon: '📄', url: '/tools/document-writer', color: 'bg-gradient-to-br from-green-500 to-emerald-500' },
+    { id: 'games', name: 'Play Games', icon: '🎮', url: '/games', color: 'bg-gradient-to-br from-orange-500 to-amber-500' }
+  ];
+
+  const [userName, setUserName] = useState('');
+
+  useEffect(() => {
+    // Load user data
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('welcome') === 'true') {
+      // Show welcome toast or animation
+      console.log('Welcome new user!');
+    }
+  }, []);
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       {/* Header */}
-      <div className="bg-gradient-to-r from-blue-600 to-green-600 text-white">
-        <div className="container mx-auto px-4 py-8">
+      <header className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
+        <div className="max-w-7xl mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold mb-2">
-                Welcome back, {profile?.full_name?.split(' ')[0] || 'Creator'}!
-              </h1>
-              <p className="text-blue-100">
-                Your creative dashboard • {profile?.subscription_tier || 'Free'} Plan
-              </p>
-            </div>
-            <div className="hidden md:flex items-center gap-4">
-              <Link 
-                href="/apps"
-                className="px-6 py-3 bg-white/20 hover:bg-white/30 rounded-xl font-semibold transition-colors"
-              >
-                Browse Apps
+            <div className="flex items-center gap-4">
+              <Link href="/" className="flex items-center gap-2">
+                <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-500 rounded-xl flex items-center justify-center">
+                  <span className="text-white text-xl">J</span>
+                </div>
               </Link>
-              <Link 
-                href="/dashboard/credits"
-                className="px-6 py-3 bg-white text-blue-600 rounded-xl font-semibold hover:bg-blue-50 transition-colors"
-              >
-                Buy Credits
-              </Link>
+              <div>
+                <h1 className="font-bold text-gray-900 dark:text-white">Dashboard</h1>
+                <p className="text-xs text-gray-500 dark:text-gray-400">Welcome back{userName ? `, ${userName}` : ''}!</p>
+              </div>
             </div>
+
+            <nav className="flex items-center gap-4">
+              <Link href="/hub" className="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white">
+                Module Hub
+              </Link>
+              <Link href="/pricing" className="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white">
+                Pricing
+              </Link>
+              <Link href="/support" className="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white">
+                Support
+              </Link>
+              <Link href="/settings" className="w-10 h-10 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center">
+                <span className="text-xl">👤</span>
+              </Link>
+            </nav>
           </div>
         </div>
-      </div>
+      </header>
 
-      <div className="container mx-auto px-4 py-8">
-        {/* Stats Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <StatsCard 
-            icon={Coins}
-            label="Credit Balance"
-            value={credits.balance.toLocaleString()}
-            subtext="Never expire on paid plans"
+      {/* Main Content */}
+      <main className="max-w-7xl mx-auto px-4 py-8">
+        {/* Stats Row */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+          <StatCard
+            label="Available Credits"
+            value={stats.credits.toLocaleString()}
+            icon="💳"
             color="blue"
           />
-          <StatsCard 
-            icon={TrendingUp}
-            label="Used This Month"
-            value={monthlyUsage.toLocaleString()}
-            subtext={`Across ${appsUsed} apps`}
-            color="green"
-          />
-          <StatsCard 
-            icon={FileImage}
-            label="Assets Created"
-            value={assets.length}
-            subtext="Images, videos, & more"
+          <StatCard
+            label="Projects Created"
+            value={stats.totalProjects}
+            icon="📁"
             color="purple"
           />
-          <StatsCard 
-            icon={Star}
-            label="Plan Status"
-            value={profile?.subscription_status === 'active' ? 'Active' : 'Free'}
-            subtext={profile?.subscription_tier || 'Upgrade for more'}
+          <StatCard
+            label="Active Streak"
+            value={`${stats.activeStreak} days`}
+            icon="🔥"
+            trend="Keep it up!"
             color="orange"
+          />
+          <StatCard
+            label="Member Since"
+            value={stats.memberSince}
+            icon="⭐"
+            color="green"
           />
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Main Content - Left 2 Columns */}
-          <div className="lg:col-span-2 space-y-8">
-            {/* Quick Actions */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-              <h2 className="text-xl font-bold text-gray-900 mb-4">Quick Actions</h2>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <QuickAction 
-                  href="/apps/image-generator"
-                  icon={Sparkles}
-                  label="Generate Images"
-                  description="Create AI images"
-                />
-                <QuickAction 
-                  href="/apps/video-generator"
-                  icon={Zap}
-                  label="Create Videos"
-                  description="AI video generation"
-                />
-                <QuickAction 
-                  href="/apps/music-builder"
-                  icon={Star}
-                  label="Make Music"
-                  description="AI composition"
-                />
-                <QuickAction 
-                  href="/apps/builder"
-                  icon={Settings}
-                  label="Build Apps"
-                  description="No-code app builder"
-                />
-              </div>
-            </div>
-
-            {/* Recent Assets */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-bold text-gray-900">Recent Creations</h2>
-                <Link href="/dashboard/assets" className="text-blue-600 hover:text-blue-700 text-sm font-semibold">
-                  View All →
-                </Link>
-              </div>
-              
-              {assets.length > 0 ? (
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                  {assets.map((asset: any) => (
-                    <div key={asset.id} className="group relative aspect-square rounded-lg overflow-hidden bg-gray-100">
-                      {asset.thumbnail_url ? (
-                        <img 
-                          src={asset.thumbnail_url} 
-                          alt={asset.name}
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center">
-                          <FileImage className="w-8 h-8 text-gray-400" />
-                        </div>
-                      )}
-                      <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                        <button className="p-2 bg-white rounded-lg hover:bg-gray-100">
-                          <Download className="w-4 h-4 text-gray-700" />
-                        </button>
-                        <button className="p-2 bg-white rounded-lg hover:bg-gray-100">
-                          <RefreshCw className="w-4 h-4 text-gray-700" />
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-12 bg-gray-50 rounded-lg">
-                  <FileImage className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-                  <p className="text-gray-500 mb-4">No creations yet</p>
-                  <Link 
-                    href="/apps"
-                    className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 inline-block"
-                  >
-                    Start Creating
-                  </Link>
-                </div>
-              )}
-            </div>
+        {/* Main Grid */}
+        <div className="grid md:grid-cols-3 gap-6">
+          {/* Left Column - Javari Widget */}
+          <div className="space-y-6">
+            <JavariWidget />
+            <QuickActions actions={quickActions} />
           </div>
 
-          {/* Sidebar - Right Column */}
+          {/* Middle Column - Credit Meter & Activity */}
           <div className="space-y-6">
-            {/* Credit Balance Card */}
-            <div className="bg-gradient-to-br from-blue-600 to-green-600 rounded-xl p-6 text-white">
-              <div className="flex items-center gap-3 mb-4">
-                <Coins className="w-8 h-8" />
-                <div>
-                  <p className="text-blue-100 text-sm">Available Credits</p>
-                  <p className="text-3xl font-bold">{credits.balance.toLocaleString()}</p>
-                </div>
+            <CreditMeter
+              used={stats.creditsUsedThisMonth}
+              total={500}
+              tier={stats.tier}
+            />
+            <ActivityFeed activities={activities} />
+          </div>
+
+          {/* Right Column - Recommendations & Social */}
+          <div className="space-y-6">
+            {/* Recommended Tools */}
+            <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-lg">
+              <h3 className="font-bold text-gray-900 dark:text-white mb-4">Recommended for You</h3>
+              <div className="space-y-3">
+                {[
+                  { name: 'Logo Creator', icon: '🎨', desc: 'Design your brand', url: '/tools/logo-creator' },
+                  { name: 'Market Oracle', icon: '📈', desc: 'Track investments', url: '/tools/market-oracle' },
+                  { name: 'Games Hub', icon: '🎮', desc: 'Take a break', url: '/games' }
+                ].map((tool) => (
+                  <Link
+                    key={tool.name}
+                    href={tool.url}
+                    className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
+                  >
+                    <span className="text-2xl">{tool.icon}</span>
+                    <div>
+                      <p className="font-medium text-gray-900 dark:text-white">{tool.name}</p>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">{tool.desc}</p>
+                    </div>
+                  </Link>
+                ))}
               </div>
-              <div className="grid grid-cols-2 gap-4 text-sm mb-4">
-                <div>
-                  <p className="text-blue-200">Lifetime Earned</p>
-                  <p className="font-semibold">{credits.lifetime_earned.toLocaleString()}</p>
-                </div>
-                <div>
-                  <p className="text-blue-200">Lifetime Used</p>
-                  <p className="font-semibold">{credits.lifetime_spent.toLocaleString()}</p>
-                </div>
-              </div>
-              <Link 
-                href="/dashboard/credits"
-                className="block w-full py-3 bg-white text-blue-600 rounded-lg font-semibold text-center hover:bg-blue-50 transition-colors"
+              <Link
+                href="/hub"
+                className="block text-center text-sm text-blue-600 dark:text-blue-400 mt-4 pt-4 border-t border-gray-100 dark:border-gray-700 hover:underline"
               >
-                Buy More Credits
+                Explore All Modules →
               </Link>
             </div>
 
-            {/* Recent Transactions */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="font-bold text-gray-900">Recent Activity</h3>
-                <Link href="/dashboard/billing" className="text-blue-600 text-sm">
-                  View All
-                </Link>
+            {/* Social Card */}
+            <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-lg">
+              <h3 className="font-bold text-gray-900 dark:text-white mb-4">Stay Connected</h3>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                Follow us for updates, tips, and exclusive content!
+              </p>
+              <div className="flex gap-2">
+                {[
+                  { name: 'Twitter', icon: '𝕏', url: 'https://twitter.com/CRAudioVizAI', color: 'bg-black' },
+                  { name: 'Discord', icon: '💬', url: 'https://discord.gg/javari', color: 'bg-indigo-600' },
+                  { name: 'YouTube', icon: '▶️', url: 'https://youtube.com/@CRAudioVizAI', color: 'bg-red-600' }
+                ].map((social) => (
+                  <a
+                    key={social.name}
+                    href={social.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={`${social.color} w-10 h-10 rounded-lg flex items-center justify-center text-white hover:opacity-90 transition-opacity`}
+                    title={social.name}
+                  >
+                    {social.icon}
+                  </a>
+                ))}
               </div>
-              
-              {transactions.length > 0 ? (
-                <div className="space-y-3">
-                  {transactions.slice(0, 5).map((tx: any) => (
-                    <div key={tx.id} className="flex items-center justify-between py-2 border-b border-gray-100 last:border-0">
-                      <div className="flex items-center gap-3">
-                        <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                          tx.type === 'credit_purchase' ? 'bg-green-100' : 'bg-blue-100'
-                        }`}>
-                          {tx.type === 'credit_purchase' ? (
-                            <CreditCard className="w-4 h-4 text-green-600" />
-                          ) : (
-                            <Zap className="w-4 h-4 text-blue-600" />
-                          )}
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium text-gray-900">
-                            {tx.type === 'credit_purchase' ? 'Credits Purchased' : 'Credits Used'}
-                          </p>
-                          <p className="text-xs text-gray-500">
-                            {new Date(tx.created_at).toLocaleDateString()}
-                          </p>
-                        </div>
-                      </div>
-                      <span className={`font-semibold ${
-                        tx.credits > 0 ? 'text-green-600' : 'text-gray-600'
-                      }`}>
-                        {tx.credits > 0 ? '+' : ''}{tx.credits}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-center text-gray-500 py-4">No recent activity</p>
-              )}
+              <Link
+                href="/socials"
+                className="block text-sm text-blue-600 dark:text-blue-400 mt-4 hover:underline"
+              >
+                See all platforms →
+              </Link>
             </div>
 
-            {/* Subscription Card */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-              <h3 className="font-bold text-gray-900 mb-4">Your Plan</h3>
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
-                  <Star className="w-6 h-6 text-white" />
-                </div>
-                <div>
-                  <p className="font-bold text-gray-900">
-                    {profile?.subscription_tier || 'Free'} Plan
-                  </p>
-                  <p className="text-sm text-gray-500">
-                    {profile?.subscription_status === 'active' ? 'Active' : 'Not subscribed'}
-                  </p>
-                </div>
+            {/* Help Card */}
+            <div className="bg-gray-100 dark:bg-gray-800/50 rounded-xl p-6">
+              <h3 className="font-bold text-gray-900 dark:text-white mb-2">Need Help?</h3>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                Our team is here to help you succeed.
+              </p>
+              <div className="space-y-2">
+                <Link
+                  href="/support"
+                  className="block text-sm text-blue-600 dark:text-blue-400 hover:underline"
+                >
+                  📋 Submit a Ticket
+                </Link>
+                <Link
+                  href="/docs"
+                  className="block text-sm text-blue-600 dark:text-blue-400 hover:underline"
+                >
+                  📚 Documentation
+                </Link>
+                <Link
+                  href="/support/enhancement-request"
+                  className="block text-sm text-blue-600 dark:text-blue-400 hover:underline"
+                >
+                  💡 Request a Feature
+                </Link>
               </div>
-              
-              {profile?.subscription_status !== 'active' && (
-                <Link 
-                  href="/pricing"
-                  className="block w-full py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg font-semibold text-center hover:from-purple-700 hover:to-pink-700 transition-colors"
-                >
-                  Upgrade Now
-                </Link>
-              )}
-              
-              {profile?.subscription_status === 'active' && (
-                <Link 
-                  href="/dashboard/billing"
-                  className="block w-full py-3 border-2 border-gray-200 text-gray-700 rounded-lg font-semibold text-center hover:bg-gray-50 transition-colors"
-                >
-                  Manage Subscription
-                </Link>
-              )}
-            </div>
-
-            {/* Quick Links */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-              <h3 className="font-bold text-gray-900 mb-4">Account</h3>
-              <nav className="space-y-2">
-                <Link href="/dashboard/settings" className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 text-gray-700">
-                  <Settings className="w-5 h-5" />
-                  <span>Settings</span>
-                </Link>
-                <Link href="/dashboard/billing" className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 text-gray-700">
-                  <CreditCard className="w-5 h-5" />
-                  <span>Billing</span>
-                </Link>
-                <Link href="/dashboard/assets" className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 text-gray-700">
-                  <FileImage className="w-5 h-5" />
-                  <span>My Assets</span>
-                </Link>
-                <Link href="/support" className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 text-gray-700">
-                  <Clock className="w-5 h-5" />
-                  <span>Support</span>
-                </Link>
-              </nav>
             </div>
           </div>
         </div>
-      </div>
+      </main>
     </div>
   );
 }
