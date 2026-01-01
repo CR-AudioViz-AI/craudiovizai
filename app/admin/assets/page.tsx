@@ -462,11 +462,11 @@ export default function AssetManagerPage() {
                   </span>
                 </h2>
                 <button
-                  onClick={() => landingZone.filter(i => i.status === 'classified').forEach(approveFile)}
+                  onClick={async () => { for (const item of landingZone.filter(i => i.status !== 'completed' && i.final_category_slug)) { await approveFile(item) } }}
                   className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-500 rounded-lg text-sm font-medium transition"
                 >
                   <CheckCircle2 className="w-4 h-4" />
-                  Approve All Classified
+                  Approve All with Category
                 </button>
               </div>
 
