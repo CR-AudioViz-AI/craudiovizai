@@ -4,55 +4,21 @@
   "github": {
     "autoAlias": true
   },
-  "regions": [
-    "iad1",
-    "sfo1"
-  ],
+  "regions": ["iad1", "sfo1"],
   "functions": {
-    "app/api/**/*.ts": {
-      "memory": 1024,
-      "maxDuration": 30
-    },
-    "app/api/digital-products/upload/route.ts": {
-      "memory": 1024,
-      "maxDuration": 60
-    },
-    "app/api/cron/**/*.ts": {
-      "memory": 1024,
-      "maxDuration": 300
-    },
-    "app/api/admin/**/*.ts": {
-      "memory": 1024,
-      "maxDuration": 60
-    },
-    "app/api/chat/**/*.ts": {
-      "memory": 2048,
-      "maxDuration": 120
-    },
-    "app/api/ai/**/*.ts": {
-      "memory": 2048,
-      "maxDuration": 120
-    }
+    "app/api/**/*.ts": {"memory": 1024, "maxDuration": 30},
+    "app/api/digital-products/upload/route.ts": {"memory": 1024, "maxDuration": 60},
+    "app/api/cron/**/*.ts": {"memory": 1024, "maxDuration": 300},
+    "app/api/admin/**/*.ts": {"memory": 1024, "maxDuration": 60},
+    "app/api/chat/**/*.ts": {"memory": 2048, "maxDuration": 120},
+    "app/api/ai/**/*.ts": {"memory": 2048, "maxDuration": 120}
   },
   "crons": [
-    {
-      "path": "/api/cron/process-knowledge",
-      "schedule": "*/5 * * * *"
-    },
-    {
-      "path": "/api/cron/warmup",
-      "schedule": "*/3 * * * *"
-    }
+    {"path": "/api/cron/process-knowledge", "schedule": "*/5 * * * *"},
+    {"path": "/api/cron/warmup", "schedule": "*/3 * * * *"},
+    {"path": "/api/cron/autopilot", "schedule": "*/5 * * * *"}
   ],
   "headers": [
-    {
-      "source": "/api/(.*)",
-      "headers": [
-        {
-          "key": "Cache-Control",
-          "value": "s-maxage=0, stale-while-revalidate=59"
-        }
-      ]
-    }
+    {"source": "/api/(.*)", "headers": [{"key": "Cache-Control", "value": "s-maxage=0, stale-while-revalidate=59"}]}
   ]
 }
