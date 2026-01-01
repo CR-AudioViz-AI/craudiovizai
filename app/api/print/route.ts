@@ -1,5 +1,5 @@
 // Epson Email Print API
-// Timestamp: January 1, 2026 - 5:08 AM EST
+// Timestamp: January 1, 2026 - 5:08 PM EST
 // CR AudioViz AI - Direct printing to Epson ET-2850
 
 import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
@@ -44,11 +44,11 @@ export async function POST(request: Request) {
     if (type === 'asset-list' || type === 'category-report') {
       let query = supabase
         .from('assets')
-        .select(\`
+        .select(`
           id, name, original_filename, file_size_bytes, file_extension,
           created_at, download_count, storage_path,
           asset_categories(name, slug)
-        \`)
+        `)
         .eq('status', 'active')
         .order('created_at', { ascending: false })
 
@@ -76,7 +76,7 @@ export async function POST(request: Request) {
 
       // Generate HTML report
       const categoryName = category ? assets?.[0]?.asset_categories?.name || category : 'All Assets'
-      subject = \`\${categoryName} - Asset Report\`
+      subject = `${categoryName} - Asset Report`
       
       htmlContent = generateAssetReport(assets || [], categoryName, title)
     } else if (type === 'custom' && content) {
@@ -137,12 +137,23 @@ function generateAssetReport(assets: any[], categoryName: string, customTitle?: 
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
   }
 
-  return \`
+  const tableRows = assets.map((asset, i) => `
+        <tr>
+          <td>${i + 1}</td>
+          <td>${asset.name || asset.original_filename}</td>
+          <td>${(asset.file_extension || '').toUpperCase()}</td>
+          <td>${formatBytes(asset.file_size_bytes || 0)}</td>
+          <td>${new Date(asset.created_at).toLocaleDateString()}</td>
+          <td>${asset.download_count || 0}</td>
+        </tr>
+  `).join('')
+
+  return `
 <!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8">
-  <title>\${customTitle || categoryName} Report</title>
+  <title>${customTitle || categoryName} Report</title>
   <style>
     body { font-family: Arial, sans-serif; font-size: 11px; margin: 20px; color: #333; }
     h1 { font-size: 18px; color: #7c3aed; margin-bottom: 5px; }
@@ -157,12 +168,12 @@ function generateAssetReport(assets: any[], categoryName: string, customTitle?: 
   </style>
 </head>
 <body>
-  <h1>✨ \${customTitle || categoryName}</h1>
-  <div class="subtitle">CR AudioViz AI Asset Manager • Generated: \${now} EST</div>
+  <h1>✨ ${customTitle || categoryName}</h1>
+  <div class="subtitle">CR AudioViz AI Asset Manager • Generated: ${now} EST</div>
   
   <div class="stats">
-    <span><strong>Total Assets:</strong> \${assets.length}</span>
-    <span><strong>Total Size:</strong> \${formatBytes(totalSize)}</span>
+    <span><strong>Total Assets:</strong> ${assets.length}</span>
+    <span><strong>Total Size:</strong> ${formatBytes(totalSize)}</span>
   </div>
 
   <table>
@@ -177,16 +188,7 @@ function generateAssetReport(assets: any[], categoryName: string, customTitle?: 
       </tr>
     </thead>
     <tbody>
-      \${assets.map((asset, i) => \`
-        <tr>
-          <td>\${i + 1}</td>
-          <td>\${asset.name || asset.original_filename}</td>
-          <td>\${(asset.file_extension || '').toUpperCase()}</td>
-          <td>\${formatBytes(asset.file_size_bytes || 0)}</td>
-          <td>\${new Date(asset.created_at).toLocaleDateString()}</td>
-          <td>\${asset.download_count || 0}</td>
-        </tr>
-      \`).join('')}
+      ${tableRows}
     </tbody>
   </table>
 
@@ -195,7 +197,7 @@ function generateAssetReport(assets: any[], categoryName: string, customTitle?: 
   </div>
 </body>
 </html>
-\`
+`
 }
 
 async function sendToPrinter(subject: string, htmlContent: string): Promise<boolean> {
@@ -207,7 +209,7 @@ async function sendToPrinter(subject: string, htmlContent: string): Promise<bool
       const response = await fetch('https://api.resend.com/emails', {
         method: 'POST',
         headers: {
-          'Authorization': \`Bearer \${resendKey}\`,
+          'Authorization': `Bearer ${resendKey}`,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
