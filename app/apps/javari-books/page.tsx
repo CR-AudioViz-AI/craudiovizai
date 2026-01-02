@@ -193,11 +193,11 @@ export default function JavariBooksPage() {
           <div className="bg-gray-800/50 rounded-2xl p-1 flex gap-1">
             <button
               onClick={() => setMode('ebook-to-audio')}
-              className={\`flex items-center gap-2 px-6 py-3 rounded-xl font-medium transition-all \${
+              className={`flex items-center gap-2 px-6 py-3 rounded-xl font-medium transition-all ${
                 mode === 'ebook-to-audio'
                   ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg'
                   : 'text-gray-400 hover:text-white hover:bg-gray-700/50'
-              }\`}
+              }`}
             >
               <BookOpen className="w-5 h-5" />
               eBook → Audiobook
@@ -206,11 +206,11 @@ export default function JavariBooksPage() {
             </button>
             <button
               onClick={() => setMode('audio-to-ebook')}
-              className={\`flex items-center gap-2 px-6 py-3 rounded-xl font-medium transition-all \${
+              className={`flex items-center gap-2 px-6 py-3 rounded-xl font-medium transition-all ${
                 mode === 'audio-to-ebook'
                   ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg'
                   : 'text-gray-400 hover:text-white hover:bg-gray-700/50'
-              }\`}
+              }`}
             >
               <Headphones className="w-5 h-5" />
               Audiobook → eBook
@@ -231,11 +231,11 @@ export default function JavariBooksPage() {
             <div
               onDrop={handleDrop}
               onDragOver={(e) => e.preventDefault()}
-              className={\`border-2 border-dashed rounded-xl p-8 text-center transition-all cursor-pointer \${
+              className={`border-2 border-dashed rounded-xl p-8 text-center transition-all cursor-pointer ${
                 selectedFile 
                   ? 'border-green-500/50 bg-green-500/10' 
                   : 'border-purple-500/30 hover:border-purple-500/60 hover:bg-purple-500/5'
-              }\`}
+              }`}
             >
               <input
                 type="file"
@@ -284,7 +284,7 @@ export default function JavariBooksPage() {
                 <Settings className="w-4 h-4" />
                 Conversion Settings
               </span>
-              <ChevronDown className={\`w-4 h-4 transition-transform \${showSettings ? 'rotate-180' : ''}\`} />
+              <ChevronDown className={`w-4 h-4 transition-transform ${showSettings ? 'rotate-180' : ''}`} />
             </button>
 
             {/* Settings Panel */}
@@ -300,11 +300,11 @@ export default function JavariBooksPage() {
                           <button
                             key={v.id}
                             onClick={() => setVoice(v)}
-                            className={\`p-3 rounded-lg text-left transition \${
+                            className={`p-3 rounded-lg text-left transition ${
                               voice.id === v.id
                                 ? 'bg-purple-600/50 border border-purple-500'
                                 : 'bg-gray-700/50 hover:bg-gray-700 border border-transparent'
-                            }\`}
+                            }`}
                           >
                             <div className="flex items-center gap-2">
                               <User className="w-4 h-4 text-purple-400" />
@@ -324,11 +324,11 @@ export default function JavariBooksPage() {
                           <button
                             key={s.value}
                             onClick={() => setSpeed(s.value)}
-                            className={\`flex-1 py-2 rounded-lg text-sm transition \${
+                            className={`flex-1 py-2 rounded-lg text-sm transition ${
                               speed === s.value
                                 ? 'bg-purple-600 text-white'
                                 : 'bg-gray-700/50 text-gray-300 hover:bg-gray-700'
-                            }\`}
+                            }`}
                           >
                             {s.label}
                           </button>
@@ -385,7 +385,7 @@ export default function JavariBooksPage() {
                   <div className="w-full bg-gray-700 rounded-full h-3">
                     <div 
                       className="bg-gradient-to-r from-purple-600 to-pink-600 h-3 rounded-full transition-all duration-300"
-                      style={{ width: \`\${progress}%\` }}
+                      style={{ width: `${progress}%` }}
                     />
                   </div>
                   <p className="text-center text-sm text-gray-400">{progress}% complete</p>
@@ -423,16 +423,16 @@ export default function JavariBooksPage() {
             <button
               onClick={startConversion}
               disabled={!selectedFile || status === 'uploading' || status === 'processing'}
-              className={\`w-full py-4 rounded-xl font-semibold text-lg transition-all flex items-center justify-center gap-3 \${
+              className={`w-full py-4 rounded-xl font-semibold text-lg transition-all flex items-center justify-center gap-3 ${
                 !selectedFile || status === 'uploading' || status === 'processing'
                   ? 'bg-gray-700 text-gray-500 cursor-not-allowed'
                   : 'bg-gradient-to-r from-purple-600 to-pink-600 text-white hover:opacity-90 shadow-lg shadow-purple-500/25'
-              }\`}
+              }`}
             >
               <Sparkles className="w-5 h-5" />
               {status === 'uploading' ? 'Uploading...' : 
                status === 'processing' ? 'Converting...' : 
-               \`Convert to \${mode === 'ebook-to-audio' ? 'Audiobook' : 'eBook'}\`}
+               `Convert to ${mode === 'ebook-to-audio' ? 'Audiobook' : 'eBook'}`}
             </button>
 
             {/* Credit Cost */}
