@@ -56,7 +56,7 @@ export const metadata: Metadata = {
     description: 'Create apps, games, and websites with AI-powered tools',
     images: [
       {
-        url: '/craudiovizailogo.png',
+        url: '/og-image.png',
         width: 1200,
         height: 630,
         alt: 'CR AudioViz AI Platform',
@@ -64,10 +64,11 @@ export const metadata: Metadata = {
     ],
   },
   twitter: {
+    images: ['/twitter-image.png'],
     card: 'summary_large_image',
     title: 'CR AudioViz AI',
     description: 'Create apps, games, and websites with AI-powered tools',
-    images: ['/craudiovizailogo.png'],
+    images: ['/og-image.png'],
     creator: '@craudiovizai',
   },
   robots: {
