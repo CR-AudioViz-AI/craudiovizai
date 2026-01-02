@@ -81,6 +81,21 @@ const PLATFORM_APPS: App[] = [
     status: 'live',
   },
   {
+    id: 'javari-books',
+    name: 'Javari Books',
+    tagline: 'AI eBook & Audiobook Platform',
+    description: 'Generate professional eBooks with AI, convert to audiobooks, transcribe audio to text. 301+ books available.',
+    icon: '📚',
+    url: '/apps/javari-library',
+    domain: 'books.craudiovizai.com',
+    color: 'emerald',
+    gradient: 'from-emerald-600 to-green-500',
+    category: 'creative',
+    features: ['301+ eBooks', 'AI Generation', 'Text-to-Audio', 'Audio-to-Text'],
+    creditCost: '40-100 credits',
+    status: 'live',
+  },
+  {
     id: 'craiverse',
     name: 'CRAIverse',
     tagline: 'Virtual World',
@@ -254,3 +269,4 @@ export default function AppsPage() {
     </div>
   )
 }
+
