@@ -2,6 +2,9 @@
 // PayPal Payment Capture API - CR AudioViz AI
 // Handles return from PayPal and provisions credits/subscriptions
 import { NextRequest, NextResponse } from 'next/server';
+
+// Force dynamic rendering - this route uses request.url
+export const dynamic = 'force-dynamic';
 import { createClient } from '@supabase/supabase-js';
 
 const PAYPAL_CLIENT_ID = process.env.PAYPAL_CLIENT_ID || '';
@@ -205,3 +208,4 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(`${BASE_URL}/checkout/error?reason=${encodeURIComponent(error.message)}`);
   }
 }
+
