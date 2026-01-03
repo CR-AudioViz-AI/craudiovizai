@@ -14,8 +14,8 @@
     "app/api/ai/**/*.ts": {"memory": 2048, "maxDuration": 120}
   },
   "crons": [
+    {"path": "/api/cron/warmup", "schedule": "*/2 * * * *"},
     {"path": "/api/cron/process-knowledge", "schedule": "*/5 * * * *"},
-    {"path": "/api/cron/warmup", "schedule": "*/3 * * * *"},
     {"path": "/api/cron/autopilot", "schedule": "*/5 * * * *"},
     {"path": "/api/cron/email-automation", "schedule": "*/15 * * * *"}
   ],
