@@ -1,0 +1,78 @@
+name: Stability Tests
+
+on:
+  schedule:
+    # Run nightly at 2 AM EST (7 AM UTC)
+    - cron: '0 7 * * *'
+  workflow_dispatch:
+    inputs:
+      runs:
+        description: 'Number of runs (100 or 500)'
+        required: false
+        default: '100'
+
+jobs:
+  stability-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Create output directory
+        run: mkdir -p evidence/stability
+      
+      - name: Run warmup
+        run: |
+          echo "=== WARMUP ===" > evidence/stability/warmup-log.json
+          for i in {1..5}; do
+            echo "Warmup round $i"
+            curl -s -o /dev/null -w "pricing: %{http_code} %{time_total}s\n" https://craudiovizai.com/pricing
+            curl -s -o /dev/null -w "apps: %{http_code} %{time_total}s\n" https://craudiovizai.com/apps
+            curl -s -o /dev/null -w "health: %{http_code} %{time_total}s\n" https://craudiovizai.com/api/health
+            curl -s -o /dev/null -w "dashboard: %{http_code} %{time_total}s\n" https://craudiovizai.com/dashboard
+            sleep 1
+          done
+          echo '{"warmup_rounds": 5, "timestamp": "'$(date -Iseconds)'"}' > evidence/stability/warmup-log.json
+      
+      - name: Run 100-run stability test
+        id: stability
+        run: |
+          chmod +x scripts/stability/stability-100-run.sh
+          ./scripts/stability/stability-100-run.sh || echo "stability_failed=true" >> $GITHUB_OUTPUT
+      
+      - name: Upload evidence to CAR
+        if: always()
+        run: |
+          # Upload JSON result
+          if [ -f evidence/stability/100-run-test.json ]; then
+            curl -X POST https://craudiovizai.com/api/car \
+              -H "Content-Type: application/json" \
+              -d @evidence/stability/100-run-test.json || true
+          fi
+      
+      - name: Register evidence artifact
+        if: always()
+        run: |
+          curl -X POST https://craudiovizai.com/api/evidence \
+            -H "Content-Type: application/json" \
+            -d '{
+              "test_run_id": "stability-'${{ github.run_id }}'",
+              "test_name": "100-run-stability",
+              "artifact_type": "stability_test",
+              "storage_path": "evidence/stability/100-run-test.json"
+            }' || true
+      
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: stability-evidence-${{ github.run_id }}
+          path: evidence/stability/
+          retention-days: 30
+      
+      - name: Check pass threshold
+        if: steps.stability.outputs.stability_failed == 'true'
+        run: |
+          echo "::warning::Stability test did not meet ≥99% threshold"
+          cat evidence/stability/100-run-test.json
