@@ -1,953 +1,607 @@
-// Javari Asset Manager - Full Featured
-// Timestamp: January 1, 2026 - 4:45 AM EST
-// CR AudioViz AI - Universal Asset Registry
+// =============================================================================
+// UNIVERSAL ASSET MANAGER - ADMIN UI
+// CR AudioViz AI - Single interface for ALL assets
+// Path: app/admin/assets/page.tsx
+// =============================================================================
 
-'use client'
+'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react'
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import React, { useState, useEffect, useCallback } from 'react';
 import { 
-  FolderOpen, Upload, Search, Filter, Grid, List, Download, Eye, Trash2,
-  CheckCircle2, XCircle, AlertCircle, RefreshCw, ChevronLeft, ChevronRight,
-  Calendar, HardDrive, FileText, Image, Music, Video, Archive, Code,
-  SortAsc, SortDesc, MoreVertical, ExternalLink, Copy, Clock, Printer
-} from 'lucide-react'
+  Search, Upload, Filter, Grid, List, RefreshCw, Download, 
+  Trash2, Edit, Eye, Music, Image, FileText, Video, Box,
+  Database, Zap, TrendingUp, Clock, ChevronDown, X, Check,
+  Wine, Book, Mic, Code, Type, Palette, Package, Settings
+} from 'lucide-react';
 
-// =====================================================
+// =============================================================================
 // TYPES
-// =====================================================
+// =============================================================================
 
 interface Asset {
-  id: string
-  name: string
-  slug: string
-  original_filename: string
-  file_size_bytes: number
-  mime_type: string
-  file_extension: string
-  storage_path: string
-  category_id: string
-  status: string
-  created_at: string
-  updated_at: string
-  download_count: number
-  view_count: number
-  is_public: boolean
-  is_free: boolean
-  tags: string[]
+  id: string;
+  asset_id: string;
+  asset_type: string;
+  category: string;
+  subcategory: string | null;
+  name: string;
+  description: string | null;
+  tags: string[];
+  file_url: string | null;
+  file_path: string | null;
+  file_size_bytes: number | null;
+  mime_type: string | null;
+  metadata: Record<string, any>;
+  is_public: boolean;
+  is_free: boolean;
+  price_cents: number;
+  quality_score: number | null;
+  view_count: number;
+  download_count: number;
+  status: string;
+  created_at: string;
+  updated_at: string;
 }
 
-interface Category {
-  id: string
-  slug: string
-  name: string
-  icon: string
-  storage_folder: string
-  file_count: number
-  total_size_bytes: number
+interface AssetStats {
+  total: number;
+  byType: { type: string; count: number }[];
+  byCategory: { category: string; count: number }[];
+  sources: { source_code: string; source_name: string; total_harvested: number }[];
 }
 
-interface LandingZoneItem {
-  id: string
-  original_filename: string
-  file_size_bytes: number
-  file_extension: string
-  mime_type: string
-  status: string
-  detection_confidence: number
-  final_category_slug: string
-  final_category_name: string
-  final_folder: string
-  uploaded_at: string
-}
+// =============================================================================
+// CONSTANTS
+// =============================================================================
 
-type ViewMode = 'grid' | 'list'
-type SortField = 'name' | 'created_at' | 'file_size_bytes' | 'download_count'
-type SortOrder = 'asc' | 'desc'
+const ASSET_TYPE_ICONS: Record<string, React.ReactNode> = {
+  spirit: <Wine className="w-4 h-4" />,
+  ebook: <Book className="w-4 h-4" />,
+  audiobook: <Mic className="w-4 h-4" />,
+  image: <Image className="w-4 h-4" />,
+  music: <Music className="w-4 h-4" />,
+  sound_effect: <Zap className="w-4 h-4" />,
+  video: <Video className="w-4 h-4" />,
+  font: <Type className="w-4 h-4" />,
+  logo: <Palette className="w-4 h-4" />,
+  icon: <Grid className="w-4 h-4" />,
+  '3d_model': <Box className="w-4 h-4" />,
+  code: <Code className="w-4 h-4" />,
+  document: <FileText className="w-4 h-4" />,
+  default: <Package className="w-4 h-4" />,
+};
 
-// =====================================================
-// UTILITIES
-// =====================================================
+const ASSET_TYPE_COLORS: Record<string, string> = {
+  spirit: 'bg-amber-500/20 text-amber-400 border-amber-500/30',
+  ebook: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
+  audiobook: 'bg-purple-500/20 text-purple-400 border-purple-500/30',
+  image: 'bg-pink-500/20 text-pink-400 border-pink-500/30',
+  music: 'bg-green-500/20 text-green-400 border-green-500/30',
+  sound_effect: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30',
+  video: 'bg-red-500/20 text-red-400 border-red-500/30',
+  font: 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30',
+  logo: 'bg-indigo-500/20 text-indigo-400 border-indigo-500/30',
+  default: 'bg-gray-500/20 text-gray-400 border-gray-500/30',
+};
 
-const formatBytes = (bytes: number): string => {
-  if (bytes === 0) return '0 B'
-  const k = 1024
-  const sizes = ['B', 'KB', 'MB', 'GB']
-  const i = Math.floor(Math.log(bytes) / Math.log(k))
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
-}
-
-const formatDate = (dateString: string): string => {
-  const date = new Date(dateString)
-  return date.toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-    timeZone: 'America/New_York'
-  }) + ' EST'
-}
-
-const getFileIcon = (extension: string) => {
-  const imageExts = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg']
-  const audioExts = ['mp3', 'wav', 'ogg', 'flac', 'm4a']
-  const videoExts = ['mp4', 'webm', 'mov', 'avi']
-  const archiveExts = ['zip', 'rar', '7z', 'tar', 'gz']
-  const codeExts = ['js', 'ts', 'jsx', 'tsx', 'py', 'html', 'css', 'json']
-  
-  if (imageExts.includes(extension)) return Image
-  if (audioExts.includes(extension)) return Music
-  if (videoExts.includes(extension)) return Video
-  if (archiveExts.includes(extension)) return Archive
-  if (codeExts.includes(extension)) return Code
-  return FileText
-}
-
-const getCategoryIcon = (iconName: string) => {
-  const icons: Record<string, any> = {
-    'folder': FolderOpen,
-    'file-text': FileText,
-    'image': Image,
-    'music': Music,
-    'video': Video,
-    'archive': Archive,
-    'code': Code,
-  }
-  return icons[iconName] || FolderOpen
-}
-
-// =====================================================
+// =============================================================================
 // MAIN COMPONENT
-// =====================================================
+// =============================================================================
 
-export default function AssetManagerPage() {
-  const supabase = createClientComponentClient()
-  
+export default function UniversalAssetManager() {
   // State
-  const [categories, setCategories] = useState<Category[]>([])
-  const [assets, setAssets] = useState<Asset[]>([])
-  const [landingZone, setLandingZone] = useState<LandingZoneItem[]>([])
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
-  const [searchQuery, setSearchQuery] = useState('')
-  const [viewMode, setViewMode] = useState<ViewMode>('grid')
-  const [sortField, setSortField] = useState<SortField>('created_at')
-  const [sortOrder, setSortOrder] = useState<SortOrder>('desc')
-  const [currentPage, setCurrentPage] = useState(1)
-  const [isLoading, setIsLoading] = useState(true)
-  const [isUploading, setIsUploading] = useState(false)
-  const [isDragOver, setIsDragOver] = useState(false)
-  const [selectedAssets, setSelectedAssets] = useState<Set<string>>(new Set())
-  const [previewAsset, setPreviewAsset] = useState<Asset | null>(null)
-  const [isPrinting, setIsPrinting] = useState(false)
+  const [assets, setAssets] = useState<Asset[]>([]);
+  const [stats, setStats] = useState<AssetStats | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedType, setSelectedType] = useState<string | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null);
+  const [showUpload, setShowUpload] = useState(false);
+  const [page, setPage] = useState(0);
+  const [total, setTotal] = useState(0);
+  const [refreshing, setRefreshing] = useState(false);
 
-  // Print Report - Opens browser print dialog
-  const printReport = () => {
-    setIsPrinting(true)
-    
-    const categoryName = selectedCategory 
-      ? categories.find(c => c.slug === selectedCategory)?.name || 'Assets'
-      : 'All Assets'
-    
-    const now = new Date().toLocaleString('en-US', { 
-      timeZone: 'America/New_York',
-      year: 'numeric', month: 'long', day: 'numeric',
-      hour: '2-digit', minute: '2-digit'
-    })
-    
-    const totalSize = filteredAssets.reduce((sum, a) => sum + (a.file_size_bytes || 0), 0)
-    
-    const printWindow = window.open('', '_blank')
-    if (!printWindow) {
-      alert('Please allow popups to print')
-      setIsPrinting(false)
-      return
-    }
-    
-    printWindow.document.write(`
-<!DOCTYPE html>
-<html>
-<head>
-  <title>${categoryName} - Asset Report</title>
-  <style>
-    body { font-family: Arial, sans-serif; font-size: 11px; margin: 20px; color: #333; }
-    h1 { font-size: 18px; color: #7c3aed; margin-bottom: 5px; }
-    .subtitle { color: #666; font-size: 10px; margin-bottom: 15px; }
-    .stats { background: #f5f5f5; padding: 10px; margin-bottom: 15px; border-radius: 4px; }
-    .stats span { margin-right: 20px; }
-    table { width: 100%; border-collapse: collapse; font-size: 10px; }
-    th { background: #7c3aed; color: white; padding: 8px 5px; text-align: left; }
-    td { padding: 6px 5px; border-bottom: 1px solid #eee; }
-    tr:nth-child(even) { background: #fafafa; }
-    .footer { margin-top: 20px; font-size: 9px; color: #999; text-align: center; }
-    @media print { body { margin: 0; } }
-  </style>
-</head>
-<body>
-  <h1>✨ ${categoryName}</h1>
-  <div class="subtitle">CR AudioViz AI Asset Manager • Generated: ${now} EST</div>
-  
-  <div class="stats">
-    <span><strong>Total Assets:</strong> ${filteredAssets.length}</span>
-    <span><strong>Total Size:</strong> ${formatBytes(totalSize)}</span>
-  </div>
+  const LIMIT = 50;
 
-  <table>
-    <thead>
-      <tr>
-        <th>#</th>
-        <th>Name</th>
-        <th>Type</th>
-        <th>Size</th>
-        <th>Created</th>
-        <th>Downloads</th>
-      </tr>
-    </thead>
-    <tbody>
-      ${filteredAssets.map((asset, i) => `
-        <tr>
-          <td>${i + 1}</td>
-          <td>${asset.name || asset.original_filename}</td>
-          <td>${(asset.file_extension || '').toUpperCase()}</td>
-          <td>${formatBytes(asset.file_size_bytes || 0)}</td>
-          <td>${new Date(asset.created_at).toLocaleDateString()}</td>
-          <td>${asset.download_count || 0}</td>
-        </tr>
-      `).join('')}
-    </tbody>
-  </table>
+  // Fetch assets
+  const fetchAssets = useCallback(async () => {
+    try {
+      setLoading(true);
+      const params = new URLSearchParams();
+      if (searchQuery) params.set('search', searchQuery);
+      if (selectedType) params.set('type', selectedType);
+      if (selectedCategory) params.set('category', selectedCategory);
+      params.set('limit', LIMIT.toString());
+      params.set('offset', (page * LIMIT).toString());
 
-  <div class="footer">
-    CR AudioViz AI, LLC • craudiovizai.com • Your Story. Our Design.
-  </div>
-  
-  <script>
-    window.onload = function() {
-      window.print()
-      setTimeout(function() { window.close() }, 1000)
-    }
-  </script>
-</body>
-</html>
-    `)
-    
-    printWindow.document.close()
-    setIsPrinting(false)
-  }
-  
-  const ITEMS_PER_PAGE = 24
-
-  // =====================================================
-  // DATA FETCHING
-  // =====================================================
-
-  const fetchCategories = useCallback(async () => {
-    const { data, error } = await supabase
-      .from('v_asset_folders')
-      .select('*')
-      .order('category_name')
-
-    if (error) {
-      console.error('Error fetching categories:', error)
-      return
-    }
-
-    setCategories(data?.map(d => ({
-      id: d.category_slug,
-      slug: d.category_slug,
-      name: d.category_name,
-      icon: d.icon || 'folder',
-      storage_folder: d.storage_folder,
-      file_count: d.asset_count || 0,
-      total_size_bytes: d.total_size_bytes || 0
-    })) || [])
-  }, [supabase])
-
-  const fetchAssets = useCallback(async (categorySlug?: string) => {
-    let query = supabase
-      .from('assets')
-      .select(`
-        id, name, slug, original_filename, file_size_bytes, mime_type,
-        file_extension, storage_path, category_id, status, created_at,
-        updated_at, download_count, view_count, is_public, is_free, tags
-      `)
-      .eq('status', 'active')
-
-    if (categorySlug) {
-      const category = categories.find(c => c.slug === categorySlug)
-      if (category) {
-        // Get category UUID from asset_categories
-        const { data: catData } = await supabase
-          .from('asset_categories')
-          .select('id')
-          .eq('slug', categorySlug)
-          .single()
-        
-        if (catData) {
-          query = query.eq('category_id', catData.id)
-        }
+      const res = await fetch(`/api/assets?${params}`);
+      const data = await res.json();
+      
+      if (data.success) {
+        setAssets(data.assets || []);
+        setTotal(data.total || 0);
       }
+    } catch (error) {
+      console.error('Failed to fetch assets:', error);
+    } finally {
+      setLoading(false);
     }
+  }, [searchQuery, selectedType, selectedCategory, page]);
 
-    const { data, error } = await query.order(sortField, { ascending: sortOrder === 'asc' })
-
-    if (error) {
-      console.error('Error fetching assets:', error)
-      return
+  // Fetch stats
+  const fetchStats = async () => {
+    try {
+      const res = await fetch('/api/assets/stats');
+      const data = await res.json();
+      if (data.success) {
+        setStats(data.stats);
+      }
+    } catch (error) {
+      console.error('Failed to fetch stats:', error);
     }
-
-    setAssets(data || [])
-  }, [supabase, categories, sortField, sortOrder])
-
-  const fetchLandingZone = useCallback(async () => {
-    const { data, error } = await supabase
-      .from('v_landing_zone_dashboard')
-      .select('*')
-      .order('uploaded_at', { ascending: false })
-
-    if (error) {
-      console.error('Error fetching landing zone:', error)
-      return
-    }
-
-    setLandingZone(data || [])
-  }, [supabase])
+  };
 
   // Initial load
   useEffect(() => {
-    const load = async () => {
-      setIsLoading(true)
-      await fetchCategories()
-      await fetchLandingZone()
-      setIsLoading(false)
-    }
-    load()
-  }, [fetchCategories, fetchLandingZone])
+    fetchAssets();
+    fetchStats();
+  }, [fetchAssets]);
 
-  // Load assets when category changes
-  useEffect(() => {
-    if (selectedCategory) {
-      fetchAssets(selectedCategory)
-    } else {
-      fetchAssets()
-    }
-  }, [selectedCategory, fetchAssets])
+  // Refresh
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await Promise.all([fetchAssets(), fetchStats()]);
+    setRefreshing(false);
+  };
 
-  // =====================================================
-  // FILTERING & SORTING
-  // =====================================================
+  // Format file size
+  const formatSize = (bytes: number | null) => {
+    if (!bytes) return '-';
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+    return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`;
+  };
 
-  const filteredAssets = useMemo(() => {
-    let result = [...assets]
-    
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase()
-      result = result.filter(a => 
-        a.name.toLowerCase().includes(query) ||
-        a.original_filename.toLowerCase().includes(query) ||
-        a.tags?.some(t => t.toLowerCase().includes(query))
-      )
-    }
-
-    return result
-  }, [assets, searchQuery])
-
-  const paginatedAssets = useMemo(() => {
-    const start = (currentPage - 1) * ITEMS_PER_PAGE
-    return filteredAssets.slice(start, start + ITEMS_PER_PAGE)
-  }, [filteredAssets, currentPage])
-
-  const totalPages = Math.ceil(filteredAssets.length / ITEMS_PER_PAGE)
-  const totalAssets = categories.reduce((sum, c) => sum + c.file_count, 0)
-  const totalSize = categories.reduce((sum, c) => sum + c.total_size_bytes, 0)
-
-  // =====================================================
-  // ACTIONS
-  // =====================================================
-
-  const handleDrop = useCallback(async (e: React.DragEvent) => {
-    e.preventDefault()
-    setIsDragOver(false)
-    
-    const files = Array.from(e.dataTransfer.files)
-    await uploadFiles(files)
-  }, [])
-
-  const uploadFiles = async (files: File[]) => {
-    if (files.length === 0) return
-    
-    setIsUploading(true)
-    
-    for (const file of files) {
-      try {
-        const tempPath = `landing-zone/${Date.now()}-${file.name}`
-        
-        const { error: uploadError } = await supabase.storage
-          .from('assets')
-          .upload(tempPath, file)
-
-        if (uploadError) {
-          console.error('Upload error:', uploadError)
-          continue
-        }
-
-        await supabase
-          .from('asset_landing_zone')
-          .insert({
-            original_filename: file.name,
-            file_size_bytes: file.size,
-            mime_type: file.type,
-            file_extension: file.name.split('.').pop()?.toLowerCase(),
-            temp_storage_path: tempPath
-          })
-      } catch (error) {
-        console.error('Upload failed:', error)
-      }
-    }
-
-    setIsUploading(false)
-    await fetchLandingZone()
-  }
-
-  const approveFile = async (item: LandingZoneItem, categorySlug?: string) => {
-    const { error } = await supabase.rpc('process_landing_zone_item', {
-      p_landing_id: item.id,
-      p_category_slug: categorySlug || item.final_category_slug
-    })
-
-    if (error) {
-      console.error('Process error:', error)
-      return
-    }
-
-    await Promise.all([fetchLandingZone(), fetchCategories(), fetchAssets(selectedCategory || undefined)])
-  }
-
-  const approveAllClassified = async () => {
-    const classified = landingZone.filter(i => i.final_category_slug)
-    for (const item of classified) {
-      await approveFile(item)
-    }
-  }
-
-  const changeCategory = async (item: LandingZoneItem, newCategorySlug: string) => {
-    const { data: category } = await supabase
-      .from('asset_categories')
-      .select('id')
-      .eq('slug', newCategorySlug)
-      .single()
-
-    if (!category) return
-
-    await supabase
-      .from('asset_landing_zone')
-      .update({ 
-        user_selected_category_id: category.id,
-        status: 'classified'
-      })
-      .eq('id', item.id)
-
-    await fetchLandingZone()
-  }
-
-  const downloadAsset = async (asset: Asset) => {
-    const { data } = await supabase.storage
-      .from('assets')
-      .createSignedUrl(asset.storage_path, 3600)
-
-    if (data?.signedUrl) {
-      window.open(data.signedUrl, '_blank')
-      
-      // Increment download count
-      await supabase
-        .from('assets')
-        .update({ download_count: (asset.download_count || 0) + 1 })
-        .eq('id', asset.id)
-    }
-  }
-
-  const copyAssetUrl = async (asset: Asset) => {
-    const { data } = await supabase.storage
-      .from('assets')
-      .getPublicUrl(asset.storage_path)
-
-    if (data?.publicUrl) {
-      await navigator.clipboard.writeText(data.publicUrl)
-    }
-  }
-
-  const deleteAsset = async (asset: Asset) => {
-    if (!confirm(`Delete "${asset.name}"? This cannot be undone.`)) return
-
-    await supabase
-      .from('assets')
-      .update({ status: 'deleted' })
-      .eq('id', asset.id)
-
-    await fetchAssets(selectedCategory || undefined)
-    await fetchCategories()
-  }
-
-  // =====================================================
-  // RENDER
-  // =====================================================
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-gray-950 flex items-center justify-center">
-        <RefreshCw className="w-8 h-8 text-purple-500 animate-spin" />
-      </div>
-    )
-  }
+  // Format number
+  const formatNumber = (n: number) => {
+    if (n >= 1000000) return `${(n / 1000000).toFixed(1)}M`;
+    if (n >= 1000) return `${(n / 1000).toFixed(1)}K`;
+    return n.toString();
+  };
 
   return (
-    <div className="min-h-screen bg-gray-950 text-white">
-      <div className="max-w-7xl mx-auto p-6">
-        
+    <div className="min-h-screen bg-[#0a0a0f] text-white">
+      {/* Background Effects */}
+      <div className="fixed inset-0 pointer-events-none">
+        <div className="absolute top-0 left-1/4 w-96 h-96 bg-amber-500/5 rounded-full blur-3xl" />
+        <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-blue-500/5 rounded-full blur-3xl" />
+        <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGRlZnM+PHBhdHRlcm4gaWQ9ImdyaWQiIHdpZHRoPSI0MCIgaGVpZ2h0PSI0MCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHBhdGggZD0iTSAwIDEwIEwgNDAgMTAgTSAxMCAwIEwgMTAgNDAgTSAwIDIwIEwgNDAgMjAgTSAyMCAwIEwgMjAgNDAgTSAwIDMwIEwgNDAgMzAgTSAzMCAwIEwgMzAgNDAiIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzIwMjAzMCIgc3Ryb2tlLXdpZHRoPSIxIi8+PC9wYXR0ZXJuPjwvZGVmcz48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSJ1cmwoI2dyaWQpIi8+PC9zdmc+')] opacity-30" />
+      </div>
+
+      <div className="relative z-10 max-w-[1800px] mx-auto p-6">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-2xl font-bold flex items-center gap-3">
-              <span className="text-2xl">✨</span>
-              Javari Asset Manager
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-amber-400 via-orange-400 to-red-400 bg-clip-text text-transparent">
+              Universal Asset Manager
             </h1>
-            <p className="text-gray-400 text-sm mt-1">
-              AI-powered asset organization • Upload anywhere, file automatically
+            <p className="text-gray-400 mt-1">
+              {formatNumber(total)} assets across {stats?.byType?.length || 0} types
             </p>
           </div>
-          <div className="flex items-center gap-2">
+          
+          <div className="flex items-center gap-3">
             <button
-              onClick={() => printReport()}
-              disabled={isPrinting || filteredAssets.length === 0}
-              className="flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-500 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
-              title="Print to Epson"
+              onClick={handleRefresh}
+              disabled={refreshing}
+              className="p-2 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 transition-all"
             >
-              <Printer className="w-4 h-4" />
-              {isPrinting ? 'Printing...' : 'Print'}
+              <RefreshCw className={`w-5 h-5 ${refreshing ? 'animate-spin' : ''}`} />
             </button>
             <button
-              onClick={() => {
-                fetchCategories()
-                fetchAssets(selectedCategory || undefined)
-                fetchLandingZone()
-              }}
-              className="flex items-center gap-2 px-4 py-2 bg-gray-800 hover:bg-gray-700 rounded-lg transition"
+              onClick={() => setShowUpload(true)}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-black font-semibold transition-all"
             >
-              <RefreshCw className="w-4 h-4" />
-              Refresh
+              <Upload className="w-4 h-4" />
+              Upload Assets
             </button>
           </div>
         </div>
 
-        <div className="flex gap-6">
-          
-          {/* Sidebar - Categories */}
-          <div className="w-64 flex-shrink-0">
-            <div className="bg-gray-900 rounded-xl p-4">
-              <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-4">
-                Asset Folders
-              </h2>
-              
-              {/* All Assets */}
-              <button
-                onClick={() => { setSelectedCategory(null); setCurrentPage(1) }}
-                className={`w-full flex items-center justify-between px-3 py-2 rounded-lg mb-1 transition ${
-                  !selectedCategory ? 'bg-purple-600 text-white' : 'hover:bg-gray-800 text-gray-300'
-                }`}
-              >
-                <span className="flex items-center gap-2">
-                  <FolderOpen className="w-4 h-4" />
-                  All Assets
+        {/* Stats Cards */}
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 mb-8">
+          {stats?.byType?.slice(0, 6).map((item) => (
+            <button
+              key={item.type}
+              onClick={() => setSelectedType(selectedType === item.type ? null : item.type)}
+              className={`p-4 rounded-xl border transition-all ${
+                selectedType === item.type
+                  ? 'bg-amber-500/20 border-amber-500/50'
+                  : 'bg-white/5 border-white/10 hover:border-white/20'
+              }`}
+            >
+              <div className="flex items-center gap-2 mb-2">
+                <span className={`p-1.5 rounded-lg ${ASSET_TYPE_COLORS[item.type] || ASSET_TYPE_COLORS.default}`}>
+                  {ASSET_TYPE_ICONS[item.type] || ASSET_TYPE_ICONS.default}
                 </span>
-                <span className="text-sm">{totalAssets}</span>
-              </button>
-
-              {/* Category List */}
-              <div className="space-y-1 max-h-[60vh] overflow-y-auto">
-                {categories.map(cat => (
-                  <button
-                    key={cat.slug}
-                    onClick={() => { setSelectedCategory(cat.slug); setCurrentPage(1) }}
-                    className={`w-full flex items-center justify-between px-3 py-2 rounded-lg transition ${
-                      selectedCategory === cat.slug 
-                        ? 'bg-purple-600 text-white' 
-                        : 'hover:bg-gray-800 text-gray-300'
-                    }`}
-                  >
-                    <span className="flex items-center gap-2 truncate">
-                      <FolderOpen className="w-4 h-4 flex-shrink-0" />
-                      <span className="truncate">{cat.name}</span>
-                    </span>
-                    <span className="text-sm ml-2">{cat.file_count}</span>
-                  </button>
-                ))}
+                <span className="text-sm text-gray-400 capitalize">{item.type.replace('_', ' ')}</span>
               </div>
+              <div className="text-2xl font-bold">{formatNumber(item.count)}</div>
+            </button>
+          ))}
+        </div>
 
-              {/* Storage Stats */}
-              <div className="mt-6 pt-4 border-t border-gray-800">
-                <div className="text-xs text-gray-500 mb-2">Storage Used</div>
-                <div className="text-lg font-semibold text-purple-400">
-                  {formatBytes(totalSize)}
-                </div>
-                <div className="text-xs text-gray-500 mt-1">
-                  {totalAssets} files
-                </div>
-              </div>
-            </div>
+        {/* Search & Filters */}
+        <div className="flex flex-wrap items-center gap-4 mb-6">
+          <div className="flex-1 min-w-[300px] relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Search assets by name, description, tags..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && fetchAssets()}
+              className="w-full pl-10 pr-4 py-3 rounded-xl bg-white/5 border border-white/10 focus:border-amber-500/50 focus:outline-none focus:ring-2 focus:ring-amber-500/20 transition-all"
+            />
           </div>
 
-          {/* Main Content */}
-          <div className="flex-1">
-            
-            {/* Upload Zone */}
-            <div
-              onDrop={handleDrop}
-              onDragOver={(e) => { e.preventDefault(); setIsDragOver(true) }}
-              onDragLeave={() => setIsDragOver(false)}
-              className={`
-                border-2 border-dashed rounded-xl p-8 mb-6 text-center transition-all
-                ${isDragOver 
-                  ? 'border-purple-500 bg-purple-500/10' 
-                  : 'border-gray-700 hover:border-gray-600 bg-gray-900/50'
-                }
-              `}
-            >
-              <Upload className={`w-8 h-8 mx-auto mb-3 ${isDragOver ? 'text-purple-400' : 'text-gray-500'}`} />
-              <p className="text-gray-300 font-medium">Drag & drop files here</p>
-              <p className="text-sm text-gray-500 mt-1">
-                or <label className="text-purple-400 cursor-pointer hover:underline">
-                  browse
-                  <input
-                    type="file"
-                    multiple
-                    className="hidden"
-                    onChange={(e) => e.target.files && uploadFiles(Array.from(e.target.files))}
-                  />
-                </label> to select files
-              </p>
-              <p className="text-xs text-gray-600 mt-2">
-                Javari AI will automatically detect and organize your files
-              </p>
-            </div>
+          <select
+            value={selectedType || ''}
+            onChange={(e) => setSelectedType(e.target.value || null)}
+            className="px-4 py-3 rounded-xl bg-white/5 border border-white/10 focus:border-amber-500/50 focus:outline-none appearance-none cursor-pointer min-w-[150px]"
+          >
+            <option value="">All Types</option>
+            {stats?.byType?.map((item) => (
+              <option key={item.type} value={item.type}>
+                {item.type} ({formatNumber(item.count)})
+              </option>
+            ))}
+          </select>
 
-            {/* Landing Zone - Pending Classification */}
-            {landingZone.length > 0 && (
-              <div className="mb-8">
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-lg font-semibold flex items-center gap-2">
-                    <AlertCircle className="w-5 h-5 text-yellow-400" />
-                    Pending Classification
-                    <span className="text-sm font-normal text-gray-400">
-                      ({landingZone.length} files)
+          <select
+            value={selectedCategory || ''}
+            onChange={(e) => setSelectedCategory(e.target.value || null)}
+            className="px-4 py-3 rounded-xl bg-white/5 border border-white/10 focus:border-amber-500/50 focus:outline-none appearance-none cursor-pointer min-w-[150px]"
+          >
+            <option value="">All Categories</option>
+            {stats?.byCategory?.map((item) => (
+              <option key={item.category} value={item.category}>
+                {item.category} ({formatNumber(item.count)})
+              </option>
+            ))}
+          </select>
+
+          <div className="flex items-center gap-1 p-1 rounded-lg bg-white/5 border border-white/10">
+            <button
+              onClick={() => setViewMode('grid')}
+              className={`p-2 rounded-lg transition-all ${viewMode === 'grid' ? 'bg-white/10' : 'hover:bg-white/5'}`}
+            >
+              <Grid className="w-4 h-4" />
+            </button>
+            <button
+              onClick={() => setViewMode('list')}
+              className={`p-2 rounded-lg transition-all ${viewMode === 'list' ? 'bg-white/10' : 'hover:bg-white/5'}`}
+            >
+              <List className="w-4 h-4" />
+            </button>
+          </div>
+
+          <button
+            onClick={fetchAssets}
+            className="px-4 py-3 rounded-xl bg-amber-500/20 border border-amber-500/30 text-amber-400 hover:bg-amber-500/30 transition-all"
+          >
+            Search
+          </button>
+        </div>
+
+        {/* Active Filters */}
+        {(selectedType || selectedCategory || searchQuery) && (
+          <div className="flex items-center gap-2 mb-6">
+            <span className="text-sm text-gray-400">Active filters:</span>
+            {searchQuery && (
+              <span className="flex items-center gap-1 px-3 py-1 rounded-full bg-white/10 text-sm">
+                Search: "{searchQuery}"
+                <button onClick={() => setSearchQuery('')}><X className="w-3 h-3" /></button>
+              </span>
+            )}
+            {selectedType && (
+              <span className="flex items-center gap-1 px-3 py-1 rounded-full bg-amber-500/20 text-amber-400 text-sm">
+                Type: {selectedType}
+                <button onClick={() => setSelectedType(null)}><X className="w-3 h-3" /></button>
+              </span>
+            )}
+            {selectedCategory && (
+              <span className="flex items-center gap-1 px-3 py-1 rounded-full bg-blue-500/20 text-blue-400 text-sm">
+                Category: {selectedCategory}
+                <button onClick={() => setSelectedCategory(null)}><X className="w-3 h-3" /></button>
+              </span>
+            )}
+            <button 
+              onClick={() => { setSearchQuery(''); setSelectedType(null); setSelectedCategory(null); }}
+              className="text-sm text-gray-400 hover:text-white"
+            >
+              Clear all
+            </button>
+          </div>
+        )}
+
+        {/* Loading */}
+        {loading && (
+          <div className="flex items-center justify-center py-20">
+            <div className="w-8 h-8 border-2 border-amber-500 border-t-transparent rounded-full animate-spin" />
+          </div>
+        )}
+
+        {/* Asset Grid */}
+        {!loading && viewMode === 'grid' && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4">
+            {assets.map((asset) => (
+              <div
+                key={asset.id}
+                onClick={() => setSelectedAsset(asset)}
+                className="group p-4 rounded-xl bg-white/5 border border-white/10 hover:border-amber-500/30 hover:bg-white/10 cursor-pointer transition-all"
+              >
+                {/* Preview */}
+                <div className="aspect-square rounded-lg bg-black/30 mb-3 flex items-center justify-center overflow-hidden">
+                  {asset.file_url && asset.asset_type === 'image' ? (
+                    <img src={asset.file_url} alt={asset.name} className="w-full h-full object-cover" />
+                  ) : (
+                    <span className={`p-4 rounded-xl ${ASSET_TYPE_COLORS[asset.asset_type] || ASSET_TYPE_COLORS.default}`}>
+                      {ASSET_TYPE_ICONS[asset.asset_type] || ASSET_TYPE_ICONS.default}
                     </span>
-                  </h2>
-                  <button
-                    onClick={approveAllClassified}
-                    className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-500 rounded-lg text-sm font-medium transition"
-                  >
-                    <CheckCircle2 className="w-4 h-4" />
-                    Approve All Classified
-                  </button>
+                  )}
                 </div>
 
-                <div className="bg-gray-900 rounded-xl overflow-hidden">
-                  <table className="w-full">
-                    <thead>
-                      <tr className="text-left text-xs uppercase tracking-wider text-gray-500 border-b border-gray-800">
-                        <th className="px-4 py-3">File</th>
-                        <th className="px-4 py-3">Size</th>
-                        <th className="px-4 py-3">Category</th>
-                        <th className="px-4 py-3">Status</th>
-                        <th className="px-4 py-3 text-right">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {landingZone.slice(0, 10).map(item => (
-                        <tr key={item.id} className="border-b border-gray-800/50 hover:bg-gray-800/30">
-                          <td className="px-4 py-3">
-                            <div className="flex items-center gap-3">
-                              <FileText className="w-5 h-5 text-gray-500" />
-                              <div>
-                                <p className="font-medium truncate max-w-[200px]">{item.original_filename}</p>
-                                <p className="text-xs text-gray-500">.{item.file_extension}</p>
-                              </div>
-                            </div>
-                          </td>
-                          <td className="px-4 py-3 text-sm text-gray-400">
-                            {formatBytes(item.file_size_bytes)}
-                          </td>
-                          <td className="px-4 py-3">
-                            <select
-                              value={item.final_category_slug || ''}
-                              onChange={(e) => changeCategory(item, e.target.value)}
-                              className="bg-gray-800 border border-gray-700 rounded px-2 py-1 text-sm"
-                            >
-                              <option value="">Select category...</option>
-                              {categories.map(cat => (
-                                <option key={cat.slug} value={cat.slug}>{cat.name}</option>
-                              ))}
-                            </select>
-                          </td>
-                          <td className="px-4 py-3">
-                            <span className={`px-2 py-1 rounded text-xs ${
-                              item.status === 'classified' ? 'text-green-400 bg-green-500/20' :
-                              item.status === 'pending' ? 'text-yellow-400 bg-yellow-500/20' :
-                              'text-gray-400 bg-gray-500/20'
-                            }`}>
-                              {item.status}
-                            </span>
-                          </td>
-                          <td className="px-4 py-3 text-right">
-                            <button
-                              onClick={() => approveFile(item)}
-                              disabled={!item.final_category_slug}
-                              className="p-1 text-green-400 hover:bg-green-500/20 rounded disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                              <CheckCircle2 className="w-5 h-5" />
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                  {landingZone.length > 10 && (
-                    <div className="px-4 py-2 text-sm text-gray-500 text-center border-t border-gray-800">
-                      Showing 10 of {landingZone.length} pending files
+                {/* Info */}
+                <div className="space-y-2">
+                  <div className="flex items-start justify-between gap-2">
+                    <h3 className="font-medium text-sm line-clamp-2">{asset.name}</h3>
+                  </div>
+                  
+                  <div className="flex items-center gap-2">
+                    <span className={`px-2 py-0.5 rounded text-xs border ${ASSET_TYPE_COLORS[asset.asset_type] || ASSET_TYPE_COLORS.default}`}>
+                      {asset.asset_type}
+                    </span>
+                    {asset.subcategory && (
+                      <span className="text-xs text-gray-500">{asset.subcategory}</span>
+                    )}
+                  </div>
+
+                  <div className="flex items-center justify-between text-xs text-gray-500">
+                    <span>{asset.asset_id}</span>
+                    <span>{formatSize(asset.file_size_bytes)}</span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Asset List */}
+        {!loading && viewMode === 'list' && (
+          <div className="space-y-2">
+            <div className="grid grid-cols-12 gap-4 px-4 py-2 text-xs text-gray-400 uppercase tracking-wider">
+              <div className="col-span-4">Asset</div>
+              <div className="col-span-2">Type</div>
+              <div className="col-span-2">Category</div>
+              <div className="col-span-1">Size</div>
+              <div className="col-span-1">Views</div>
+              <div className="col-span-2">Created</div>
+            </div>
+            {assets.map((asset) => (
+              <div
+                key={asset.id}
+                onClick={() => setSelectedAsset(asset)}
+                className="grid grid-cols-12 gap-4 px-4 py-3 rounded-lg bg-white/5 border border-white/10 hover:border-amber-500/30 cursor-pointer transition-all"
+              >
+                <div className="col-span-4 flex items-center gap-3">
+                  <span className={`p-2 rounded-lg ${ASSET_TYPE_COLORS[asset.asset_type] || ASSET_TYPE_COLORS.default}`}>
+                    {ASSET_TYPE_ICONS[asset.asset_type] || ASSET_TYPE_ICONS.default}
+                  </span>
+                  <div>
+                    <div className="font-medium text-sm line-clamp-1">{asset.name}</div>
+                    <div className="text-xs text-gray-500">{asset.asset_id}</div>
+                  </div>
+                </div>
+                <div className="col-span-2 flex items-center">
+                  <span className={`px-2 py-0.5 rounded text-xs border ${ASSET_TYPE_COLORS[asset.asset_type] || ASSET_TYPE_COLORS.default}`}>
+                    {asset.asset_type}
+                  </span>
+                </div>
+                <div className="col-span-2 flex items-center text-sm text-gray-400">
+                  {asset.category}
+                </div>
+                <div className="col-span-1 flex items-center text-sm text-gray-400">
+                  {formatSize(asset.file_size_bytes)}
+                </div>
+                <div className="col-span-1 flex items-center text-sm text-gray-400">
+                  {formatNumber(asset.view_count)}
+                </div>
+                <div className="col-span-2 flex items-center text-sm text-gray-400">
+                  {new Date(asset.created_at).toLocaleDateString()}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Empty State */}
+        {!loading && assets.length === 0 && (
+          <div className="flex flex-col items-center justify-center py-20 text-center">
+            <Database className="w-16 h-16 text-gray-600 mb-4" />
+            <h3 className="text-xl font-medium mb-2">No assets found</h3>
+            <p className="text-gray-400 mb-4">Try adjusting your search or filters</p>
+            <button
+              onClick={() => { setSearchQuery(''); setSelectedType(null); setSelectedCategory(null); }}
+              className="px-4 py-2 rounded-lg bg-white/10 hover:bg-white/20 transition-all"
+            >
+              Clear filters
+            </button>
+          </div>
+        )}
+
+        {/* Pagination */}
+        {!loading && total > LIMIT && (
+          <div className="flex items-center justify-center gap-4 mt-8">
+            <button
+              onClick={() => setPage(Math.max(0, page - 1))}
+              disabled={page === 0}
+              className="px-4 py-2 rounded-lg bg-white/5 border border-white/10 disabled:opacity-50 hover:bg-white/10 transition-all"
+            >
+              Previous
+            </button>
+            <span className="text-gray-400">
+              Page {page + 1} of {Math.ceil(total / LIMIT)}
+            </span>
+            <button
+              onClick={() => setPage(page + 1)}
+              disabled={(page + 1) * LIMIT >= total}
+              className="px-4 py-2 rounded-lg bg-white/5 border border-white/10 disabled:opacity-50 hover:bg-white/10 transition-all"
+            >
+              Next
+            </button>
+          </div>
+        )}
+
+        {/* Asset Detail Modal */}
+        {selectedAsset && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm" onClick={() => setSelectedAsset(null)}>
+            <div className="w-full max-w-2xl bg-[#12121a] border border-white/10 rounded-2xl p-6 max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+              <div className="flex items-start justify-between mb-6">
+                <div>
+                  <h2 className="text-xl font-bold">{selectedAsset.name}</h2>
+                  <p className="text-sm text-gray-400 mt-1">{selectedAsset.asset_id}</p>
+                </div>
+                <button onClick={() => setSelectedAsset(null)} className="p-2 rounded-lg hover:bg-white/10">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Preview */}
+              {selectedAsset.file_url && (
+                <div className="mb-6 rounded-xl bg-black/30 p-4 flex items-center justify-center">
+                  {selectedAsset.asset_type === 'image' ? (
+                    <img src={selectedAsset.file_url} alt={selectedAsset.name} className="max-h-64 rounded-lg" />
+                  ) : (
+                    <div className="text-center">
+                      <span className={`inline-block p-6 rounded-xl ${ASSET_TYPE_COLORS[selectedAsset.asset_type] || ASSET_TYPE_COLORS.default}`}>
+                        {ASSET_TYPE_ICONS[selectedAsset.asset_type] || ASSET_TYPE_ICONS.default}
+                      </span>
+                      <p className="text-sm text-gray-400 mt-2">Preview not available</p>
                     </div>
                   )}
                 </div>
-              </div>
-            )}
-
-            {/* Asset Browser */}
-            <div>
-              {/* Toolbar */}
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-4">
-                  <h2 className="text-lg font-semibold">
-                    {selectedCategory 
-                      ? categories.find(c => c.slug === selectedCategory)?.name || 'Assets'
-                      : 'All Assets'
-                    }
-                    <span className="text-sm font-normal text-gray-400 ml-2">
-                      ({filteredAssets.length} files)
-                    </span>
-                  </h2>
-                </div>
-                
-                <div className="flex items-center gap-3">
-                  {/* Search */}
-                  <div className="relative">
-                    <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
-                    <input
-                      type="text"
-                      placeholder="Search assets..."
-                      value={searchQuery}
-                      onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1) }}
-                      className="pl-9 pr-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-sm w-64 focus:outline-none focus:border-purple-500"
-                    />
-                  </div>
-
-                  {/* Sort */}
-                  <select
-                    value={`${sortField}-${sortOrder}`}
-                    onChange={(e) => {
-                      const [field, order] = e.target.value.split('-')
-                      setSortField(field as SortField)
-                      setSortOrder(order as SortOrder)
-                    }}
-                    className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm"
-                  >
-                    <option value="created_at-desc">Newest First</option>
-                    <option value="created_at-asc">Oldest First</option>
-                    <option value="name-asc">Name A-Z</option>
-                    <option value="name-desc">Name Z-A</option>
-                    <option value="file_size_bytes-desc">Largest First</option>
-                    <option value="file_size_bytes-asc">Smallest First</option>
-                    <option value="download_count-desc">Most Downloaded</option>
-                  </select>
-
-                  {/* View Toggle */}
-                  <div className="flex bg-gray-800 rounded-lg p-1">
-                    <button
-                      onClick={() => setViewMode('grid')}
-                      className={`p-1.5 rounded ${viewMode === 'grid' ? 'bg-gray-700 text-white' : 'text-gray-400'}`}
-                    >
-                      <Grid className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={() => setViewMode('list')}
-                      className={`p-1.5 rounded ${viewMode === 'list' ? 'bg-gray-700 text-white' : 'text-gray-400'}`}
-                    >
-                      <List className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              {/* Asset Grid/List */}
-              {paginatedAssets.length === 0 ? (
-                <div className="bg-gray-900 rounded-xl p-12 text-center">
-                  <FolderOpen className="w-12 h-12 text-gray-600 mx-auto mb-4" />
-                  <p className="text-gray-400">
-                    {searchQuery ? 'No assets match your search' : 'No assets in this category yet'}
-                  </p>
-                  <p className="text-sm text-gray-600 mt-2">
-                    Drag & drop files above to add them
-                  </p>
-                </div>
-              ) : viewMode === 'grid' ? (
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                  {paginatedAssets.map(asset => {
-                    const IconComponent = getFileIcon(asset.file_extension)
-                    return (
-                      <div
-                        key={asset.id}
-                        className="bg-gray-900 rounded-xl p-4 hover:bg-gray-800/80 transition group"
-                      >
-                        <div className="aspect-square bg-gray-800 rounded-lg flex items-center justify-center mb-3 relative">
-                          <IconComponent className="w-12 h-12 text-gray-500" />
-                          <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition flex items-center justify-center gap-2">
-                            <button
-                              onClick={() => downloadAsset(asset)}
-                              className="p-2 bg-purple-600 rounded-lg hover:bg-purple-500"
-                              title="Download"
-                            >
-                              <Download className="w-4 h-4" />
-                            </button>
-                            <button
-                              onClick={() => copyAssetUrl(asset)}
-                              className="p-2 bg-gray-700 rounded-lg hover:bg-gray-600"
-                              title="Copy URL"
-                            >
-                              <Copy className="w-4 h-4" />
-                            </button>
-                            <button
-                              onClick={() => deleteAsset(asset)}
-                              className="p-2 bg-red-600/80 rounded-lg hover:bg-red-500"
-                              title="Delete"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          </div>
-                        </div>
-                        <h3 className="font-medium truncate text-sm" title={asset.name}>
-                          {asset.name}
-                        </h3>
-                        <div className="flex items-center justify-between mt-2 text-xs text-gray-500">
-                          <span>{formatBytes(asset.file_size_bytes)}</span>
-                          <span className="flex items-center gap-1">
-                            <Clock className="w-3 h-3" />
-                            {new Date(asset.created_at).toLocaleDateString()}
-                          </span>
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-              ) : (
-                <div className="bg-gray-900 rounded-xl overflow-hidden">
-                  <table className="w-full">
-                    <thead>
-                      <tr className="text-left text-xs uppercase tracking-wider text-gray-500 border-b border-gray-800">
-                        <th className="px-4 py-3">Name</th>
-                        <th className="px-4 py-3">Type</th>
-                        <th className="px-4 py-3">Size</th>
-                        <th className="px-4 py-3">Created</th>
-                        <th className="px-4 py-3">Downloads</th>
-                        <th className="px-4 py-3 text-right">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {paginatedAssets.map(asset => {
-                        const IconComponent = getFileIcon(asset.file_extension)
-                        return (
-                          <tr key={asset.id} className="border-b border-gray-800/50 hover:bg-gray-800/30">
-                            <td className="px-4 py-3">
-                              <div className="flex items-center gap-3">
-                                <IconComponent className="w-5 h-5 text-gray-500" />
-                                <div>
-                                  <p className="font-medium truncate max-w-[300px]">{asset.name}</p>
-                                  <p className="text-xs text-gray-500">{asset.original_filename}</p>
-                                </div>
-                              </div>
-                            </td>
-                            <td className="px-4 py-3 text-sm text-gray-400 uppercase">
-                              {asset.file_extension}
-                            </td>
-                            <td className="px-4 py-3 text-sm text-gray-400">
-                              {formatBytes(asset.file_size_bytes)}
-                            </td>
-                            <td className="px-4 py-3 text-sm text-gray-400">
-                              {formatDate(asset.created_at)}
-                            </td>
-                            <td className="px-4 py-3 text-sm text-gray-400">
-                              {asset.download_count || 0}
-                            </td>
-                            <td className="px-4 py-3 text-right">
-                              <div className="flex items-center justify-end gap-1">
-                                <button
-                                  onClick={() => downloadAsset(asset)}
-                                  className="p-1.5 hover:bg-gray-700 rounded"
-                                  title="Download"
-                                >
-                                  <Download className="w-4 h-4" />
-                                </button>
-                                <button
-                                  onClick={() => copyAssetUrl(asset)}
-                                  className="p-1.5 hover:bg-gray-700 rounded"
-                                  title="Copy URL"
-                                >
-                                  <Copy className="w-4 h-4" />
-                                </button>
-                                <button
-                                  onClick={() => deleteAsset(asset)}
-                                  className="p-1.5 hover:bg-red-500/20 text-red-400 rounded"
-                                  title="Delete"
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-                        )
-                      })}
-                    </tbody>
-                  </table>
-                </div>
               )}
 
-              {/* Pagination */}
-              {totalPages > 1 && (
-                <div className="flex items-center justify-between mt-6">
-                  <p className="text-sm text-gray-500">
-                    Showing {((currentPage - 1) * ITEMS_PER_PAGE) + 1} - {Math.min(currentPage * ITEMS_PER_PAGE, filteredAssets.length)} of {filteredAssets.length}
-                  </p>
+              {/* Details */}
+              <div className="grid grid-cols-2 gap-4 mb-6">
+                <div className="p-3 rounded-lg bg-white/5">
+                  <div className="text-xs text-gray-400 mb-1">Type</div>
                   <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                      disabled={currentPage === 1}
-                      className="p-2 bg-gray-800 rounded-lg hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      <ChevronLeft className="w-4 h-4" />
-                    </button>
-                    <span className="text-sm text-gray-400">
-                      Page {currentPage} of {totalPages}
-                    </span>
-                    <button
-                      onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                      disabled={currentPage === totalPages}
-                      className="p-2 bg-gray-800 rounded-lg hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      <ChevronRight className="w-4 h-4" />
-                    </button>
+                    {ASSET_TYPE_ICONS[selectedAsset.asset_type] || ASSET_TYPE_ICONS.default}
+                    <span className="capitalize">{selectedAsset.asset_type.replace('_', ' ')}</span>
+                  </div>
+                </div>
+                <div className="p-3 rounded-lg bg-white/5">
+                  <div className="text-xs text-gray-400 mb-1">Category</div>
+                  <div className="capitalize">{selectedAsset.category}</div>
+                </div>
+                <div className="p-3 rounded-lg bg-white/5">
+                  <div className="text-xs text-gray-400 mb-1">Size</div>
+                  <div>{formatSize(selectedAsset.file_size_bytes)}</div>
+                </div>
+                <div className="p-3 rounded-lg bg-white/5">
+                  <div className="text-xs text-gray-400 mb-1">Quality Score</div>
+                  <div>{selectedAsset.quality_score || '-'}/100</div>
+                </div>
+                <div className="p-3 rounded-lg bg-white/5">
+                  <div className="text-xs text-gray-400 mb-1">Views</div>
+                  <div>{formatNumber(selectedAsset.view_count)}</div>
+                </div>
+                <div className="p-3 rounded-lg bg-white/5">
+                  <div className="text-xs text-gray-400 mb-1">Downloads</div>
+                  <div>{formatNumber(selectedAsset.download_count)}</div>
+                </div>
+              </div>
+
+              {/* Metadata */}
+              {selectedAsset.metadata && Object.keys(selectedAsset.metadata).length > 0 && (
+                <div className="mb-6">
+                  <h3 className="text-sm font-medium text-gray-400 mb-2">Metadata</h3>
+                  <div className="p-4 rounded-lg bg-white/5 font-mono text-xs overflow-x-auto">
+                    <pre>{JSON.stringify(selectedAsset.metadata, null, 2)}</pre>
                   </div>
                 </div>
               )}
+
+              {/* Tags */}
+              {selectedAsset.tags && selectedAsset.tags.length > 0 && (
+                <div className="mb-6">
+                  <h3 className="text-sm font-medium text-gray-400 mb-2">Tags</h3>
+                  <div className="flex flex-wrap gap-2">
+                    {selectedAsset.tags.map((tag, i) => (
+                      <span key={i} className="px-2 py-1 rounded bg-white/10 text-xs">{tag}</span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Actions */}
+              <div className="flex items-center gap-3">
+                {selectedAsset.file_url && (
+                  <a
+                    href={selectedAsset.file_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 px-4 py-2 rounded-lg bg-amber-500 text-black font-medium hover:bg-amber-400 transition-all"
+                  >
+                    <Download className="w-4 h-4" />
+                    Download
+                  </a>
+                )}
+                <button className="flex items-center gap-2 px-4 py-2 rounded-lg bg-white/10 hover:bg-white/20 transition-all">
+                  <Edit className="w-4 h-4" />
+                  Edit
+                </button>
+                <button className="flex items-center gap-2 px-4 py-2 rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-all ml-auto">
+                  <Trash2 className="w-4 h-4" />
+                  Delete
+                </button>
+              </div>
             </div>
           </div>
-        </div>
+        )}
+
+        {/* Upload Modal */}
+        {showUpload && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm" onClick={() => setShowUpload(false)}>
+            <div className="w-full max-w-xl bg-[#12121a] border border-white/10 rounded-2xl p-6" onClick={(e) => e.stopPropagation()}>
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-xl font-bold">Upload Assets</h2>
+                <button onClick={() => setShowUpload(false)} className="p-2 rounded-lg hover:bg-white/10">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="border-2 border-dashed border-white/20 rounded-xl p-12 text-center hover:border-amber-500/50 transition-all cursor-pointer">
+                <Upload className="w-12 h-12 mx-auto mb-4 text-gray-400" />
+                <p className="text-lg font-medium mb-2">Drop files here</p>
+                <p className="text-sm text-gray-400">or click to browse</p>
+                <p className="text-xs text-gray-500 mt-4">
+                  Supports: Images, Documents, Audio, Video, Fonts, 3D Models
+                </p>
+              </div>
+
+              <p className="text-center text-sm text-gray-400 mt-4">
+                Files will be auto-classified by Javari AI
+              </p>
+            </div>
+          </div>
+        )}
       </div>
     </div>
-  )
+  );
 }
