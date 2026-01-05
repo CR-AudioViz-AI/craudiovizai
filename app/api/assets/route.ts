@@ -1,154 +1,101 @@
-// =============================================================================
-// UNIVERSAL ASSET API
-// CR AudioViz AI - Single API for ALL assets across the ecosystem
-// =============================================================================
-
+// Universal Assets API - GET /api/assets
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+export const runtime = 'nodejs';
 
-// GET /api/assets - Search and list assets
+const getSupabase = () => {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) return null;
+  return createClient(url, key);
+};
+
 export async function GET(request: NextRequest) {
-  try {
-    const { searchParams } = new URL(request.url);
-    
-    // Query parameters
-    const search = searchParams.get('search');
-    const type = searchParams.get('type');           // 'spirit', 'ebook', 'image', etc.
-    const category = searchParams.get('category');    // 'beverage', 'document', 'graphics', etc.
-    const subcategory = searchParams.get('subcategory');
-    const owner = searchParams.get('owner');          // user ID
-    const source = searchParams.get('source');        // source_code
-    const isFree = searchParams.get('is_free');
-    const limit = parseInt(searchParams.get('limit') || '50');
-    const offset = parseInt(searchParams.get('offset') || '0');
-    const sortBy = searchParams.get('sort') || 'created_at';
-    const sortOrder = searchParams.get('order') || 'desc';
+  const supabase = getSupabase();
+  if (!supabase) {
+    return NextResponse.json({ success: false, error: 'Database not configured' }, { status: 500 });
+  }
 
+  const { searchParams } = new URL(request.url);
+  const search = searchParams.get('search');
+  const type = searchParams.get('type');
+  const category = searchParams.get('category');
+  const owner = searchParams.get('owner');
+  const limit = parseInt(searchParams.get('limit') || '50');
+  const offset = parseInt(searchParams.get('offset') || '0');
+
+  try {
     // Build query
     let query = supabase
       .from('universal_assets')
       .select('*', { count: 'exact' })
-      .eq('status', 'active');
+      .eq('status', 'active')
+      .order('created_at', { ascending: false })
+      .range(offset, offset + limit - 1);
 
     // Apply filters
     if (type) query = query.eq('asset_type', type);
     if (category) query = query.eq('category', category);
-    if (subcategory) query = query.eq('subcategory', subcategory);
     if (owner) query = query.eq('owner_id', owner);
-    if (isFree !== null) query = query.eq('is_free', isFree === 'true');
-    
-    // Text search
-    if (search) {
-      query = query.textSearch('search_vector', search, { type: 'websearch' });
+    if (search) query = query.ilike('name', `%${search}%`);
+
+    const { data: assets, count, error } = await query;
+
+    if (error) {
+      console.error('Query error:', error);
+      return NextResponse.json({ success: false, error: 'Failed to search assets' }, { status: 500 });
     }
-    
-    // Sorting
-    query = query.order(sortBy, { ascending: sortOrder === 'asc' });
-    
-    // Pagination
-    query = query.range(offset, offset + limit - 1);
-
-    const { data, error, count } = await query;
-
-    if (error) throw error;
 
     return NextResponse.json({
       success: true,
-      assets: data,
-      total: count,
+      assets: assets || [],
+      total: count || 0,
       limit,
-      offset,
-      hasMore: (offset + limit) < (count || 0)
+      offset
     });
-
   } catch (error) {
-    console.error('Asset search error:', error);
-    return NextResponse.json({ 
-      success: false, 
-      error: 'Failed to search assets' 
-    }, { status: 500 });
+    console.error('API error:', error);
+    return NextResponse.json({ success: false, error: 'Internal error' }, { status: 500 });
   }
 }
 
-// POST /api/assets - Create new asset
 export async function POST(request: NextRequest) {
+  const supabase = getSupabase();
+  if (!supabase) {
+    return NextResponse.json({ success: false, error: 'Database not configured' }, { status: 500 });
+  }
+
   try {
     const body = await request.json();
     
-    const {
-      asset_type,
-      category,
-      subcategory,
-      name,
-      description,
-      tags,
-      file_path,
-      file_url,
-      file_size_bytes,
-      mime_type,
-      file_extension,
-      metadata,
-      owner_id,
-      is_public = true,
-      is_free = true,
-      source_id,
-      created_by_app
-    } = body;
-
-    // Validate required fields
-    if (!asset_type || !category || !name) {
-      return NextResponse.json({ 
-        success: false, 
-        error: 'Missing required fields: asset_type, category, name' 
-      }, { status: 400 });
-    }
-
-    // Normalize name for search
-    const name_normalized = name.toLowerCase().replace(/[^a-z0-9]/g, '');
-
     const { data, error } = await supabase
       .from('universal_assets')
       .insert({
-        asset_type,
-        category,
-        subcategory,
-        name,
-        name_normalized,
-        description,
-        tags: tags || [],
-        file_path,
-        file_url,
-        file_size_bytes,
-        mime_type,
-        file_extension,
-        metadata: metadata || {},
-        owner_id,
-        owner_type: owner_id ? 'user' : 'system',
-        is_public,
-        is_free,
-        source_id,
-        created_by_app
+        asset_type: body.asset_type,
+        category: body.category || 'uncategorized',
+        name: body.name,
+        description: body.description,
+        file_url: body.file_url,
+        file_path: body.file_path,
+        file_size_bytes: body.file_size_bytes,
+        mime_type: body.mime_type,
+        metadata: body.metadata || {},
+        tags: body.tags || [],
+        owner_id: body.owner_id,
+        is_public: body.is_public ?? true,
+        is_free: body.is_free ?? true,
+        status: 'active'
       })
       .select()
       .single();
 
-    if (error) throw error;
+    if (error) {
+      return NextResponse.json({ success: false, error: error.message }, { status: 400 });
+    }
 
-    return NextResponse.json({
-      success: true,
-      asset: data
-    });
-
+    return NextResponse.json({ success: true, asset: data });
   } catch (error) {
-    console.error('Asset creation error:', error);
-    return NextResponse.json({ 
-      success: false, 
-      error: 'Failed to create asset' 
-    }, { status: 500 });
+    return NextResponse.json({ success: false, error: 'Invalid request' }, { status: 400 });
   }
 }
