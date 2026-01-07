@@ -10,25 +10,35 @@
  * Requirements:
  * - Only visible when logged in
  * - Shows: Plan name, Credits remaining
+ * - ADMINS always show "Unlimited" credits
+ * - Admin emails: royhenderson@craudiovizai.com, cindyhenderson@craudiovizai.com
  * - Upgrade → /pricing
  * - Top Up Credits → /pricing#credits
  * - Hidden entirely when logged out
  * - Same behavior on every page
  * 
- * @timestamp January 7, 2026 - 12:14 PM EST
+ * @timestamp January 7, 2026 - 6:08 PM EST
  * @locked PHASE 2.9 UI CONTRACT
+ * @fix Admins always show "Unlimited" credits
  */
 
 import { createClient } from '@/lib/supabase/client';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Coins, ArrowUp, Plus, Crown, Sparkles, Zap } from 'lucide-react';
+import { Coins, ArrowUp, Plus, Crown, Sparkles, Zap, Infinity } from 'lucide-react';
 
 interface UserPlan {
   plan_name: string;
   credits: number;
   is_admin: boolean;
+  email?: string;
 }
+
+// Admin emails that always get unlimited access
+const ADMIN_EMAILS = [
+  'royhenderson@craudiovizai.com',
+  'cindyhenderson@craudiovizai.com',
+];
 
 const PLAN_STYLES: Record<string, { bg: string; text: string; icon: React.ReactNode }> = {
   Free: { bg: 'bg-gray-700', text: 'text-gray-300', icon: <Sparkles className="w-3 h-3" /> },
@@ -42,6 +52,7 @@ export default function CreditsBar() {
   const [userPlan, setUserPlan] = useState<UserPlan | null>(null);
   const [loading, setLoading] = useState(true);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [userEmail, setUserEmail] = useState<string | null>(null);
   const supabase = createClient();
 
   useEffect(() => {
@@ -56,6 +67,7 @@ export default function CreditsBar() {
         }
 
         setIsLoggedIn(true);
+        setUserEmail(user.email || null);
 
         const { data: profile, error } = await supabase
           .from('profiles')
@@ -77,12 +89,12 @@ export default function CreditsBar() {
             .single();
 
           if (newProfile) {
-            setUserPlan(newProfile);
+            setUserPlan({ ...newProfile, email: user.email });
           } else {
-            setUserPlan({ plan_name: 'Free', credits: 50, is_admin: false });
+            setUserPlan({ plan_name: 'Free', credits: 50, is_admin: false, email: user.email });
           }
         } else {
-          setUserPlan(profile);
+          setUserPlan({ ...profile, email: user.email });
         }
       } catch (error) {
         console.error('Error loading user plan:', error);
@@ -96,9 +108,11 @@ export default function CreditsBar() {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (session?.user) {
         setIsLoggedIn(true);
+        setUserEmail(session.user.email || null);
         loadUserPlan();
       } else {
         setIsLoggedIn(false);
+        setUserEmail(null);
         setUserPlan(null);
       }
     });
@@ -113,9 +127,15 @@ export default function CreditsBar() {
     return null;
   }
 
-  const planKey = userPlan?.is_admin ? 'Admin' : (userPlan?.plan_name || 'Free');
+  // ============================================================
+  // ADMIN CHECK - is_admin flag OR admin email = unlimited access
+  // ============================================================
+  const isAdminUser = userPlan?.is_admin || 
+    (userEmail && ADMIN_EMAILS.includes(userEmail.toLowerCase()));
+
+  const planKey = isAdminUser ? 'Admin' : (userPlan?.plan_name || 'Free');
   const planStyle = PLAN_STYLES[planKey] || PLAN_STYLES.Free;
-  const showUpgrade = !userPlan?.is_admin && planKey !== 'Premium';
+  const showUpgrade = !isAdminUser && planKey !== 'Premium';
 
   return (
     <div 
@@ -137,30 +157,43 @@ export default function CreditsBar() {
             </Link>
             
             {/* Credits - clicks to /pricing */}
+            {/* ADMINS ALWAYS SHOW "UNLIMITED" */}
             <Link 
               href="/pricing"
               className="flex items-center gap-1.5 text-gray-300 hover:text-white transition-colors"
               data-testid="credits-display"
             >
-              <Coins className="w-4 h-4 text-amber-400" />
-              <span className="font-medium">{userPlan?.credits?.toLocaleString() || 0}</span>
-              <span className="text-gray-500 hidden sm:inline">credits</span>
+              {isAdminUser ? (
+                <>
+                  <Infinity className="w-4 h-4 text-amber-400" />
+                  <span className="font-medium text-amber-400">Unlimited</span>
+                  <span className="text-gray-500 hidden sm:inline">credits</span>
+                </>
+              ) : (
+                <>
+                  <Coins className="w-4 h-4 text-amber-400" />
+                  <span className="font-medium">{userPlan?.credits?.toLocaleString() || 0}</span>
+                  <span className="text-gray-500 hidden sm:inline">credits</span>
+                </>
+              )}
             </Link>
           </div>
 
           {/* Right: Action Buttons - ALL link to /pricing */}
           <div className="flex items-center gap-2">
-            {/* Top Up Credits - links to /pricing#credits */}
-            <Link
-              href="/pricing#credits"
-              className="flex items-center gap-1 px-3 py-1 rounded-lg text-cyan-400 hover:bg-cyan-500/10 transition-colors"
-              data-testid="topup-button"
-            >
-              <Plus className="w-4 h-4" />
-              <span className="hidden sm:inline">Top Up</span>
-            </Link>
+            {/* Top Up Credits - NOT shown for admins */}
+            {!isAdminUser && (
+              <Link
+                href="/pricing#credits"
+                className="flex items-center gap-1 px-3 py-1 rounded-lg text-cyan-400 hover:bg-cyan-500/10 transition-colors"
+                data-testid="topup-button"
+              >
+                <Plus className="w-4 h-4" />
+                <span className="hidden sm:inline">Top Up</span>
+              </Link>
+            )}
 
-            {/* Upgrade - links to /pricing (if not Premium/Admin) */}
+            {/* Upgrade - NOT shown for admins or Premium */}
             {showUpgrade && (
               <Link
                 href="/pricing"
@@ -170,6 +203,14 @@ export default function CreditsBar() {
                 <ArrowUp className="w-4 h-4" />
                 <span className="hidden sm:inline">Upgrade</span>
               </Link>
+            )}
+
+            {/* Admin Badge - shown only for admins */}
+            {isAdminUser && (
+              <div className="flex items-center gap-1 px-3 py-1 rounded-lg bg-gradient-to-r from-red-600 to-orange-600 text-white">
+                <Crown className="w-4 h-4" />
+                <span className="hidden sm:inline">Full Access</span>
+              </div>
             )}
           </div>
         </div>
