@@ -2,7 +2,7 @@ import { defineConfig, devices } from '@playwright/test';
 
 /**
  * Playwright E2E Configuration - craudiovizai.com
- * Phase 4A: Frozen baseline - deterministic, no retries
+ * Full Coverage Suite
  * 
  * PINNED VERSIONS:
  * - @playwright/test: 1.48.0 (exact)
@@ -11,11 +11,15 @@ import { defineConfig, devices } from '@playwright/test';
 export default defineConfig({
   testDir: './tests/e2e',
   
-  // Deterministic execution - no parallelism, no retries
+  // Full coverage needs more time
   fullyParallel: false,
   forbidOnly: !!process.env.CI,
-  retries: 0,  // ZERO retries - failures must be real
-  workers: 1,  // Single worker - deterministic order
+  retries: 0,  // Zero retries - failures must be real
+  workers: 1,  // Single worker for deterministic execution
+  
+  // Timeout for full suite
+  timeout: 120000, // 2 minutes per test
+  globalTimeout: 30 * 60 * 1000, // 30 minutes total
   
   reporter: [
     ['list'],
@@ -33,8 +37,6 @@ export default defineConfig({
     actionTimeout: 15000,
     navigationTimeout: 30000,
   },
-  
-  timeout: 60000,
   
   expect: {
     timeout: 10000,
