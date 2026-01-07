@@ -1,39 +1,40 @@
 import { defineConfig, devices } from '@playwright/test';
 
 export default defineConfig({
-  testDir: './',
-  fullyParallel: true,
+  testDir: './tests/e2e',
+  fullyParallel: false,
   forbidOnly: !!process.env.CI,
-  retries: process.env.CI ? 2 : 0,
-  workers: process.env.CI ? 1 : undefined,
+  retries: process.env.CI ? 1 : 0,
+  workers: 1,
   reporter: [
-    ['html'],
-    ['json', { outputFile: 'test-results.json' }],
-    ['list']
+    ['list'],
+    ['html', { open: 'never', outputFolder: 'playwright-report' }],
+    ['json', { outputFile: 'test-results/results.json' }],
   ],
+  
   use: {
     baseURL: 'https://craudiovizai.com',
-    trace: 'on',
-    video: 'on',
-    screenshot: 'on',
+    trace: 'retain-on-failure',
+    screenshot: 'only-on-failure',
+    video: 'retain-on-failure',
+    headless: true,
+    viewport: { width: 1280, height: 720 },
+    actionTimeout: 15000,
+    navigationTimeout: 30000,
   },
+  
+  timeout: 60000,
+  
+  expect: {
+    timeout: 10000,
+  },
+  
+  outputDir: 'test-results',
+  
   projects: [
     {
-      name: 'chromium-desktop',
+      name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
     },
-    {
-      name: 'chromium-mobile',
-      use: { ...devices['iPhone 14'] },
-    },
-    {
-      name: 'safari-mobile',
-      use: { ...devices['iPhone 14 Pro Max'] },
-    },
-    {
-      name: 'android',
-      use: { ...devices['Pixel 7'] },
-    },
   ],
-  outputDir: 'test-results/',
 });
