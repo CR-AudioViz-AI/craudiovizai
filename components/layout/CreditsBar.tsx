@@ -1,16 +1,38 @@
 'use client';
 
+/**
+ * CreditsBar - Logged-in User Plan & Credits Display
+ * 
+ * Shows under CR Bar for logged-in users:
+ * - Plan name (Free, Starter, Pro, Premium)
+ * - Credits balance
+ * - Upgrade button (links to /pricing)
+ * - Top Up button (links to /pricing#credits)
+ * 
+ * Hidden for logged-out users.
+ * 
+ * @timestamp January 7, 2026 - 11:54 AM EST
+ * @author Claude (for Roy Henderson)
+ */
+
 import { createClient } from '@/lib/supabase/client';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Coins, ArrowUp, Plus, Infinity } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Coins, ArrowUp, Plus, Crown, Sparkles, Zap } from 'lucide-react';
 
 interface UserPlan {
   plan_name: string;
   credits: number;
   is_admin: boolean;
 }
+
+const PLAN_COLORS: Record<string, { bg: string; text: string; icon: React.ReactNode }> = {
+  Free: { bg: 'bg-gray-700', text: 'text-gray-300', icon: <Sparkles className="w-3 h-3" /> },
+  Starter: { bg: 'bg-blue-600', text: 'text-blue-100', icon: <Zap className="w-3 h-3" /> },
+  Pro: { bg: 'bg-purple-600', text: 'text-purple-100', icon: <Crown className="w-3 h-3" /> },
+  Premium: { bg: 'bg-amber-500', text: 'text-amber-100', icon: <Crown className="w-3 h-3" /> },
+  Admin: { bg: 'bg-red-600', text: 'text-red-100', icon: <Crown className="w-3 h-3" /> },
+};
 
 export default function CreditsBar() {
   const [userPlan, setUserPlan] = useState<UserPlan | null>(null);
@@ -21,7 +43,6 @@ export default function CreditsBar() {
   useEffect(() => {
     async function loadUserPlan() {
       try {
-        // Get current user
         const { data: { user } } = await supabase.auth.getUser();
         
         if (!user) {
@@ -32,7 +53,6 @@ export default function CreditsBar() {
 
         setIsLoggedIn(true);
 
-        // Get user plan from profiles table
         const { data: profile, error } = await supabase
           .from('profiles')
           .select('plan_name, credits, is_admin')
@@ -40,41 +60,28 @@ export default function CreditsBar() {
           .single();
 
         if (error || !profile) {
-          // User doesn't have a profile yet - create default
-          console.log('No profile found, creating default...');
-          
-          const { data: newProfile, error: insertError } = await supabase
+          // Create default profile
+          const { data: newProfile } = await supabase
             .from('profiles')
             .insert({
               id: user.id,
               plan_name: 'Free',
-              credits: 100,
+              credits: 50,
               is_admin: false
             })
             .select()
             .single();
 
-          if (!insertError && newProfile) {
+          if (newProfile) {
             setUserPlan(newProfile);
           } else {
-            // Even if insert fails, show a default
-            setUserPlan({
-              plan_name: 'Free',
-              credits: 100,
-              is_admin: false
-            });
+            setUserPlan({ plan_name: 'Free', credits: 50, is_admin: false });
           }
         } else {
           setUserPlan(profile);
         }
       } catch (error) {
-        console.error('Error in loadUserPlan:', error);
-        // Show default rather than nothing
-        setUserPlan({
-          plan_name: 'Free',
-          credits: 100,
-          is_admin: false
-        });
+        console.error('Error loading user plan:', error);
       } finally {
         setLoading(false);
       }
@@ -82,104 +89,70 @@ export default function CreditsBar() {
 
     loadUserPlan();
 
-    // Subscribe to auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'SIGNED_IN') {
+      if (session?.user) {
+        setIsLoggedIn(true);
         loadUserPlan();
-      } else if (event === 'SIGNED_OUT') {
-        setUserPlan(null);
+      } else {
         setIsLoggedIn(false);
+        setUserPlan(null);
       }
     });
 
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, []);
+    return () => subscription.unsubscribe();
+  }, [supabase]);
 
-  // Don't show if not logged in
+  // Don't render anything if not logged in
   if (!isLoggedIn || loading) {
     return null;
   }
 
-  // Show even if userPlan is null (shouldn't happen now, but safe fallback)
-  const plan = userPlan || { plan_name: 'Free', credits: 100, is_admin: false };
-
-  // Admin view - UNLIMITED
-  if (plan.is_admin) {
-    return (
-      <div className="bg-gradient-to-r from-purple-600 via-blue-600 to-indigo-600 text-white">
-        <div className="container mx-auto px-4">
-          <div className="flex items-center justify-between h-12">
-            <div className="flex items-center space-x-4">
-              <div className="flex items-center space-x-2">
-                <Infinity className="w-5 h-5 text-yellow-300" />
-                <span className="font-semibold text-sm">Admin - Unlimited Access</span>
-              </div>
-              <div className="hidden md:flex items-center space-x-1 text-xs text-white/80">
-                <span>✓ All Tools Free</span>
-                <span className="mx-2">•</span>
-                <span>✓ Unlimited Credits</span>
-              </div>
-            </div>
-            <div className="flex items-center space-x-2">
-              <Link href="/admin">
-                <Button 
-                  size="sm" 
-                  variant="outline" 
-                  className="bg-white/10 border-white/20 text-white hover:bg-white/20 h-8 text-xs"
-                >
-                  Admin Dashboard
-                </Button>
-              </Link>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // Customer view
-  const planColors = {
-    'Free': 'from-gray-500 to-gray-600',
-    'Starter': 'from-blue-500 to-blue-600',
-    'Pro': 'from-purple-500 to-purple-600',
-    'Enterprise': 'from-indigo-600 to-purple-600',
-  }[plan.plan_name] || 'from-gray-500 to-gray-600';
+  const planKey = userPlan?.is_admin ? 'Admin' : (userPlan?.plan_name || 'Free');
+  const planStyle = PLAN_COLORS[planKey] || PLAN_COLORS.Free;
+  const showUpgrade = !userPlan?.is_admin && planKey !== 'Premium';
 
   return (
-    <div className={`bg-gradient-to-r ${planColors} text-white`}>
-      <div className="container mx-auto px-4">
-        <div className="flex items-center justify-between h-12">
-          <div className="flex items-center space-x-4">
-            <div className="flex items-center space-x-2">
-              <Coins className="w-5 h-5 text-yellow-300" />
-              <span className="font-semibold text-sm">{plan.plan_name} Plan</span>
-            </div>
-            <div className="flex items-center space-x-2 text-sm">
-              <span className="hidden sm:inline text-white/90">Credits:</span>
-              <span className="font-bold">{plan.credits.toLocaleString()}</span>
+    <div className="bg-slate-900/80 border-b border-white/5">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex items-center justify-between h-10 text-sm">
+          {/* Left: Plan Badge + Credits */}
+          <div className="flex items-center gap-4">
+            {/* Plan Badge */}
+            <Link 
+              href="/pricing" 
+              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full ${planStyle.bg} ${planStyle.text} hover:opacity-90 transition-opacity`}
+            >
+              {planStyle.icon}
+              <span className="font-medium">{planKey}</span>
+            </Link>
+            
+            {/* Credits */}
+            <div className="flex items-center gap-1.5 text-gray-300">
+              <Coins className="w-4 h-4 text-amber-400" />
+              <span className="font-medium">{userPlan?.credits?.toLocaleString() || 0}</span>
+              <span className="text-gray-500">credits</span>
             </div>
           </div>
-          <div className="flex items-center space-x-2">
-            <Link href="/pricing">
-              <Button 
-                size="sm" 
-                className="bg-white/20 hover:bg-white/30 border border-white/30 text-white h-8 text-xs"
-              >
-                <Plus className="w-3 h-3 mr-1" />
-                <span className="hidden sm:inline">Top Up</span>
-              </Button>
+
+          {/* Right: Action Buttons */}
+          <div className="flex items-center gap-2">
+            {/* Top Up */}
+            <Link
+              href="/pricing#credits"
+              className="flex items-center gap-1 px-3 py-1 rounded-lg text-cyan-400 hover:bg-cyan-500/10 transition-colors"
+            >
+              <Plus className="w-4 h-4" />
+              <span className="hidden sm:inline">Top Up</span>
             </Link>
-            {plan.plan_name === 'Free' && (
-              <Link href="/pricing">
-                <Button 
-                  size="sm" 
-                  className="bg-white text-purple-600 hover:bg-white/90 h-8 text-xs font-semibold"
-                >
-                  <ArrowUp className="w-3 h-3 mr-1" />
-                  Upgrade
-                </Button>
+
+            {/* Upgrade (if not Premium/Admin) */}
+            {showUpgrade && (
+              <Link
+                href="/pricing"
+                className="flex items-center gap-1 px-3 py-1 rounded-lg bg-gradient-to-r from-cyan-600 to-blue-600 text-white hover:from-cyan-500 hover:to-blue-500 transition-all"
+              >
+                <ArrowUp className="w-4 h-4" />
+                <span className="hidden sm:inline">Upgrade</span>
               </Link>
             )}
           </div>
