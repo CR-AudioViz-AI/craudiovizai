@@ -1,16 +1,16 @@
 'use client';
 
 /**
- * CR AudioViz AI - Mobile-Optimized Header Component
+ * CR AudioViz AI - Universal Header Component
  * 
- * Mobile-first design with:
- * - Properly sized logo (40-56px instead of 112px)
- * - Compact header height (64px mobile, 80px desktop)
- * - 48px touch targets for all interactive elements
- * - Full-screen mobile menu with safe area support
- * - Smooth animations with reduced motion support
+ * Features:
+ * - Mobile-optimized logo (40-56px, links to home)
+ * - No redundant title text next to logo
+ * - Auth state: Logged out = "Login" button, Logged in = Name + Logout
+ * - Consistent across ALL pages including login/signup
+ * - 48px touch targets for mobile
  * 
- * @timestamp Thursday, December 25, 2025 - 5:25 PM EST
+ * @timestamp January 7, 2026 - 11:52 AM EST
  * @author Claude (for Roy Henderson)
  */
 
@@ -24,7 +24,6 @@ import { createClient } from '@/lib/supabase/client';
 
 // Navigation links
 const NAV_LINKS = [
-  { id: 'home', label: 'Home', href: '/' },
   { id: 'apps', label: 'Apps', href: '/apps' },
   { id: 'games', label: 'Games', href: '/games' },
   { id: 'javari', label: 'Javari AI', href: '/javari' },
@@ -34,9 +33,18 @@ const NAV_LINKS = [
   { id: 'contact', label: 'Contact', href: '/contact' },
 ];
 
+interface UserProfile {
+  full_name?: string;
+  display_name?: string;
+  email?: string;
+  role?: string;
+  is_admin?: boolean;
+}
+
 export default function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [user, setUser] = useState<any>(null);
+  const [profile, setProfile] = useState<UserProfile | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
   const pathname = usePathname();
@@ -68,13 +76,16 @@ export default function Header() {
         setUser(user);
         
         if (user) {
-          const { data: profile } = await supabase
+          const { data: profileData } = await supabase
             .from('profiles')
-            .select('role, is_admin')
+            .select('full_name, display_name, role, is_admin')
             .eq('id', user.id)
             .single();
           
-          setIsAdmin(profile?.role === 'admin' || profile?.is_admin === true);
+          if (profileData) {
+            setProfile(profileData);
+            setIsAdmin(profileData.role === 'admin' || profileData.is_admin === true);
+          }
         }
       } catch (error) {
         console.error('Error checking user:', error);
@@ -88,6 +99,7 @@ export default function Header() {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       setUser(session?.user ?? null);
       if (!session?.user) {
+        setProfile(null);
         setIsAdmin(false);
       }
     });
@@ -99,289 +111,215 @@ export default function Header() {
     await supabase.auth.signOut();
     setMobileMenuOpen(false);
     router.push('/');
-    router.refresh();
   }, [supabase, router]);
 
-  const isActive = (href: string) => {
-    if (href === '/') return pathname === '/';
-    return pathname.startsWith(href);
+  // Get display name for logged-in user
+  const getDisplayName = () => {
+    if (profile?.display_name) return profile.display_name;
+    if (profile?.full_name) return profile.full_name.split(' ')[0];
+    if (user?.email) return user.email.split('@')[0];
+    return 'Account';
   };
 
-  const closeMobileMenu = useCallback(() => {
-    setMobileMenuOpen(false);
-  }, []);
+  const isActive = (href: string) => pathname === href;
 
   return (
-    <>
-      <header className="sticky top-0 z-50 bg-white shadow-sm">
-        {/* Main Header Row */}
-        <div className="border-b border-gray-200">
-          <div className="container mx-auto px-4">
-            <div className="flex items-center justify-between h-16 md:h-20 lg:h-24">
-              
-              {/* Logo - Mobile Optimized Sizing */}
-              <Link 
-                href="/" 
-                className="flex items-center flex-shrink-0 min-h-[48px]"
-                onClick={closeMobileMenu}
-              >
-                <Image
-                  src="/craudiovizailogo.png"
-                  alt="CR AudioViz AI"
-                  width={400}
-                  height={120}
-                  className="h-10 md:h-12 lg:h-14 w-auto"
-                  priority
-                />
-              </Link>
-
-              {/* Desktop Navigation */}
-              <nav className="hidden lg:flex items-center justify-center flex-1 mx-4 xl:mx-8">
-                <div className="flex items-center gap-1 xl:gap-2">
-                  {NAV_LINKS.map((link) => (
-                    <Link
-                      key={link.id}
-                      href={link.href}
-                      className={`
-                        px-3 xl:px-4 py-2 text-sm xl:text-base font-medium 
-                        whitespace-nowrap rounded-lg transition-all duration-200
-                        min-h-[40px] flex items-center
-                        ${isActive(link.href)
-                          ? 'text-blue-600 font-semibold bg-blue-50'
-                          : 'text-gray-700 hover:text-blue-600 hover:bg-gray-50'
-                        }
-                      `}
-                    >
-                      {link.label}
-                    </Link>
-                  ))}
+    <header className="sticky top-0 z-50 bg-slate-950/95 backdrop-blur-md border-b border-white/10">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex items-center justify-between h-16 md:h-20">
+          
+          {/* Logo - Links to Home, Mobile Optimized */}
+          <Link href="/" className="flex items-center flex-shrink-0">
+            <div className="w-10 h-10 md:w-12 md:h-12 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-xl flex items-center justify-center shadow-lg shadow-cyan-500/20">
+              <div className="relative">
+                <div className="flex gap-1 mb-0.5">
+                  <div className="w-1.5 h-1.5 md:w-2 md:h-2 bg-white rounded-full" />
+                  <div className="w-1.5 h-1.5 md:w-2 md:h-2 bg-white rounded-full" />
                 </div>
-              </nav>
-
-              {/* Desktop Auth Buttons */}
-              <div className="hidden lg:flex items-center gap-3">
-                {!loading && (
-                  <>
-                    {user ? (
-                      <div className="flex items-center gap-2">
-                        {isAdmin && (
-                          <Link href="/admin">
-                            <Button 
-                              variant="ghost" 
-                              size="sm" 
-                              className="text-sm text-gray-600 hover:text-purple-600 min-h-[40px]"
-                            >
-                              <Shield className="w-4 h-4 mr-1.5" />
-                              Admin
-                            </Button>
-                          </Link>
-                        )}
-                        <Link href="/dashboard">
-                          <Button 
-                            variant="ghost" 
-                            size="sm" 
-                            className="text-sm text-gray-600 hover:text-blue-600 min-h-[40px]"
-                          >
-                            <User className="w-4 h-4 mr-1.5" />
-                            Dashboard
-                          </Button>
-                        </Link>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={handleSignOut}
-                          className="text-sm text-gray-600 hover:text-red-600 min-h-[40px]"
-                        >
-                          <LogOut className="w-4 h-4 mr-1.5" />
-                          Sign Out
-                        </Button>
-                      </div>
-                    ) : (
-                      <div className="flex items-center gap-2">
-                        <Link href="/login">
-                          <Button 
-                            variant="ghost" 
-                            className="text-sm font-medium text-gray-700 hover:text-blue-600 min-h-[40px]"
-                          >
-                            Sign In
-                          </Button>
-                        </Link>
-                        <Link href="/signup">
-                          <Button 
-                            className="text-sm font-semibold bg-gradient-to-r from-blue-600 to-green-600 
-                                       hover:from-blue-700 hover:to-green-700 text-white px-5 min-h-[40px]"
-                          >
-                            Get Started Free
-                          </Button>
-                        </Link>
-                      </div>
-                    )}
-                  </>
-                )}
+                <div className="w-3 h-1 md:w-4 md:h-1.5 bg-white rounded-full mx-auto" />
               </div>
-
-              {/* Mobile Menu Button - 48px touch target */}
-              <button
-                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                aria-label={mobileMenuOpen ? 'Close menu' : 'Open menu'}
-                aria-expanded={mobileMenuOpen}
-                className="lg:hidden flex items-center justify-center w-12 h-12 -mr-2
-                           rounded-lg hover:bg-gray-100 active:bg-gray-200 
-                           transition-colors touch-manipulation"
-              >
-                {mobileMenuOpen ? (
-                  <X className="w-6 h-6 text-gray-700" />
-                ) : (
-                  <Menu className="w-6 h-6 text-gray-700" />
-                )}
-              </button>
             </div>
+            {/* Brand text - hidden on mobile, visible on md+ */}
+            <span className="hidden md:block ml-3 text-xl font-bold text-white">
+              CR AudioViz AI
+            </span>
+          </Link>
+
+          {/* Desktop Navigation */}
+          <nav className="hidden lg:flex items-center space-x-1">
+            {NAV_LINKS.map((link) => (
+              <Link
+                key={link.id}
+                href={link.href}
+                className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  isActive(link.href)
+                    ? 'bg-cyan-500/20 text-cyan-400'
+                    : 'text-gray-300 hover:text-white hover:bg-white/5'
+                }`}
+              >
+                {link.label}
+              </Link>
+            ))}
+          </nav>
+
+          {/* Auth Section */}
+          <div className="flex items-center gap-2 md:gap-4">
+            {/* Desktop Auth */}
+            <div className="hidden md:flex items-center gap-3">
+              {loading ? (
+                <div className="w-20 h-10 bg-gray-800 rounded-lg animate-pulse" />
+              ) : user ? (
+                // Logged In: Show Name + Logout
+                <div className="flex items-center gap-3">
+                  {isAdmin && (
+                    <Link
+                      href="/admin"
+                      className="flex items-center gap-1 px-3 py-2 text-sm text-amber-400 hover:text-amber-300 transition-colors"
+                    >
+                      <Shield className="w-4 h-4" />
+                      Admin
+                    </Link>
+                  )}
+                  <Link
+                    href="/dashboard"
+                    className="flex items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:text-white transition-colors"
+                  >
+                    <User className="w-4 h-4" />
+                    {getDisplayName()}
+                  </Link>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleSignOut}
+                    className="border-gray-600 text-gray-300 hover:bg-gray-800 hover:text-white"
+                  >
+                    <LogOut className="w-4 h-4 mr-1" />
+                    Logout
+                  </Button>
+                </div>
+              ) : (
+                // Logged Out: Show Login button
+                <Link href="/login">
+                  <Button
+                    variant="default"
+                    size="sm"
+                    className="bg-cyan-600 hover:bg-cyan-700 text-white"
+                  >
+                    Login
+                  </Button>
+                </Link>
+              )}
+            </div>
+
+            {/* Mobile Menu Button */}
+            <button
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="lg:hidden p-2 rounded-lg text-gray-300 hover:text-white hover:bg-white/5 transition-colors min-w-[48px] min-h-[48px] flex items-center justify-center"
+              aria-label="Toggle menu"
+            >
+              {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+            </button>
           </div>
         </div>
-      </header>
+      </div>
 
-      {/* Mobile Menu Overlay - Full Screen */}
+      {/* Mobile Menu */}
       {mobileMenuOpen && (
-        <div 
-          className="fixed inset-0 z-40 lg:hidden"
-          role="dialog"
-          aria-modal="true"
-          aria-label="Mobile navigation menu"
-        >
-          {/* Backdrop */}
-          <div 
-            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-            onClick={closeMobileMenu}
-            aria-hidden="true"
-          />
-          
-          {/* Menu Panel */}
-          <div 
-            className="absolute top-16 md:top-20 left-0 right-0 bottom-0 
-                       bg-white overflow-y-auto overscroll-contain
-                       animate-in slide-in-from-top-2 duration-200"
-          >
-            <div className="container mx-auto px-4 py-4 pb-safe">
-              
-              {/* Navigation Links */}
-              <nav className="space-y-1">
-                {NAV_LINKS.map((link) => (
-                  <Link
-                    key={link.id}
-                    href={link.href}
-                    onClick={closeMobileMenu}
-                    className={`
-                      flex items-center justify-between
-                      px-4 py-4 rounded-xl text-base font-medium
-                      min-h-[56px] transition-colors touch-manipulation
-                      ${isActive(link.href)
-                        ? 'bg-blue-50 text-blue-600 font-semibold'
-                        : 'text-gray-700 hover:bg-gray-50 active:bg-gray-100'
-                      }
-                    `}
-                  >
-                    {link.label}
-                    <ChevronRight className={`w-5 h-5 ${isActive(link.href) ? 'text-blue-400' : 'text-gray-400'}`} />
-                  </Link>
-                ))}
-              </nav>
-              
-              {/* Divider */}
-              <div className="my-4 border-t border-gray-200" />
-              
-              {/* Mobile Auth Section */}
-              <div className="space-y-2">
-                {!loading && (
-                  <>
-                    {user ? (
-                      <>
-                        {/* User Email */}
-                        <div className="px-4 py-3 text-sm text-gray-500 bg-gray-50 rounded-xl">
-                          <span className="font-medium text-gray-700">Signed in as:</span>
-                          <br />
-                          {user.email}
-                        </div>
-                        
-                        {/* Admin Link */}
-                        {isAdmin && (
-                          <Link
-                            href="/admin"
-                            onClick={closeMobileMenu}
-                            className="flex items-center px-4 py-4 rounded-xl text-base font-medium
-                                       text-purple-600 hover:bg-purple-50 active:bg-purple-100
-                                       min-h-[56px] transition-colors touch-manipulation"
-                          >
-                            <Shield className="w-5 h-5 mr-3" />
-                            Admin Panel
-                            <ChevronRight className="w-5 h-5 ml-auto text-purple-400" />
-                          </Link>
-                        )}
-                        
-                        {/* Dashboard Link */}
-                        <Link
-                          href="/dashboard"
-                          onClick={closeMobileMenu}
-                          className="flex items-center px-4 py-4 rounded-xl text-base font-medium
-                                     text-gray-700 hover:bg-gray-50 active:bg-gray-100
-                                     min-h-[56px] transition-colors touch-manipulation"
-                        >
-                          <User className="w-5 h-5 mr-3 text-blue-600" />
-                          Dashboard
-                          <ChevronRight className="w-5 h-5 ml-auto text-gray-400" />
-                        </Link>
-                        
-                        {/* Sign Out Button */}
-                        <button
-                          onClick={handleSignOut}
-                          className="flex items-center w-full px-4 py-4 rounded-xl text-base font-medium
-                                     text-red-600 hover:bg-red-50 active:bg-red-100
-                                     min-h-[56px] transition-colors touch-manipulation"
-                        >
-                          <LogOut className="w-5 h-5 mr-3" />
-                          Sign Out
-                        </button>
-                      </>
-                    ) : (
-                      <>
-                        {/* Sign In Button */}
-                        <Link
-                          href="/login"
-                          onClick={closeMobileMenu}
-                          className="flex items-center justify-center w-full px-4 py-4 
-                                     rounded-xl text-base font-medium text-gray-700
-                                     border-2 border-gray-200 hover:border-gray-300 
-                                     hover:bg-gray-50 active:bg-gray-100
-                                     min-h-[56px] transition-colors touch-manipulation"
-                        >
-                          Sign In
-                        </Link>
-                        
-                        {/* Get Started Button */}
-                        <Link
-                          href="/signup"
-                          onClick={closeMobileMenu}
-                          className="flex items-center justify-center w-full px-4 py-4 
-                                     rounded-xl text-base font-semibold text-white
-                                     bg-gradient-to-r from-blue-600 to-green-600 
-                                     hover:from-blue-700 hover:to-green-700
-                                     active:from-blue-800 active:to-green-800
-                                     min-h-[56px] transition-all touch-manipulation
-                                     shadow-lg shadow-blue-500/25"
-                        >
-                          Get Started Free
-                        </Link>
-                      </>
-                    )}
-                  </>
-                )}
+        <div className="lg:hidden fixed inset-0 top-16 bg-slate-950/98 backdrop-blur-lg z-40 overflow-y-auto">
+          <div className="px-4 py-6 space-y-2">
+            {/* Nav Links */}
+            {NAV_LINKS.map((link) => (
+              <Link
+                key={link.id}
+                href={link.href}
+                className={`flex items-center justify-between px-4 py-4 rounded-xl text-base font-medium transition-colors min-h-[48px] ${
+                  isActive(link.href)
+                    ? 'bg-cyan-500/20 text-cyan-400'
+                    : 'text-gray-200 hover:bg-white/5 active:bg-white/10'
+                }`}
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                {link.label}
+                <ChevronRight className="w-5 h-5 text-gray-500" />
+              </Link>
+            ))}
+
+            {/* Divider */}
+            <div className="border-t border-white/10 my-4" />
+
+            {/* Mobile Auth */}
+            {loading ? (
+              <div className="px-4 py-4">
+                <div className="h-12 bg-gray-800 rounded-xl animate-pulse" />
               </div>
-              
-              {/* Bottom Padding for Safe Area */}
-              <div className="h-20" />
-            </div>
+            ) : user ? (
+              <>
+                {/* User Info */}
+                <div className="px-4 py-3 text-gray-400 text-sm">
+                  Signed in as <span className="text-white font-medium">{getDisplayName()}</span>
+                </div>
+                
+                {/* Dashboard Link */}
+                <Link
+                  href="/dashboard"
+                  className="flex items-center justify-between px-4 py-4 rounded-xl text-base font-medium text-gray-200 hover:bg-white/5 min-h-[48px]"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  <span className="flex items-center gap-3">
+                    <User className="w-5 h-5" />
+                    Dashboard
+                  </span>
+                  <ChevronRight className="w-5 h-5 text-gray-500" />
+                </Link>
+
+                {/* Admin Link */}
+                {isAdmin && (
+                  <Link
+                    href="/admin"
+                    className="flex items-center justify-between px-4 py-4 rounded-xl text-base font-medium text-amber-400 hover:bg-amber-500/10 min-h-[48px]"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    <span className="flex items-center gap-3">
+                      <Shield className="w-5 h-5" />
+                      Admin Panel
+                    </span>
+                    <ChevronRight className="w-5 h-5 text-amber-500/50" />
+                  </Link>
+                )}
+
+                {/* Logout */}
+                <button
+                  onClick={handleSignOut}
+                  className="w-full flex items-center justify-between px-4 py-4 rounded-xl text-base font-medium text-red-400 hover:bg-red-500/10 min-h-[48px]"
+                >
+                  <span className="flex items-center gap-3">
+                    <LogOut className="w-5 h-5" />
+                    Sign Out
+                  </span>
+                </button>
+              </>
+            ) : (
+              // Logged Out Mobile
+              <div className="space-y-3 px-4">
+                <Link
+                  href="/login"
+                  className="block w-full py-4 text-center rounded-xl bg-cyan-600 hover:bg-cyan-700 text-white font-medium min-h-[48px]"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  Login
+                </Link>
+                <Link
+                  href="/signup"
+                  className="block w-full py-4 text-center rounded-xl border border-cyan-500 text-cyan-400 hover:bg-cyan-500/10 font-medium min-h-[48px]"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  Sign Up Free
+                </Link>
+              </div>
+            )}
           </div>
         </div>
       )}
-    </>
+    </header>
   );
 }
