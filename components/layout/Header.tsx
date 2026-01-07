@@ -13,12 +13,14 @@
  * - Nav: Home, Apps, Games, Javari AI, JavariVerse, Pricing, About, Contact
  * - Auth: "Log in" when logged out, "Name | Logout" when logged in
  * 
- * @timestamp January 7, 2026 - 12:10 PM EST
+ * @timestamp January 7, 2026 - 5:20 PM EST
  * @locked PHASE 2.9 UI CONTRACT
+ * @fix Replaced CSS icon with actual CR AudioViz AI logo image
  */
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Menu, X, User, Shield, LogOut, ChevronRight } from 'lucide-react';
@@ -139,8 +141,9 @@ export default function Header() {
         <div className="flex items-center justify-between h-16 md:h-20">
           
           {/* ============================================================
-              LOGO - Links to /, NO text branding when visible
+              LOGO - Actual CR AudioViz AI logo image
               Mobile: 40px, Desktop: 48px
+              Links to home
               ============================================================ */}
           <Link 
             href="/" 
@@ -148,15 +151,14 @@ export default function Header() {
             data-testid="header-logo"
             aria-label="CR AudioViz AI Home"
           >
-            <div className="w-10 h-10 md:w-12 md:h-12 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-xl flex items-center justify-center shadow-lg shadow-cyan-500/20">
-              <div className="relative">
-                <div className="flex gap-1 mb-0.5">
-                  <div className="w-1.5 h-1.5 md:w-2 md:h-2 bg-white rounded-full" />
-                  <div className="w-1.5 h-1.5 md:w-2 md:h-2 bg-white rounded-full" />
-                </div>
-                <div className="w-3 h-1 md:w-4 md:h-1.5 bg-white rounded-full mx-auto" />
-              </div>
-            </div>
+            <Image
+              src="/craudiovizailogo.png"
+              alt="CR AudioViz AI"
+              width={48}
+              height={48}
+              className="w-10 h-10 md:w-12 md:h-12 rounded-lg"
+              priority
+            />
             {/* NO text branding - logo is the only brand indicator */}
           </Link>
 
