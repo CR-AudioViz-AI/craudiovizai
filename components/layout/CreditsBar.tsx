@@ -1,18 +1,22 @@
 'use client';
 
 /**
- * CreditsBar - Logged-in User Plan & Credits Display
+ * CR AudioViz AI - LOCKED CREDITS BAR COMPONENT
  * 
- * Shows under CR Bar for logged-in users:
- * - Plan name (Free, Starter, Pro, Premium)
- * - Credits balance
- * - Upgrade button (links to /pricing)
- * - Top Up button (links to /pricing#credits)
+ * ⚠️ UI CONTRACT LOCK - PHASE 2.9
+ * This is the SINGLE SOURCE OF TRUTH for the credits/plan bar.
+ * DO NOT create per-page variants.
  * 
- * Hidden for logged-out users.
+ * Requirements:
+ * - Only visible when logged in
+ * - Shows: Plan name, Credits remaining
+ * - Upgrade → /pricing
+ * - Top Up Credits → /pricing#credits
+ * - Hidden entirely when logged out
+ * - Same behavior on every page
  * 
- * @timestamp January 7, 2026 - 11:54 AM EST
- * @author Claude (for Roy Henderson)
+ * @timestamp January 7, 2026 - 12:14 PM EST
+ * @locked PHASE 2.9 UI CONTRACT
  */
 
 import { createClient } from '@/lib/supabase/client';
@@ -26,7 +30,7 @@ interface UserPlan {
   is_admin: boolean;
 }
 
-const PLAN_COLORS: Record<string, { bg: string; text: string; icon: React.ReactNode }> = {
+const PLAN_STYLES: Record<string, { bg: string; text: string; icon: React.ReactNode }> = {
   Free: { bg: 'bg-gray-700', text: 'text-gray-300', icon: <Sparkles className="w-3 h-3" /> },
   Starter: { bg: 'bg-blue-600', text: 'text-blue-100', icon: <Zap className="w-3 h-3" /> },
   Pro: { bg: 'bg-purple-600', text: 'text-purple-100', icon: <Crown className="w-3 h-3" /> },
@@ -102,54 +106,66 @@ export default function CreditsBar() {
     return () => subscription.unsubscribe();
   }, [supabase]);
 
-  // Don't render anything if not logged in
+  // ============================================================
+  // HIDDEN WHEN LOGGED OUT - This is mandatory per UI contract
+  // ============================================================
   if (!isLoggedIn || loading) {
     return null;
   }
 
   const planKey = userPlan?.is_admin ? 'Admin' : (userPlan?.plan_name || 'Free');
-  const planStyle = PLAN_COLORS[planKey] || PLAN_COLORS.Free;
+  const planStyle = PLAN_STYLES[planKey] || PLAN_STYLES.Free;
   const showUpgrade = !userPlan?.is_admin && planKey !== 'Premium';
 
   return (
-    <div className="bg-slate-900/80 border-b border-white/5">
+    <div 
+      className="bg-slate-900/80 border-b border-white/5"
+      data-testid="credits-bar"
+    >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-10 text-sm">
           {/* Left: Plan Badge + Credits */}
           <div className="flex items-center gap-4">
-            {/* Plan Badge */}
+            {/* Plan Badge - clicks to /pricing */}
             <Link 
               href="/pricing" 
               className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full ${planStyle.bg} ${planStyle.text} hover:opacity-90 transition-opacity`}
+              data-testid="plan-badge"
             >
               {planStyle.icon}
               <span className="font-medium">{planKey}</span>
             </Link>
             
-            {/* Credits */}
-            <div className="flex items-center gap-1.5 text-gray-300">
+            {/* Credits - clicks to /pricing */}
+            <Link 
+              href="/pricing"
+              className="flex items-center gap-1.5 text-gray-300 hover:text-white transition-colors"
+              data-testid="credits-display"
+            >
               <Coins className="w-4 h-4 text-amber-400" />
               <span className="font-medium">{userPlan?.credits?.toLocaleString() || 0}</span>
-              <span className="text-gray-500">credits</span>
-            </div>
+              <span className="text-gray-500 hidden sm:inline">credits</span>
+            </Link>
           </div>
 
-          {/* Right: Action Buttons */}
+          {/* Right: Action Buttons - ALL link to /pricing */}
           <div className="flex items-center gap-2">
-            {/* Top Up */}
+            {/* Top Up Credits - links to /pricing#credits */}
             <Link
               href="/pricing#credits"
               className="flex items-center gap-1 px-3 py-1 rounded-lg text-cyan-400 hover:bg-cyan-500/10 transition-colors"
+              data-testid="topup-button"
             >
               <Plus className="w-4 h-4" />
               <span className="hidden sm:inline">Top Up</span>
             </Link>
 
-            {/* Upgrade (if not Premium/Admin) */}
+            {/* Upgrade - links to /pricing (if not Premium/Admin) */}
             {showUpgrade && (
               <Link
                 href="/pricing"
                 className="flex items-center gap-1 px-3 py-1 rounded-lg bg-gradient-to-r from-cyan-600 to-blue-600 text-white hover:from-cyan-500 hover:to-blue-500 transition-all"
+                data-testid="upgrade-button"
               >
                 <ArrowUp className="w-4 h-4" />
                 <span className="hidden sm:inline">Upgrade</span>
