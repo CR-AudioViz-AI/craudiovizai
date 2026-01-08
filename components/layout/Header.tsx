@@ -3,9 +3,8 @@
 /**
  * CR AudioViz AI - HEADER COMPONENT
  * 
- * - Logo in WIDE RECTANGLE container (much wider than tall)
- * - CR = stays IN the header bar on same row
- * - Bigger logo but constrained height
+ * - MUCH BIGGER logo (~2/3 bigger: 460x75)
+ * - CR = CENTERED on page (its own row)
  * 
  * @timestamp January 8, 2026
  */
@@ -139,22 +138,21 @@ export default function Header() {
   return (
     <header className="bg-gradient-to-r from-blue-600 to-green-600" data-testid="site-header">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Row 1: Logo (wide rectangle) + Nav + Auth */}
-        <div className="flex items-center justify-between h-16">
-          {/* Logo - WIDE RECTANGLE: fixed width, constrained height */}
+        {/* Row 1: BIGGER Logo + Nav + Auth */}
+        <div className="flex items-center justify-between h-20 md:h-24">
+          {/* Logo - MUCH BIGGER: ~2/3 larger */}
           <Link 
             href="/" 
             data-testid="header-logo" 
             aria-label="CR AudioViz AI Home"
             className="flex-shrink-0"
-            style={{ width: '280px', height: '45px' }}
           >
             <Image
               src="/craudiovizailogo.png"
               alt="CR AudioViz AI"
-              width={280}
-              height={45}
-              className="w-full h-full object-contain object-left"
+              width={460}
+              height={75}
+              className="h-14 sm:h-16 md:h-[75px] w-auto"
               priority
             />
           </Link>
@@ -196,7 +194,7 @@ export default function Header() {
               ) : (
                 <div className="flex items-center gap-2">
                   <Link href="/login" className="px-3 py-1 text-sm text-white/90 hover:text-white">Log In</Link>
-                  <Link href="/signup" className="px-3 py-1 bg-white text-blue-600 hover:bg-white/90 rounded-lg text-sm font-medium">Sign Up</Link>
+                  <Link href="/signup" className="px-3 py-1.5 bg-white text-blue-600 hover:bg-white/90 rounded-lg text-sm font-medium">Sign Up</Link>
                 </div>
               )}
             </div>
@@ -223,13 +221,15 @@ export default function Header() {
           </div>
         </div>
 
-        {/* Row 2: CR = phrase - INSIDE the header bar */}
-        <div className="flex items-center gap-1.5 text-white/90 text-sm pb-2 -mt-1">
-          <span className="font-bold text-cyan-300">CR</span>
-          <span className="text-white/60">=</span>
-          <span className={`transition-all duration-300 ${showCindyRoy ? 'text-pink-300 font-bold' : ''}`}>
-            {displayPhrase}
-          </span>
+        {/* Row 2: CR = CENTERED on page */}
+        <div className="flex justify-center pb-2">
+          <div className="flex items-center gap-2 text-white text-sm">
+            <span className="font-bold text-cyan-300">CR</span>
+            <span className="text-white/60">=</span>
+            <span className={`transition-all duration-300 ${showCindyRoy ? 'text-pink-300 font-bold' : ''}`}>
+              {displayPhrase}
+            </span>
+          </div>
         </div>
       </div>
 
