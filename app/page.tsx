@@ -1,7 +1,6 @@
 // /app/page.tsx
 // CR AudioViz AI - Main Landing Page
-// Expanded Javari intro, simplified apps section, coming soon from admin
-// 🔒 USES SHARED HEADER/FOOTER FROM LAYOUT - NO DUPLICATE NAV
+// Streamlined - no redundant apps section
 
 'use client';
 
@@ -9,23 +8,20 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
 import Image from 'next/image';
-import { ArrowRight, Sparkles, Brain, Shield, Zap, Users, Globe, Cpu } from 'lucide-react';
+import { ArrowRight, Sparkles, Brain, Shield, Zap, Users, Cpu } from 'lucide-react';
 
 export default function LandingPage() {
   const [comingSoonProjects, setComingSoonProjects] = useState<any[]>([]);
 
-  // Fetch coming soon projects from admin settings
   useEffect(() => {
-    // This would fetch from your admin API
-    // For now, empty array means section won't show
+    // Fetch from admin API - empty means section won't show
     setComingSoonProjects([]);
   }, []);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-900 via-gray-800 to-gray-900">
-      {/* 🔒 NO DUPLICATE NAV - Header comes from root layout.tsx */}
       
-      {/* Hero Section - Expanded Javari Introduction */}
+      {/* Hero Section - Javari Introduction */}
       <section className="hero-section pt-8 pb-12 px-4">
         <div className="max-w-6xl mx-auto">
           <div className="grid md:grid-cols-5 gap-8 items-start">
@@ -52,7 +48,7 @@ export default function LandingPage() {
               </div>
             </motion.div>
 
-            {/* Expanded Javari Introduction */}
+            {/* Javari Introduction */}
             <motion.div
               className="md:col-span-3"
               initial={{ opacity: 0, x: 30 }}
@@ -145,29 +141,9 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Simple Apps Section - Just a CTA */}
-      <section className="py-10 px-4 bg-gray-800/30">
-        <div className="max-w-4xl mx-auto text-center">
-          <h2 className="text-2xl md:text-3xl font-bold text-white mb-3">
-            AI-Powered Apps & Tools
-          </h2>
-          <p className="text-gray-400 mb-6">
-            Create professional logos, documents, presentations, and more — all powered by advanced AI.
-          </p>
-          <Link 
-            href="/apps"
-            className="inline-flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-cyan-500 to-blue-500 text-white font-medium rounded-xl hover:from-cyan-600 hover:to-blue-600 transition-all shadow-lg"
-          >
-            <Globe className="w-5 h-5" />
-            View All Apps
-            <ArrowRight className="w-5 h-5" />
-          </Link>
-        </div>
-      </section>
-
-      {/* Coming Soon Section - Only shows if projects are marked coming soon in admin */}
+      {/* Coming Soon Section - Only shows if projects marked in admin */}
       {comingSoonProjects.length > 0 && (
-        <section className="py-10 px-4">
+        <section className="py-10 px-4 bg-gray-800/30">
           <div className="max-w-6xl mx-auto">
             <div className="text-center mb-6">
               <span className="inline-block px-4 py-1 bg-purple-500/20 text-purple-400 text-sm font-medium rounded-full mb-3">
