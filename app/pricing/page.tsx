@@ -1,147 +1,195 @@
-// ================================================================================
-// CR AUDIOVIZ AI - PRICING PAGE (NEVER 503)
-// Returns 200 + x-cr-degraded header on failure
-// ================================================================================
+/**
+ * CR AudioViz AI - Core Pricing Page (v6.2)
+ * Main pricing hub - links to all vertical pricing pages
+ * 
+ * @version 6.2
+ * @timestamp January 8, 2026
+ */
 
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import Link from 'next/link';
-
-// Static pricing data - always available
-const STATIC_PLANS = [
-  {
-    name: 'Free',
-    price: '$0',
-    credits: 50,
-    features: ['50 credits/month', 'Access to all apps', 'AI support with escalation'],
-    cta: 'Get Started',
-    popular: false,
-  },
-  {
-    name: 'Pro',
-    price: '$19',
-    credits: 500,
-    features: ['500 credits/month', 'AI support with escalation', 'Advanced features', 'API access'],
-    cta: 'Upgrade to Pro',
-    popular: true,
-  },
-  {
-    name: 'Enterprise',
-    price: '$99',
-    credits: 5000,
-    features: ['5000 credits/month', 'AI support with escalation', 'Custom integrations', 'SLA guarantee'],
-    cta: 'Contact Sales',
-    popular: false,
-  },
-];
-
-function DegradedBanner({ errorId }: { errorId?: string }) {
-  return (
-    <div className="bg-yellow-50 dark:bg-yellow-900/20 border-l-4 border-yellow-400 p-4 mb-6">
-      <div className="flex">
-        <div className="flex-shrink-0">
-          <svg className="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
-            <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-          </svg>
-        </div>
-        <div className="ml-3">
-          <p className="text-sm text-yellow-700 dark:text-yellow-200">
-            Showing cached pricing. Live data temporarily unavailable.
-            {errorId && <span className="block text-xs opacity-75">Ref: {errorId}</span>}
-          </p>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function PricingCard({ plan, popular }: { plan: typeof STATIC_PLANS[0]; popular: boolean }) {
-  return (
-    <div className={`relative rounded-2xl p-8 ${popular ? 'bg-blue-600 text-white ring-4 ring-blue-600' : 'bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700'}`}>
-      {popular && (
-        <span className="absolute -top-4 left-1/2 -translate-x-1/2 bg-yellow-400 text-gray-900 text-sm font-bold px-4 py-1 rounded-full">
-          Most Popular
-        </span>
-      )}
-      <h3 className={`text-xl font-bold mb-2 ${popular ? 'text-white' : 'text-gray-900 dark:text-white'}`}>
-        {plan.name}
-      </h3>
-      <div className="mb-4">
-        <span className={`text-4xl font-bold ${popular ? 'text-white' : 'text-gray-900 dark:text-white'}`}>
-          {plan.price}
-        </span>
-        <span className={`text-sm ${popular ? 'text-blue-100' : 'text-gray-500 dark:text-gray-400'}`}>/month</span>
-      </div>
-      <p className={`text-sm mb-6 ${popular ? 'text-blue-100' : 'text-gray-500 dark:text-gray-400'}`}>
-        {plan.credits} credits included
-      </p>
-      <ul className="space-y-3 mb-8">
-        {plan.features.map((feature, i) => (
-          <li key={i} className="flex items-center gap-2">
-            <svg className={`w-5 h-5 ${popular ? 'text-blue-200' : 'text-green-500'}`} fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-            </svg>
-            <span className={`text-sm ${popular ? 'text-white' : 'text-gray-700 dark:text-gray-300'}`}>{feature}</span>
-          </li>
-        ))}
-      </ul>
-      <button className={`w-full py-3 px-6 rounded-xl font-semibold transition-all ${popular ? 'bg-white text-blue-600 hover:bg-blue-50' : 'bg-blue-600 text-white hover:bg-blue-700'}`}>
-        {plan.cta}
-      </button>
-    </div>
-  );
-}
+import {
+  CORE_PLANS,
+  CREDIT_PACKS,
+  AUTO_RELOAD_TIERS,
+  TRIAL_CONFIGS,
+  FAQ_ITEMS,
+  CREDIT_PRICE_DISPLAY,
+} from '@/lib/pricing/v62';
+import {
+  PlanCard,
+  CreditPackCard,
+  TrialBanner,
+  VerticalNav,
+  ExploreOtherOfferings,
+  FAQAccordion,
+  PolicyNotices,
+  CreditExplanation,
+} from '@/components/pricing/PricingComponents';
+import { Zap, Package, RefreshCw } from 'lucide-react';
 
 export default function PricingPage() {
-  const [isDegraded, setIsDegraded] = useState(false);
-  const [errorId, setErrorId] = useState<string | undefined>();
-  const [plans, setPlans] = useState(STATIC_PLANS);
-
-  useEffect(() => {
-    // Try to fetch live pricing
-    fetch('/api/pricing', { signal: AbortSignal.timeout(5000) })
-      .then(res => {
-        if (!res.ok) throw new Error('API failed');
-        return res.json();
-      })
-      .then(data => {
-        if (data.plans) setPlans(data.plans);
-      })
-      .catch(() => {
-        setIsDegraded(true);
-        setErrorId(crypto.randomUUID().slice(0, 8));
-      });
-  }, []);
+  const trialConfig = TRIAL_CONFIGS.core;
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-12 px-4">
+    <div className="min-h-screen bg-slate-50 py-8 md:py-12 px-4">
       <div className="max-w-6xl mx-auto">
-        {isDegraded && <DegradedBanner errorId={errorId} />}
-        
-        <div className="text-center mb-12">
-          <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-4">
+        {/* Header */}
+        <div className="text-center mb-8">
+          <h1 className="text-3xl md:text-4xl font-bold text-slate-900 mb-3">
             Simple, Transparent Pricing
           </h1>
-          <p className="text-xl text-gray-600 dark:text-gray-400">
-            Choose the plan that works for you
+          <p className="text-lg text-slate-600 max-w-2xl mx-auto">
+            Choose the plan that works for you. All plans include access to our full suite of AI-powered apps.
           </p>
         </div>
-        
-        <div className="grid md:grid-cols-3 gap-8">
-          {plans.map((plan, i) => (
-            <PricingCard key={i} plan={plan} popular={plan.popular} />
-          ))}
-        </div>
-        
-        <div className="mt-12 text-center space-y-2">
-          <p className="text-gray-600 dark:text-gray-400 font-medium">
-            No refunds. Credits valid until term ends.
+
+        {/* Vertical Navigation */}
+        <VerticalNav current="core" />
+
+        {/* Trial Banner */}
+        <TrialBanner
+          vertical="CR AudioViz AI"
+          credits={trialConfig.credits}
+          days={30}
+        />
+
+        {/* Credit Explanation */}
+        <CreditExplanation />
+
+        {/* Core Plans */}
+        <section className="mb-12">
+          <div className="flex items-center gap-2 mb-6">
+            <Zap className="w-6 h-6 text-cyan-600" />
+            <h2 className="text-2xl font-bold text-slate-900">Monthly Plans</h2>
+          </div>
+          
+          <div className="grid md:grid-cols-3 gap-6">
+            {CORE_PLANS.map((plan) => (
+              <PlanCard
+                key={plan.id}
+                name={plan.name}
+                price={plan.priceMonthly}
+                credits={plan.credits}
+                badge={plan.badge}
+                features={plan.features}
+                cta={plan.cta}
+                ctaHref="/signup"
+                highlighted={plan.badge === 'Most Popular'}
+              />
+            ))}
+          </div>
+          
+          <div className="mt-4 text-center text-sm text-slate-500">
+            Credits roll forward while subscription is active. Cancel anytime.
+          </div>
+        </section>
+
+        {/* Credit Packs */}
+        <section className="mb-12">
+          <div className="flex items-center gap-2 mb-6">
+            <Package className="w-6 h-6 text-cyan-600" />
+            <h2 className="text-2xl font-bold text-slate-900">Credit Packs</h2>
+          </div>
+          
+          <p className="text-slate-600 mb-4">
+            Need more credits? Top up anytime with a one-time purchase.
           </p>
-          <p className="text-sm text-gray-500 dark:text-gray-500">
-            All plans include AI support with escalation to human agents when needed.
-          </p>
-          <Link href="/apps" className="inline-block mt-4 text-blue-600 hover:text-blue-700 font-medium">
+          
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {CREDIT_PACKS.map((pack) => (
+              <CreditPackCard
+                key={pack.credits}
+                credits={pack.credits}
+                price={pack.price}
+                badge={pack.badge}
+              />
+            ))}
+          </div>
+          
+          <div className="mt-4 bg-amber-50 border border-amber-200 rounded-lg p-4">
+            <h4 className="font-semibold text-amber-800 mb-2">Pack Rules</h4>
+            <ul className="text-sm text-amber-700 space-y-1">
+              <li>• Pack credits stay usable while subscription is active</li>
+              <li>• Packs do NOT extend subscription term</li>
+              <li>• Pack credits remain usable during 10-day grace period</li>
+              <li>• If not renewed after grace, remaining credits are forfeited</li>
+            </ul>
+          </div>
+        </section>
+
+        {/* Auto-Reload */}
+        <section className="mb-12">
+          <div className="flex items-center gap-2 mb-6">
+            <RefreshCw className="w-6 h-6 text-cyan-600" />
+            <h2 className="text-2xl font-bold text-slate-900">Auto-Reload</h2>
+          </div>
+          
+          <div className="bg-white rounded-xl border border-slate-200 p-6">
+            <p className="text-slate-600 mb-4">
+              Never run out of credits. Set a threshold and we'll automatically add credits when your balance is low.
+            </p>
+            
+            <div className="grid md:grid-cols-3 gap-4 mb-4">
+              {AUTO_RELOAD_TIERS.map((tier) => (
+                <div
+                  key={tier.credits}
+                  className="p-4 rounded-lg border border-slate-200 text-center"
+                >
+                  <div className="text-xl font-bold text-slate-900">+{tier.credits}</div>
+                  <div className="text-sm text-slate-500">credits</div>
+                  <div className="text-lg font-semibold text-cyan-600 mt-2">
+                    ${tier.price.toFixed(2)}
+                  </div>
+                </div>
+              ))}
+            </div>
+            
+            <div className="text-sm text-slate-500 space-y-1">
+              <p>• You set the threshold (minimum 10 credits) and select your reload tier</p>
+              <p>• Triggers once per threshold event (never repeatedly)</p>
+              <p>• Auto-reload paused during grace period</p>
+            </div>
+          </div>
+        </section>
+
+        {/* Grace Period Info */}
+        <section className="mb-12">
+          <div className="bg-blue-50 border border-blue-200 rounded-xl p-6">
+            <h3 className="font-bold text-blue-900 mb-3">10-Day Grace Period</h3>
+            <p className="text-blue-800 mb-3">
+              After your paid term expires, you get a 10-day grace period:
+            </p>
+            <ul className="text-sm text-blue-700 space-y-1">
+              <li>• Continue using remaining credits (plan + packs)</li>
+              <li>• Cannot purchase additional credits</li>
+              <li>• Auto-reload is paused</li>
+              <li>• Renew to keep your credits; otherwise they're forfeited after grace ends</li>
+            </ul>
+          </div>
+        </section>
+
+        {/* FAQ */}
+        <section className="mb-12">
+          <h2 className="text-2xl font-bold text-slate-900 mb-6 text-center">
+            Frequently Asked Questions
+          </h2>
+          <div className="max-w-3xl mx-auto">
+            <FAQAccordion items={FAQ_ITEMS} />
+          </div>
+        </section>
+
+        {/* Explore Other Offerings */}
+        <ExploreOtherOfferings exclude="core" />
+
+        {/* Policy Notices */}
+        <PolicyNotices />
+
+        {/* Back Link */}
+        <div className="mt-8 text-center">
+          <Link href="/apps" className="text-cyan-600 hover:text-cyan-700 font-medium">
             Explore our apps →
           </Link>
         </div>
