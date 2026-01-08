@@ -1,16 +1,13 @@
 /**
  * CR AudioViz AI - Root Layout
  * 
- * Complete page structure with:
- * - TopBar (combined CR + Credits bar) - sticky
- * - Header with gradient - sticky
- * - Footer
+ * Structure: Header (top) > TopBar (below header) > Content > Footer
+ * Both Header and TopBar are sticky
  * 
  * @timestamp January 8, 2026
  */
 
 import type { Metadata, Viewport } from "next";
-import Script from 'next/script';
 import { Inter } from "next/font/google";
 import "./globals.css";
 import '@/styles/phase2-mobile.css';
@@ -95,10 +92,10 @@ export default function RootLayout({
       </head>
       <body className={inter.className}>
         <CanonicalLink />
-        {/* Sticky header area */}
+        {/* Sticky header area - Header FIRST, then TopBar below it */}
         <div className="sticky top-0 z-50">
-          <TopBar />
           <Header />
+          <TopBar />
         </div>
         <div className="min-h-screen flex flex-col">
           <main className="flex-grow">
