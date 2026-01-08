@@ -3,9 +3,9 @@
 /**
  * CR AudioViz AI - HEADER COMPONENT
  * 
- * - MUCH BIGGER logo (proportional and readable)
- * - CR = under logo, rotating phrases, Cindy & Roy every 25th
- * - Credits bar shows "Log in to see your plan details"
+ * - Logo in WIDE RECTANGLE container (much wider than tall)
+ * - CR = stays IN the header bar on same row
+ * - Bigger logo but constrained height
  * 
  * @timestamp January 8, 2026
  */
@@ -17,7 +17,6 @@ import { usePathname } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { User, LogOut, Sparkles, Zap } from 'lucide-react';
 
-// Navigation links
 const NAV_LINKS = [
   { id: 'home', href: '/', label: 'Home' },
   { id: 'apps', href: '/apps', label: 'Apps' },
@@ -29,7 +28,6 @@ const NAV_LINKS = [
   { id: 'contact', href: '/contact', label: 'Contact' },
 ];
 
-// 100+ unique CR phrases
 const CR_PHRASES = [
   "Creative Results", "Customer Rewards", "Cutting-edge Resources", "Community Reach",
   "Content Revolution", "Collaborative Realms", "Curated Riches", "Captivating Realities",
@@ -73,21 +71,15 @@ export default function Header() {
   
   const supabase = createClient();
 
-  // CR phrase rotation - 5 seconds, Cindy & Roy every 25th
   useEffect(() => {
     const interval = setInterval(() => {
       setRotationCount(prev => {
         const newCount = prev + 1;
-        if (newCount % 25 === 0) {
-          setShowCindyRoy(true);
-        } else {
-          setShowCindyRoy(false);
-        }
+        setShowCindyRoy(newCount % 25 === 0);
         return newCount;
       });
       setCurrentPhraseIndex((prev) => (prev + 1) % CR_PHRASES.length);
     }, 5000);
-
     return () => clearInterval(interval);
   }, []);
 
@@ -95,22 +87,17 @@ export default function Header() {
     async function checkAuth() {
       try {
         const { data: { user } } = await supabase.auth.getUser();
-        
         if (user) {
           setUser(user);
-          
           const adminEmails = ['royhenderson@craudiovizai.com', 'cindyhenderson@craudiovizai.com'];
           const isAdminEmail = user.email && adminEmails.includes(user.email.toLowerCase());
-          
           const { data: profile } = await supabase
             .from('profiles')
             .select('credits, subscription_tier, is_admin, role')
             .eq('id', user.id)
             .single();
-          
           const isAdminUser = profile?.is_admin || profile?.role === 'admin' || isAdminEmail;
           setIsAdmin(isAdminUser);
-
           if (isAdminUser) {
             setPlan('Admin');
             setCredits(null);
@@ -125,13 +112,8 @@ export default function Header() {
         setLoading(false);
       }
     }
-
     checkAuth();
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(() => {
-      checkAuth();
-    });
-
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(() => checkAuth());
     return () => subscription.unsubscribe();
   }, [supabase]);
 
@@ -144,10 +126,7 @@ export default function Header() {
 
   const getDisplayName = () => {
     if (!user) return '';
-    return user.user_metadata?.full_name || 
-           user.user_metadata?.name || 
-           user.email?.split('@')[0] || 
-           'User';
+    return user.user_metadata?.full_name || user.user_metadata?.name || user.email?.split('@')[0] || 'User';
   };
 
   const isActive = (href: string) => {
@@ -158,39 +137,27 @@ export default function Header() {
   const displayPhrase = showCindyRoy ? "Cindy & Roy" : CR_PHRASES[currentPhraseIndex];
 
   return (
-    <header 
-      className="bg-gradient-to-r from-blue-600 to-green-600"
-      data-testid="site-header"
-    >
+    <header className="bg-gradient-to-r from-blue-600 to-green-600" data-testid="site-header">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-28 md:h-32">
-          
-          {/* Logo + CR = phrase underneath - MUCH BIGGER */}
-          <div className="flex flex-col items-start flex-shrink-0">
-            <Link 
-              href="/" 
-              className="flex items-center"
-              data-testid="header-logo"
-              aria-label="CR AudioViz AI Home"
-            >
-              <Image
-                src="/craudiovizailogo.png"
-                alt="CR AudioViz AI"
-                width={500}
-                height={110}
-                className="h-20 sm:h-24 md:h-[110px] w-auto"
-                priority
-              />
-            </Link>
-            {/* CR = phrase under logo */}
-            <div className="text-white/90 text-sm mt-1 flex items-center gap-1.5">
-              <span className="font-bold">CR</span>
-              <span className="text-white/60">=</span>
-              <span className={`transition-all duration-300 ${showCindyRoy ? 'text-pink-200 font-bold' : ''}`}>
-                {displayPhrase}
-              </span>
-            </div>
-          </div>
+        {/* Row 1: Logo (wide rectangle) + Nav + Auth */}
+        <div className="flex items-center justify-between h-16">
+          {/* Logo - WIDE RECTANGLE: fixed width, constrained height */}
+          <Link 
+            href="/" 
+            data-testid="header-logo" 
+            aria-label="CR AudioViz AI Home"
+            className="flex-shrink-0"
+            style={{ width: '280px', height: '45px' }}
+          >
+            <Image
+              src="/craudiovizailogo.png"
+              alt="CR AudioViz AI"
+              width={280}
+              height={45}
+              className="w-full h-full object-contain object-left"
+              priority
+            />
+          </Link>
 
           {/* Desktop Navigation */}
           <nav className="hidden lg:flex items-center space-x-1" data-testid="desktop-nav">
@@ -198,114 +165,90 @@ export default function Header() {
               <Link
                 key={link.id}
                 href={link.href}
-                className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
                   isActive(link.href)
                     ? 'bg-white/25 text-white'
                     : 'text-white/80 hover:text-white hover:bg-white/15'
                 }`}
-                data-testid={`nav-link-${link.id}`}
               >
                 {link.label}
               </Link>
             ))}
           </nav>
 
-          {/* Auth Section + Plan Details */}
-          <div className="flex flex-col items-end gap-1">
-            <div className="flex items-center gap-3" data-testid="auth-section">
+          {/* Auth Section */}
+          <div className="flex flex-col items-end gap-0">
+            <div className="flex items-center gap-2" data-testid="auth-section">
               {loading ? (
-                <div className="w-20 h-10 bg-white/20 rounded-lg animate-pulse" />
+                <div className="w-16 h-7 bg-white/20 rounded animate-pulse" />
               ) : user ? (
-                <div className="flex items-center gap-2" data-testid="auth-logged-in">
-                  <Link
-                    href="/dashboard"
-                    className="flex items-center gap-2 px-3 py-2 text-sm text-white/90 hover:text-white transition-colors"
-                    data-testid="user-name"
-                  >
+                <div className="flex items-center gap-2">
+                  <Link href="/dashboard" className="flex items-center gap-1.5 px-2 py-1 text-sm text-white/90 hover:text-white">
                     <User className="w-4 h-4" />
                     <span className="hidden sm:inline">{getDisplayName()}</span>
                   </Link>
                   <span className="text-white/40 hidden sm:inline">|</span>
-                  <button
-                    onClick={handleSignOut}
-                    className="flex items-center gap-1 text-sm text-white/70 hover:text-white transition-colors"
-                    data-testid="logout-button"
-                  >
+                  <button onClick={handleSignOut} className="flex items-center gap-1 text-sm text-white/70 hover:text-white">
                     <LogOut className="w-4 h-4" />
                     <span className="hidden sm:inline">Logout</span>
                   </button>
                 </div>
               ) : (
-                <div className="flex items-center gap-2" data-testid="auth-logged-out">
-                  <Link
-                    href="/login"
-                    className="px-4 py-2 text-sm text-white/90 hover:text-white transition-colors"
-                    data-testid="login-link"
-                  >
-                    Log In
-                  </Link>
-                  <Link
-                    href="/signup"
-                    className="px-4 py-2 bg-white text-blue-600 hover:bg-white/90 rounded-lg text-sm font-medium transition-colors"
-                    data-testid="signup-link"
-                  >
-                    Sign Up
-                  </Link>
+                <div className="flex items-center gap-2">
+                  <Link href="/login" className="px-3 py-1 text-sm text-white/90 hover:text-white">Log In</Link>
+                  <Link href="/signup" className="px-3 py-1 bg-white text-blue-600 hover:bg-white/90 rounded-lg text-sm font-medium">Sign Up</Link>
                 </div>
               )}
             </div>
-            
-            {/* Plan details under auth buttons */}
-            <div className="text-xs">
-              {loading ? null : user ? (
-                <div className="flex items-center gap-2 text-white/80">
-                  <span className={`px-2 py-0.5 rounded-full text-xs ${
+            {/* Plan details - compact */}
+            <div className="text-[11px] mt-0.5">
+              {!loading && (user ? (
+                <div className="flex items-center gap-1.5 text-white/80">
+                  <span className={`px-1.5 py-0.5 rounded-full ${
                     isAdmin ? 'bg-yellow-500/30 text-yellow-200' :
-                    plan === 'Pro' ? 'bg-purple-500/30 text-purple-200' :
-                    'bg-white/20'
+                    plan === 'Pro' ? 'bg-purple-500/30 text-purple-200' : 'bg-white/20'
                   }`}>
-                    <Sparkles className="w-3 h-3 inline mr-1" />
+                    <Sparkles className="w-3 h-3 inline mr-0.5" />
                     {isAdmin ? 'Admin' : plan}
                   </span>
-                  <span className="flex items-center gap-1">
+                  <span className="flex items-center gap-0.5">
                     <Zap className="w-3 h-3" />
                     {isAdmin ? 'Unlimited' : `${credits?.toLocaleString()} credits`}
                   </span>
-                  {!isAdmin && (
-                    <Link href="/pricing" className="text-white/60 hover:text-white underline">
-                      {plan === 'Free' ? 'Upgrade' : 'Top Up'}
-                    </Link>
-                  )}
                 </div>
               ) : (
                 <span className="text-white/60">Log in to see your plan details</span>
-              )}
+              ))}
             </div>
           </div>
         </div>
+
+        {/* Row 2: CR = phrase - INSIDE the header bar */}
+        <div className="flex items-center gap-1.5 text-white/90 text-sm pb-2 -mt-1">
+          <span className="font-bold text-cyan-300">CR</span>
+          <span className="text-white/60">=</span>
+          <span className={`transition-all duration-300 ${showCindyRoy ? 'text-pink-300 font-bold' : ''}`}>
+            {displayPhrase}
+          </span>
+        </div>
       </div>
 
-      {/* Compact Mobile Navigation */}
+      {/* Mobile Navigation */}
       <div className="lg:hidden border-t border-white/10">
         <div className="max-w-7xl mx-auto px-4">
-          <div className="flex items-center justify-center gap-1 py-2 overflow-x-auto scrollbar-hide">
+          <div className="flex items-center justify-center gap-1 py-1.5 overflow-x-auto scrollbar-hide">
             {NAV_LINKS.slice(0, 6).map((link) => (
               <Link
                 key={link.id}
                 href={link.href}
                 className={`px-2 py-1 rounded text-xs font-medium whitespace-nowrap transition-colors ${
-                  isActive(link.href)
-                    ? 'bg-white/25 text-white'
-                    : 'text-white/70 hover:text-white hover:bg-white/15'
+                  isActive(link.href) ? 'bg-white/25 text-white' : 'text-white/70 hover:text-white hover:bg-white/15'
                 }`}
               >
                 {link.label}
               </Link>
             ))}
-            <Link
-              href="/about"
-              className="px-2 py-1 rounded text-xs font-medium whitespace-nowrap text-white/70 hover:text-white hover:bg-white/15"
-            >
+            <Link href="/about" className="px-2 py-1 rounded text-xs font-medium whitespace-nowrap text-white/70 hover:text-white hover:bg-white/15">
               More...
             </Link>
           </div>
