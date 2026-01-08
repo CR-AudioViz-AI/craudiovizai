@@ -2,11 +2,10 @@
  * CR AudioViz AI - Root Layout
  * 
  * FEATURES:
- * - ThemeProvider for dark/light mode support
- * - ThemeInitScript to prevent flash on load
  * - Flex layout for sticky footer
+ * - Mobile-first responsive design
  * 
- * @timestamp January 8, 2026 - DARK MODE SUPPORT
+ * @timestamp January 8, 2026
  */
 
 import type { Metadata, Viewport } from "next";
@@ -18,7 +17,6 @@ import Footer from "@/components/layout/Footer";
 import SocialMediaButtons from "@/components/SocialMediaButtons";
 import JavariWidget from '@/components/JavariWidget';
 import { CanonicalLink } from '@/components/seo/canonical-link';
-import { ThemeProvider, ThemeInitScript } from '@/components/theme/ThemeProvider';
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -27,10 +25,7 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 5,
   userScalable: true,
-  themeColor: [
-    { media: '(prefers-color-scheme: light)', color: '#2563eb' },
-    { media: '(prefers-color-scheme: dark)', color: '#1e40af' }
-  ],
+  themeColor: '#2563eb',
 }
 
 export const metadata: Metadata = {
@@ -89,29 +84,26 @@ export default function RootLayout({
   return (
     <html lang="en" className="scroll-smooth">
       <head>
-        <ThemeInitScript />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
       </head>
       <body className={`${inter.className} min-h-screen flex flex-col`}>
-        <ThemeProvider>
-          <CanonicalLink />
-          
-          {/* Sticky header - inside the flex container */}
-          <Header />
-          
-          {/* Main content - flex-1 takes all available space */}
-          <main className="flex-1">
-            {children}
-          </main>
-          
-          {/* Social + Footer - pushed to bottom by flex-1 main */}
-          <SocialMediaButtons />
-          <Footer />
-          
-          {/* Widget overlay */}
-          <JavariWidget />
-        </ThemeProvider>
+        <CanonicalLink />
+        
+        {/* Sticky header - inside the flex container */}
+        <Header />
+        
+        {/* Main content - flex-1 takes all available space */}
+        <main className="flex-1">
+          {children}
+        </main>
+        
+        {/* Social + Footer - pushed to bottom by flex-1 main */}
+        <SocialMediaButtons />
+        <Footer />
+        
+        {/* Widget overlay */}
+        <JavariWidget />
       </body>
     </html>
   );
