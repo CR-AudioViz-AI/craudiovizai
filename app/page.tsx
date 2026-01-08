@@ -80,26 +80,26 @@ export default function LandingPage() {
                   <p className="text-gray-400 text-xs">I learn from every interaction, adapting to your preferences without being told.</p>
                 </div>
                 
-                <div className="bg-gray-800/60 p-3 rounded-lg border border-purple-500/30">
+                <div className="bg-gray-800/60 p-3 rounded-lg border border-cyan-500/30">
                   <div className="flex items-center gap-2 mb-1">
-                    <Shield className="w-4 h-4 text-purple-400" />
-                    <span className="text-purple-400 font-semibold text-sm">Self-Healing Systems</span>
+                    <Shield className="w-4 h-4 text-cyan-400" />
+                    <span className="text-cyan-400 font-semibold text-sm">Self-Healing Systems</span>
                   </div>
                   <p className="text-gray-400 text-xs">I detect and fix errors automatically, keeping your projects on track 24/7.</p>
                 </div>
                 
-                <div className="bg-gray-800/60 p-3 rounded-lg border border-green-500/30">
+                <div className="bg-gray-800/60 p-3 rounded-lg border border-cyan-500/30">
                   <div className="flex items-center gap-2 mb-1">
-                    <Cpu className="w-4 h-4 text-green-400" />
-                    <span className="text-green-400 font-semibold text-sm">Synthetic Intelligence</span>
+                    <Cpu className="w-4 h-4 text-cyan-400" />
+                    <span className="text-cyan-400 font-semibold text-sm">Synthetic Intelligence</span>
                   </div>
                   <p className="text-gray-400 text-xs">I combine GPT-4, Claude, and Gemini to give you the best response for each task.</p>
                 </div>
                 
-                <div className="bg-gray-800/60 p-3 rounded-lg border border-orange-500/30">
+                <div className="bg-gray-800/60 p-3 rounded-lg border border-cyan-500/30">
                   <div className="flex items-center gap-2 mb-1">
-                    <Zap className="w-4 h-4 text-orange-400" />
-                    <span className="text-orange-400 font-semibold text-sm">Real-Time Processing</span>
+                    <Zap className="w-4 h-4 text-cyan-400" />
+                    <span className="text-cyan-400 font-semibold text-sm">Real-Time Processing</span>
                   </div>
                   <p className="text-gray-400 text-xs">Voice, video, and instant generation — I work at the speed of thought.</p>
                 </div>
@@ -131,7 +131,7 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-10">
             <h2 className="text-3xl md:text-4xl font-bold text-white mb-3">
-              What We're <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-500">Building</span>
+              What We're <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-cyan-500">Building</span>
             </h2>
             <p className="text-gray-400 text-lg max-w-3xl mx-auto">
               A comprehensive suite of AI-powered applications for every aspect of your personal and professional life
@@ -152,7 +152,7 @@ export default function LandingPage() {
                 </div>
                 <div>
                   <h3 className="text-white font-bold">Integrated Business Apps</h3>
-                  <span className="text-green-400 text-xs">Available Now</span>
+                  <span className="text-cyan-400 text-xs">Available Now</span>
                 </div>
               </div>
               <ul className="text-gray-400 text-sm space-y-1">
@@ -167,16 +167,16 @@ export default function LandingPage() {
 
             {/* Creative Tools */}
             <motion.div 
-              className="bg-gray-800/70 p-6 rounded-2xl border border-pink-500/30 hover:border-pink-500/60 transition-all"
+              className="bg-gray-800/70 p-6 rounded-2xl border border-cyan-500/30 hover:border-cyan-500/60 transition-all"
               whileHover={{ y: -5 }}
             >
               <div className="flex items-center gap-3 mb-4">
-                <div className="w-12 h-12 bg-pink-500/20 rounded-xl flex items-center justify-center">
-                  <Palette className="w-6 h-6 text-pink-400" />
+                <div className="w-12 h-12 bg-cyan-500/20 rounded-xl flex items-center justify-center">
+                  <Palette className="w-6 h-6 text-cyan-400" />
                 </div>
                 <div>
                   <h3 className="text-white font-bold">Creative & Design Tools</h3>
-                  <span className="text-green-400 text-xs">Available Now</span>
+                  <span className="text-cyan-400 text-xs">Available Now</span>
                 </div>
               </div>
               <ul className="text-gray-400 text-sm space-y-1">
@@ -200,7 +200,7 @@ export default function LandingPage() {
                 </div>
                 <div>
                   <h3 className="text-white font-bold">Collectors & Hobby Apps</h3>
-                  <span className="text-yellow-400 text-xs">Coming Soon</span>
+                  <span className="text-cyan-400 text-xs">Coming Soon</span>
                 </div>
               </div>
               <ul className="text-gray-400 text-sm space-y-1">
@@ -224,7 +224,7 @@ export default function LandingPage() {
                 </div>
                 <div>
                   <h3 className="text-white font-bold">Travel Related Apps</h3>
-                  <span className="text-yellow-400 text-xs">Coming Soon</span>
+                  <span className="text-cyan-400 text-xs">Coming Soon</span>
                 </div>
               </div>
               <ul className="text-gray-400 text-sm space-y-1">
@@ -239,16 +239,16 @@ export default function LandingPage() {
 
             {/* Real Estate Apps */}
             <motion.div 
-              className="bg-gray-800/70 p-6 rounded-2xl border border-green-500/30 hover:border-green-500/60 transition-all"
+              className="bg-gray-800/70 p-6 rounded-2xl border border-cyan-500/30 hover:border-cyan-500/60 transition-all"
               whileHover={{ y: -5 }}
             >
               <div className="flex items-center gap-3 mb-4">
-                <div className="w-12 h-12 bg-green-500/20 rounded-xl flex items-center justify-center">
-                  <Home className="w-6 h-6 text-green-400" />
+                <div className="w-12 h-12 bg-cyan-500/20 rounded-xl flex items-center justify-center">
+                  <Home className="w-6 h-6 text-cyan-400" />
                 </div>
                 <div>
                   <h3 className="text-white font-bold">Real Estate Apps</h3>
-                  <span className="text-yellow-400 text-xs">Coming Soon</span>
+                  <span className="text-cyan-400 text-xs">Coming Soon</span>
                 </div>
               </div>
               <ul className="text-gray-400 text-sm space-y-1">
@@ -263,16 +263,16 @@ export default function LandingPage() {
 
             {/* Content Creation */}
             <motion.div 
-              className="bg-gray-800/70 p-6 rounded-2xl border border-purple-500/30 hover:border-purple-500/60 transition-all"
+              className="bg-gray-800/70 p-6 rounded-2xl border border-cyan-500/30 hover:border-cyan-500/60 transition-all"
               whileHover={{ y: -5 }}
             >
               <div className="flex items-center gap-3 mb-4">
-                <div className="w-12 h-12 bg-purple-500/20 rounded-xl flex items-center justify-center">
-                  <FileText className="w-6 h-6 text-purple-400" />
+                <div className="w-12 h-12 bg-cyan-500/20 rounded-xl flex items-center justify-center">
+                  <FileText className="w-6 h-6 text-cyan-400" />
                 </div>
                 <div>
                   <h3 className="text-white font-bold">Content Creation</h3>
-                  <span className="text-green-400 text-xs">Available Now</span>
+                  <span className="text-cyan-400 text-xs">Available Now</span>
                 </div>
               </div>
               <ul className="text-gray-400 text-sm space-y-1">
@@ -296,7 +296,7 @@ export default function LandingPage() {
                 </div>
                 <div>
                   <h3 className="text-white font-bold">Media & Entertainment</h3>
-                  <span className="text-yellow-400 text-xs">Coming Soon</span>
+                  <span className="text-cyan-400 text-xs">Coming Soon</span>
                 </div>
               </div>
               <ul className="text-gray-400 text-sm space-y-1">
@@ -320,7 +320,7 @@ export default function LandingPage() {
                 </div>
                 <div>
                   <h3 className="text-white font-bold">Games & Entertainment</h3>
-                  <span className="text-green-400 text-xs">Available Now</span>
+                  <span className="text-cyan-400 text-xs">Available Now</span>
                 </div>
               </div>
               <ul className="text-gray-400 text-sm space-y-1">
@@ -344,7 +344,7 @@ export default function LandingPage() {
                 </div>
                 <div>
                   <h3 className="text-white font-bold">Developer Tools</h3>
-                  <span className="text-green-400 text-xs">Available Now</span>
+                  <span className="text-cyan-400 text-xs">Available Now</span>
                 </div>
               </div>
               <ul className="text-gray-400 text-sm space-y-1">
@@ -362,12 +362,12 @@ export default function LandingPage() {
           <div className="grid md:grid-cols-2 gap-6">
             {/* Enhancement Request */}
             <motion.div 
-              className="bg-gradient-to-r from-yellow-900/30 to-orange-900/30 p-6 rounded-2xl border border-yellow-500/30"
+              className="bg-gradient-to-r from-slate-800/30 to-slate-800/30 p-6 rounded-2xl border border-cyan-500/30"
               whileHover={{ scale: 1.02 }}
             >
               <div className="flex items-start gap-4">
-                <div className="w-14 h-14 bg-yellow-500/20 rounded-xl flex items-center justify-center flex-shrink-0">
-                  <Lightbulb className="w-7 h-7 text-yellow-400" />
+                <div className="w-14 h-14 bg-cyan-500/20 rounded-xl flex items-center justify-center flex-shrink-0">
+                  <Lightbulb className="w-7 h-7 text-cyan-400" />
                 </div>
                 <div>
                   <h3 className="text-white font-bold text-xl mb-2">Need Something We Don't Have?</h3>
@@ -377,7 +377,7 @@ export default function LandingPage() {
                   </p>
                   <Link 
                     href="/feature-request"
-                    className="inline-flex items-center gap-2 px-4 py-2 bg-yellow-500/20 text-yellow-400 rounded-lg hover:bg-yellow-500/30 transition-all text-sm font-medium"
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-cyan-500/20 text-cyan-400 rounded-lg hover:bg-cyan-500/30 transition-all text-sm font-medium"
                   >
                     <Vote className="w-4 h-4" />
                     Submit Enhancement Request
@@ -416,7 +416,7 @@ export default function LandingPage() {
           {/* Hosting Callout */}
           <div className="mt-8 text-center">
             <div className="inline-flex items-center gap-3 bg-gray-800/50 px-6 py-3 rounded-full border border-gray-700">
-              <Server className="w-5 h-5 text-green-400" />
+              <Server className="w-5 h-5 text-cyan-400" />
               <span className="text-gray-300">
                 <strong className="text-white">Full Hosting Available</strong> — Deploy your apps, websites, and tools directly on our platform
               </span>
@@ -431,7 +431,7 @@ export default function LandingPage() {
         <section className="py-10 px-4">
           <div className="max-w-6xl mx-auto">
             <div className="text-center mb-6">
-              <span className="inline-block px-4 py-1 bg-purple-500/20 text-purple-400 text-sm font-medium rounded-full mb-3">
+              <span className="inline-block px-4 py-1 bg-cyan-500/20 text-cyan-400 text-sm font-medium rounded-full mb-3">
                 COMING SOON
               </span>
               <h2 className="text-2xl md:text-3xl font-bold text-white">
@@ -442,7 +442,7 @@ export default function LandingPage() {
               {comingSoonProjects.map((project, idx) => (
                 <div 
                   key={idx}
-                  className="bg-gradient-to-b from-purple-900/30 to-gray-900/50 p-6 rounded-xl border border-purple-500/30 text-center"
+                  className="bg-gradient-to-b from-slate-900/30 to-gray-900/50 p-6 rounded-xl border border-cyan-500/30 text-center"
                 >
                   <span className="text-3xl mb-3 block">{project.icon || '🚀'}</span>
                   <h3 className="text-white font-semibold mb-2">{project.name}</h3>
@@ -457,19 +457,19 @@ export default function LandingPage() {
       {/* JavariVerse Preview */}
       <section className="py-10 px-4">
         <div className="max-w-4xl mx-auto">
-          <div className="bg-gradient-to-r from-purple-900/50 to-blue-900/50 rounded-2xl p-8 border border-purple-500/30 text-center">
-            <span className="inline-block px-4 py-1 bg-purple-500/20 text-purple-400 text-sm font-medium rounded-full mb-4">
+          <div className="bg-gradient-to-r from-slate-900/50 to-blue-900/50 rounded-2xl p-8 border border-cyan-500/30 text-center">
+            <span className="inline-block px-4 py-1 bg-cyan-500/20 text-cyan-400 text-sm font-medium rounded-full mb-4">
               COMING SOON
             </span>
             <h2 className="text-2xl md:text-3xl font-bold text-white mb-3">
-              Enter the <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-cyan-400">JavariVerse</span>
+              Enter the <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-cyan-400">JavariVerse</span>
             </h2>
             <p className="text-gray-300 max-w-2xl mx-auto mb-6">
               A virtual world where creativity meets AI. Build, explore, and connect with others in our immersive 3D environment.
             </p>
             <Link 
               href="/javari-verse"
-              className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-500 to-blue-500 text-white font-medium rounded-xl hover:from-purple-600 hover:to-blue-600 transition-all"
+              className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-cyan-500 to-blue-500 text-white font-medium rounded-xl hover:from-cyan-600 hover:to-blue-600 transition-all"
             >
               Learn More <ArrowRight className="w-4 h-4" />
             </Link>
