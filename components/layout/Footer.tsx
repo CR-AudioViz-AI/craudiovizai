@@ -1,16 +1,14 @@
 'use client';
 
 /**
- * CR AudioViz AI - FOOTER COMPONENT (FINAL LOCK)
+ * CR AudioViz AI - FOOTER COMPONENT (COMPACT + ACCESSIBLE)
  * 
- * - Deep navy/near-black background (solid, no gradients)
- * - Increased vertical padding
- * - Breathable spacing between sections
- * - White text, teal accents only
- * - NO rainbow, purple, green
+ * FIX: Added "site-footer" class for scoped CSS targeting
+ * - Compact visual appearance
+ * - 44px tap targets via ::after pseudo-elements (handled in CSS)
+ * - No inflated line heights
  * 
- * DO NOT MODIFY AFTER LOCK
- * @timestamp January 8, 2026 - FINAL
+ * @timestamp January 8, 2026 - SPACING FIX
  */
 
 import Link from 'next/link';
@@ -45,77 +43,80 @@ export function Footer() {
   const currentYear = new Date().getFullYear();
 
   return (
-    <footer className="bg-slate-900" data-testid="site-footer">
-      {/* Main Footer - INCREASED PADDING for breathing room */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 md:py-16">
-        {/* Grid with increased gaps */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-8 md:gap-12">
+    <footer className="site-footer bg-slate-900" data-testid="site-footer">
+      {/* Main Footer */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 md:py-12">
+        {/* Grid */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-8 md:gap-10">
           
           {/* Brand Column */}
           <div className="col-span-2 md:col-span-1">
-            <Link href="/" className="inline-block mb-3">
+            <Link href="/" className="inline-block mb-2">
               <span className="text-white font-bold text-xl">CR AudioViz AI</span>
             </Link>
             <p className="text-cyan-400 text-sm font-medium">Your Story. Our Design.</p>
-            <p className="text-slate-400 text-sm mt-2">AI-powered creative tools for the modern creator.</p>
+            <p className="text-slate-400 text-sm mt-1.5">AI-powered creative tools for the modern creator.</p>
           </div>
 
           {/* Navigation */}
           <div>
-            <h3 className="text-white font-semibold text-base mb-4">Navigation</h3>
-            <div className="space-y-2.5">
+            <h3 className="text-white font-semibold text-sm mb-3">Navigation</h3>
+            <ul className="space-y-1">
               {NAV_LINKS.map((link) => (
-                <Link 
-                  key={link.href} 
-                  href={link.href} 
-                  className="block text-slate-400 hover:text-cyan-400 text-sm transition-colors"
-                >
-                  {link.label}
-                </Link>
+                <li key={link.href}>
+                  <Link 
+                    href={link.href} 
+                    className="footer-link text-slate-400 hover:text-cyan-400 text-sm transition-colors"
+                  >
+                    {link.label}
+                  </Link>
+                </li>
               ))}
-            </div>
+            </ul>
           </div>
 
           {/* Support */}
           <div>
-            <h3 className="text-white font-semibold text-base mb-4">Support</h3>
-            <div className="space-y-2.5">
+            <h3 className="text-white font-semibold text-sm mb-3">Support</h3>
+            <ul className="space-y-1">
               {SUPPORT_LINKS.map((link) => (
-                <Link 
-                  key={link.href} 
-                  href={link.href} 
-                  className="block text-slate-400 hover:text-cyan-400 text-sm transition-colors"
-                >
-                  {link.label}
-                </Link>
+                <li key={link.href}>
+                  <Link 
+                    href={link.href} 
+                    className="footer-link text-slate-400 hover:text-cyan-400 text-sm transition-colors"
+                  >
+                    {link.label}
+                  </Link>
+                </li>
               ))}
-            </div>
+            </ul>
           </div>
 
           {/* Legal */}
           <div>
-            <h3 className="text-white font-semibold text-base mb-4">Legal</h3>
-            <div className="space-y-2.5">
+            <h3 className="text-white font-semibold text-sm mb-3">Legal</h3>
+            <ul className="space-y-1">
               {LEGAL_LINKS.map((link) => (
-                <Link 
-                  key={link.href} 
-                  href={link.href} 
-                  className="block text-slate-400 hover:text-cyan-400 text-sm transition-colors"
-                >
-                  {link.label}
-                </Link>
+                <li key={link.href}>
+                  <Link 
+                    href={link.href} 
+                    className="footer-link text-slate-400 hover:text-cyan-400 text-sm transition-colors"
+                  >
+                    {link.label}
+                  </Link>
+                </li>
               ))}
-            </div>
+            </ul>
           </div>
         </div>
       </div>
 
-      {/* Bottom Bar - Slightly darker for separation */}
+      {/* Bottom Bar */}
       <div className="border-t border-slate-800">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-2 text-center sm:text-left">
-            <p className="text-slate-400 text-sm">© {currentYear} CR AudioViz AI, LLC. All rights reserved.</p>
-            <p className="text-slate-500 text-sm">Made with ❤️ in Fort Myers, Florida</p>
+            <p className="text-slate-400 text-xs">© {currentYear} CR AudioViz AI, LLC. All rights reserved.</p>
+            <p className="text-slate-500 text-xs">Made with ❤️ in Fort Myers, Florida</p>
           </div>
         </div>
       </div>
