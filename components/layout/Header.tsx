@@ -3,10 +3,11 @@
 /**
  * CR AudioViz AI - HEADER COMPONENT
  * 
- * FIXED HEIGHT header with properly sized logo
+ * LIGHT BACKGROUND for logo legibility (per founder directive)
  * - Header: 80px mobile / 92px desktop (LOCKED)
- * - Logo: width-emphasized wrapper, proper height scaling
- * - Logo image cropped to 274x72 (no transparent padding)
+ * - Logo: full-color, crisp, visually dominant
+ * - Light gradient background for maximum logo contrast
+ * - Cindy & Roy = RED letters (not pink)
  * 
  * @timestamp January 8, 2026
  */
@@ -138,12 +139,12 @@ export default function Header() {
   const displayPhrase = showCindyRoy ? "Cindy & Roy" : CR_PHRASES[currentPhraseIndex];
 
   return (
-    <header className="bg-gradient-to-r from-blue-600 to-green-600" data-testid="site-header">
+    <header className="bg-gradient-to-r from-sky-100 to-teal-100 border-b border-gray-200" data-testid="site-header">
       {/* MAIN NAV BAR - FIXED HEIGHT: 80px mobile / 92px desktop */}
       <div className="h-[80px] md:h-[92px] flex items-center">
         <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between">
           
-          {/* Logo wrapper - WIDTH EMPHASIZED */}
+          {/* Logo wrapper - WIDTH EMPHASIZED, full-color logo */}
           <Link 
             href="/" 
             data-testid="header-logo" 
@@ -162,7 +163,7 @@ export default function Header() {
 
           {/* Right side: Nav + Auth */}
           <div className="flex flex-col items-end gap-1">
-            {/* Desktop Navigation */}
+            {/* Desktop Navigation - Navy text on light background */}
             <nav className="hidden lg:flex items-center space-x-1" data-testid="desktop-nav">
               {NAV_LINKS.map((link) => (
                 <Link
@@ -170,8 +171,8 @@ export default function Header() {
                   href={link.href}
                   className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
                     isActive(link.href)
-                      ? 'bg-white/25 text-white'
-                      : 'text-white/80 hover:text-white hover:bg-white/15'
+                      ? 'bg-teal-500/20 text-teal-700 border-b-2 border-teal-500'
+                      : 'text-slate-700 hover:text-teal-600 hover:bg-teal-500/10'
                   }`}
                 >
                   {link.label}
@@ -179,21 +180,21 @@ export default function Header() {
               ))}
             </nav>
 
-            {/* Auth Section */}
+            {/* Auth Section - Navy/charcoal text */}
             <div className="flex items-center gap-2" data-testid="auth-section">
               {loading ? (
-                <div className="w-16 h-7 bg-white/20 rounded animate-pulse" />
+                <div className="w-16 h-7 bg-slate-200 rounded animate-pulse" />
               ) : user ? (
                 <div className="flex items-center gap-2">
-                  <Link href="/dashboard" className="flex items-center gap-1.5 px-2 py-1 text-sm text-white/90 hover:text-white">
+                  <Link href="/dashboard" className="flex items-center gap-1.5 px-2 py-1 text-sm text-slate-700 hover:text-teal-600">
                     <User className="w-4 h-4" />
                     <span className="hidden sm:inline">{getDisplayName()}</span>
                   </Link>
-                  <span className="text-white/40 hidden sm:inline">|</span>
-                  <div className="hidden sm:flex items-center gap-1.5 text-white/80 text-[11px]">
+                  <span className="text-slate-300 hidden sm:inline">|</span>
+                  <div className="hidden sm:flex items-center gap-1.5 text-slate-600 text-[11px]">
                     <span className={`px-1.5 py-0.5 rounded-full ${
-                      isAdmin ? 'bg-yellow-500/30 text-yellow-200' :
-                      plan === 'Pro' ? 'bg-purple-500/30 text-purple-200' : 'bg-white/20'
+                      isAdmin ? 'bg-yellow-100 text-yellow-700' :
+                      plan === 'Pro' ? 'bg-purple-100 text-purple-700' : 'bg-slate-100 text-slate-600'
                     }`}>
                       <Sparkles className="w-3 h-3 inline mr-0.5" />
                       {isAdmin ? 'Admin' : plan}
@@ -203,17 +204,17 @@ export default function Header() {
                       {isAdmin ? 'Unlimited' : `${credits?.toLocaleString()} credits`}
                     </span>
                   </div>
-                  <span className="text-white/40 hidden sm:inline">|</span>
-                  <button onClick={handleSignOut} className="flex items-center gap-1 text-sm text-white/70 hover:text-white">
+                  <span className="text-slate-300 hidden sm:inline">|</span>
+                  <button onClick={handleSignOut} className="flex items-center gap-1 text-sm text-slate-500 hover:text-teal-600">
                     <LogOut className="w-4 h-4" />
                     <span className="hidden sm:inline">Logout</span>
                   </button>
                 </div>
               ) : (
                 <div className="flex items-center gap-2">
-                  <span className="text-white/60 text-[11px] hidden sm:inline">Log in to see your plan</span>
-                  <Link href="/login" className="px-3 py-1 text-sm text-white/90 hover:text-white">Log In</Link>
-                  <Link href="/signup" className="px-3 py-1.5 bg-white text-blue-600 hover:bg-white/90 rounded-lg text-sm font-medium">Sign Up</Link>
+                  <span className="text-slate-500 text-[11px] hidden sm:inline">Log in to see your plan</span>
+                  <Link href="/login" className="px-3 py-1 text-sm text-slate-700 hover:text-teal-600">Log In</Link>
+                  <Link href="/signup" className="px-3 py-1.5 bg-teal-500 text-white hover:bg-teal-600 rounded-lg text-sm font-medium">Sign Up</Link>
                 </div>
               )}
             </div>
@@ -221,19 +222,20 @@ export default function Header() {
         </div>
       </div>
 
-      {/* CR = phrase bar */}
-      <div className="flex justify-center py-1.5 border-t border-white/10">
-        <div className="flex items-center gap-2 text-white text-sm">
-          <span className="font-bold text-cyan-300">CR</span>
-          <span className="text-white/60">=</span>
-          <span className={`transition-all duration-300 ${showCindyRoy ? 'text-pink-300 font-bold' : ''}`}>
+      {/* CR = phrase bar - light teal background */}
+      <div className="flex justify-center py-1.5 bg-teal-50 border-t border-teal-100">
+        <div className="flex items-center gap-2 text-slate-700 text-sm">
+          <span className="font-bold text-teal-600">CR</span>
+          <span className="text-slate-400">=</span>
+          {/* Cindy & Roy in RED (not pink) */}
+          <span className={`transition-all duration-300 ${showCindyRoy ? 'text-red-500 font-bold' : ''}`}>
             {displayPhrase}
           </span>
         </div>
       </div>
 
-      {/* Mobile Navigation */}
-      <div className="lg:hidden border-t border-white/10">
+      {/* Mobile Navigation - navy text on light */}
+      <div className="lg:hidden border-t border-gray-200 bg-white/50">
         <div className="max-w-7xl mx-auto px-4">
           <div className="flex items-center justify-center gap-1 py-1.5 overflow-x-auto scrollbar-hide">
             {NAV_LINKS.slice(0, 6).map((link) => (
@@ -241,13 +243,13 @@ export default function Header() {
                 key={link.id}
                 href={link.href}
                 className={`px-2 py-1 rounded text-xs font-medium whitespace-nowrap transition-colors ${
-                  isActive(link.href) ? 'bg-white/25 text-white' : 'text-white/70 hover:text-white hover:bg-white/15'
+                  isActive(link.href) ? 'bg-teal-500/20 text-teal-700' : 'text-slate-600 hover:text-teal-600 hover:bg-teal-500/10'
                 }`}
               >
                 {link.label}
               </Link>
             ))}
-            <Link href="/about" className="px-2 py-1 rounded text-xs font-medium whitespace-nowrap text-white/70 hover:text-white hover:bg-white/15">
+            <Link href="/about" className="px-2 py-1 rounded text-xs font-medium whitespace-nowrap text-slate-500 hover:text-teal-600 hover:bg-teal-500/10">
               More...
             </Link>
           </div>
