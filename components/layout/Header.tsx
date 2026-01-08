@@ -3,10 +3,10 @@
 /**
  * CR AudioViz AI - HEADER COMPONENT
  * 
- * Layout:
- * - Top row: Logo (with CR = under it) | Navigation | Auth (with plan details under it)
- * - Logo is BIGGER, rectangle shape
- * - CR = rotates through 100+ phrases, Cindy & Roy every 25th
+ * - BIGGER logo (readable)
+ * - CR = under logo, rotating phrases, Cindy & Roy every 25th
+ * - No "Admin" next to name - only in plan bar
+ * - Credits show exact number or "Unlimited" for admins
  * 
  * @timestamp January 8, 2026
  */
@@ -16,7 +16,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
-import { User, Shield, LogOut, Sparkles, Zap } from 'lucide-react';
+import { User, LogOut, Sparkles, Zap } from 'lucide-react';
 
 // Navigation links
 const NAV_LINKS = [
@@ -30,7 +30,7 @@ const NAV_LINKS = [
   { id: 'contact', href: '/contact', label: 'Contact' },
 ];
 
-// 100+ unique CR phrases - no repeats for a long time
+// 100+ unique CR phrases
 const CR_PHRASES = [
   "Creative Results", "Customer Rewards", "Cutting-edge Resources", "Community Reach",
   "Content Revolution", "Collaborative Realms", "Curated Riches", "Captivating Realities",
@@ -113,8 +113,8 @@ export default function Header() {
           setIsAdmin(isAdminUser);
 
           if (isAdminUser) {
-            setCredits(Infinity);
             setPlan('Admin');
+            setCredits(null); // Will show "Unlimited"
           } else if (profile) {
             setCredits(profile.credits ?? 0);
             setPlan(profile.subscription_tier || 'Free');
@@ -164,9 +164,9 @@ export default function Header() {
       data-testid="site-header"
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-20 md:h-24">
+        <div className="flex items-center justify-between h-24 md:h-28">
           
-          {/* Logo + CR = phrase underneath */}
+          {/* Logo + CR = phrase underneath - BIGGER */}
           <div className="flex flex-col items-start flex-shrink-0">
             <Link 
               href="/" 
@@ -177,9 +177,9 @@ export default function Header() {
               <Image
                 src="/craudiovizailogo.png"
                 alt="CR AudioViz AI"
-                width={320}
-                height={70}
-                className="h-14 sm:h-16 md:h-[70px] w-auto"
+                width={400}
+                height={90}
+                className="h-16 sm:h-20 md:h-[90px] w-auto"
                 priority
               />
             </Link>
@@ -218,16 +218,7 @@ export default function Header() {
                 <div className="w-20 h-10 bg-white/20 rounded-lg animate-pulse" />
               ) : user ? (
                 <div className="flex items-center gap-2" data-testid="auth-logged-in">
-                  {isAdmin && (
-                    <Link
-                      href="/admin"
-                      className="flex items-center gap-1 px-3 py-2 text-sm text-yellow-200 hover:text-yellow-100 transition-colors"
-                      data-testid="admin-link"
-                    >
-                      <Shield className="w-4 h-4" />
-                      <span className="hidden sm:inline">Admin</span>
-                    </Link>
-                  )}
+                  {/* User name - NO Admin label here */}
                   <Link
                     href="/dashboard"
                     className="flex items-center gap-2 px-3 py-2 text-sm text-white/90 hover:text-white transition-colors"
@@ -280,7 +271,7 @@ export default function Header() {
                   </span>
                   <span className="flex items-center gap-1">
                     <Zap className="w-3 h-3" />
-                    {isAdmin ? '∞' : credits?.toLocaleString()} credits
+                    {isAdmin ? 'Unlimited' : `${credits?.toLocaleString()} credits`}
                   </span>
                   {!isAdmin && (
                     <Link href="/pricing" className="text-white/60 hover:text-white underline">
