@@ -1,112 +1,76 @@
 'use client';
 
 /**
- * CR AudioViz AI - LOCKED HEADER COMPONENT
+ * CR AudioViz AI - HEADER COMPONENT
  * 
- * ⚠️ UI CONTRACT LOCK - PHASE 2.9
- * This is the SINGLE SOURCE OF TRUTH for all page headers.
- * DO NOT create per-page header variants.
+ * Gradient header matching TopBar (blue-to-green)
+ * - Logo on left
+ * - Navigation links
+ * - Auth section
+ * - No hamburger menu (removed non-functional)
  * 
- * Requirements:
- * - Logo: Properly sized for readability (horizontal logo with text)
- * - Nav: Home, Apps, Games, Javari AI, JavariVerse, Pricing, About, Contact
- * - Auth: "Log in" when logged out, "Name | Logout" when logged in
- * 
- * @timestamp January 7, 2026 - 5:58 PM EST
- * @locked PHASE 2.9 UI CONTRACT
- * @fix Logo properly sized - mobile: 120px wide, desktop: 160px wide
+ * @timestamp January 8, 2026
  */
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { usePathname, useRouter } from 'next/navigation';
-import { Button } from '@/components/ui/button';
-import { Menu, X, User, Shield, LogOut, ChevronRight } from 'lucide-react';
+import { usePathname } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
+import { User, Shield, LogOut } from 'lucide-react';
 
-// ============================================================================
-// LOCKED NAVIGATION - DO NOT MODIFY ORDER
-// ============================================================================
+// Navigation links - exact order per UI contract
 const NAV_LINKS = [
-  { id: 'home', label: 'Home', href: '/' },
-  { id: 'apps', label: 'Apps', href: '/apps' },
-  { id: 'games', label: 'Games', href: '/games' },
-  { id: 'javari-ai', label: 'Javari AI', href: '/javari' },
-  { id: 'javari-verse', label: 'JavariVerse', href: '/javari-verse' },
-  { id: 'pricing', label: 'Pricing', href: '/pricing' },
-  { id: 'about', label: 'About', href: '/about' },
-  { id: 'contact', label: 'Contact', href: '/contact' },
+  { id: 'home', href: '/', label: 'Home' },
+  { id: 'apps', href: '/apps', label: 'Apps' },
+  { id: 'games', href: '/games', label: 'Games' },
+  { id: 'javari-ai', href: '/javari', label: 'Javari AI' },
+  { id: 'javari-verse', href: '/javari-verse', label: 'JavariVerse' },
+  { id: 'pricing', href: '/pricing', label: 'Pricing' },
+  { id: 'about', href: '/about', label: 'About' },
+  { id: 'contact', href: '/contact', label: 'Contact' },
 ];
 
-interface UserProfile {
-  full_name?: string;
-  display_name?: string;
-  role?: string;
-  is_admin?: boolean;
-}
-
 export default function Header() {
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const pathname = usePathname();
   const [user, setUser] = useState<any>(null);
-  const [profile, setProfile] = useState<UserProfile | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
-  const pathname = usePathname();
-  const router = useRouter();
+  
   const supabase = createClient();
 
-  // Prevent body scroll when mobile menu is open
   useEffect(() => {
-    if (mobileMenuOpen) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = '';
-    }
-    return () => {
-      document.body.style.overflow = '';
-    };
-  }, [mobileMenuOpen]);
-
-  // Close mobile menu on route change
-  useEffect(() => {
-    setMobileMenuOpen(false);
-  }, [pathname]);
-
-  // Check user authentication
-  useEffect(() => {
-    const checkUser = async () => {
+    async function checkAuth() {
       try {
         const { data: { user } } = await supabase.auth.getUser();
-        setUser(user);
         
         if (user) {
-          const { data: profileData } = await supabase
+          setUser(user);
+          
+          // Check if admin
+          const { data: profile } = await supabase
             .from('profiles')
-            .select('full_name, display_name, role, is_admin')
+            .select('is_admin, role')
             .eq('id', user.id)
             .single();
           
-          if (profileData) {
-            setProfile(profileData);
-            setIsAdmin(profileData.role === 'admin' || profileData.is_admin === true);
-          }
+          const adminEmails = ['royhenderson@craudiovizai.com', 'cindyhenderson@craudiovizai.com'];
+          const isAdminUser = profile?.is_admin || 
+                            profile?.role === 'admin' || 
+                            (user.email && adminEmails.includes(user.email.toLowerCase()));
+          setIsAdmin(isAdminUser);
         }
       } catch (error) {
-        console.error('Error checking user:', error);
+        console.error('Auth check error:', error);
       } finally {
         setLoading(false);
       }
-    };
+    }
 
-    checkUser();
+    checkAuth();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      setUser(session?.user ?? null);
-      if (!session?.user) {
-        setProfile(null);
-        setIsAdmin(false);
-      }
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(() => {
+      checkAuth();
     });
 
     return () => subscription.unsubscribe();
@@ -114,56 +78,50 @@ export default function Header() {
 
   const handleSignOut = useCallback(async () => {
     await supabase.auth.signOut();
-    setMobileMenuOpen(false);
-    router.push('/');
-  }, [supabase, router]);
+    setUser(null);
+    setIsAdmin(false);
+    window.location.href = '/';
+  }, [supabase]);
 
-  // Get display name for logged-in user
-  const getDisplayName = (): string => {
-    if (profile?.display_name) return profile.display_name;
-    if (profile?.full_name) return profile.full_name.split(' ')[0];
-    if (user?.email) return user.email.split('@')[0];
-    return 'Account';
+  const getDisplayName = () => {
+    if (!user) return '';
+    return user.user_metadata?.full_name || 
+           user.user_metadata?.name || 
+           user.email?.split('@')[0] || 
+           'User';
   };
 
-  const isActive = (href: string): boolean => {
+  const isActive = (href: string) => {
     if (href === '/') return pathname === '/';
     return pathname.startsWith(href);
   };
 
   return (
     <header 
-      className="sticky top-0 z-50 bg-sky-100 backdrop-blur-md border-b border-sky-300 shadow-sm"
+      className="bg-gradient-to-r from-blue-600 to-green-600 border-b border-white/20"
       data-testid="site-header"
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16 md:h-20">
           
-          {/* ============================================================
-              LOGO - CR AudioViz AI horizontal logo
-              Properly sized for readability
-              Mobile: 120px wide, Desktop: 160px wide
-              ============================================================ */}
+          {/* Logo */}
           <Link 
             href="/" 
             className="flex items-center flex-shrink-0"
             data-testid="header-logo"
             aria-label="CR AudioViz AI Home"
           >
-            {/* Logo with drop-shadow for visibility on dark background */}
             <Image
               src="/craudiovizailogo.png"
               alt="CR AudioViz AI"
               width={160}
               height={160}
-              className="w-[100px] h-auto sm:w-[120px] md:w-[140px] lg:w-[160px] "
+              className="w-[100px] h-auto sm:w-[120px] md:w-[140px] lg:w-[160px]"
               priority
             />
           </Link>
 
-          {/* ============================================================
-              DESKTOP NAVIGATION - Exact order per UI contract
-              ============================================================ */}
+          {/* Desktop Navigation */}
           <nav className="hidden lg:flex items-center space-x-1" data-testid="desktop-nav">
             {NAV_LINKS.map((link) => (
               <Link
@@ -171,8 +129,8 @@ export default function Header() {
                 href={link.href}
                 className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                   isActive(link.href)
-                    ? 'bg-cyan-600 text-white'
-                    : 'text-gray-700 hover:text-gray-900 hover:bg-sky-200/50'
+                    ? 'bg-white/25 text-white'
+                    : 'text-white/80 hover:text-white hover:bg-white/15'
                 }`}
                 data-testid={`nav-link-${link.id}`}
               >
@@ -181,176 +139,90 @@ export default function Header() {
             ))}
           </nav>
 
-          {/* ============================================================
-              AUTH SECTION
-              Logged out: "Log in" button
-              Logged in: "Name | Logout"
-              ============================================================ */}
+          {/* Auth Section */}
           <div className="flex items-center gap-2 md:gap-4">
-            {/* Desktop Auth */}
-            <div className="hidden md:flex items-center gap-3" data-testid="auth-section">
+            <div className="flex items-center gap-3" data-testid="auth-section">
               {loading ? (
-                <div className="w-20 h-10 bg-sky-200 rounded-lg animate-pulse" />
+                <div className="w-20 h-10 bg-white/20 rounded-lg animate-pulse" />
               ) : user ? (
-                // Logged In: Name | Logout
                 <div className="flex items-center gap-2" data-testid="auth-logged-in">
                   {isAdmin && (
                     <Link
                       href="/admin"
-                      className="flex items-center gap-1 px-3 py-2 text-sm text-amber-600 hover:text-amber-700 transition-colors"
+                      className="flex items-center gap-1 px-3 py-2 text-sm text-yellow-200 hover:text-yellow-100 transition-colors"
                       data-testid="admin-link"
                     >
                       <Shield className="w-4 h-4" />
-                      Admin
+                      <span className="hidden sm:inline">Admin</span>
                     </Link>
                   )}
                   <Link
                     href="/dashboard"
-                    className="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:text-gray-900 transition-colors"
+                    className="flex items-center gap-2 px-3 py-2 text-sm text-white/90 hover:text-white transition-colors"
                     data-testid="user-name"
                   >
                     <User className="w-4 h-4" />
-                    {getDisplayName()}
+                    <span className="hidden sm:inline">{getDisplayName()}</span>
                   </Link>
-                  <span className="text-gray-400">|</span>
+                  <span className="text-white/40 hidden sm:inline">|</span>
                   <button
                     onClick={handleSignOut}
-                    className="text-sm text-gray-600 hover:text-gray-900 transition-colors"
+                    className="flex items-center gap-1 text-sm text-white/70 hover:text-white transition-colors"
                     data-testid="logout-button"
                   >
-                    Logout
+                    <LogOut className="w-4 h-4" />
+                    <span className="hidden sm:inline">Logout</span>
                   </button>
                 </div>
               ) : (
-                // Logged Out: "Log in" button
-                <Link href="/login" data-testid="auth-logged-out">
-                  <Button
-                    variant="default"
-                    size="sm"
-                    className="bg-cyan-600 hover:bg-cyan-700 text-white"
+                <div className="flex items-center gap-2" data-testid="auth-logged-out">
+                  <Link
+                    href="/login"
+                    className="px-4 py-2 text-sm text-white/90 hover:text-white transition-colors"
+                    data-testid="login-link"
                   >
-                    Log in
-                  </Button>
-                </Link>
+                    Log In
+                  </Link>
+                  <Link
+                    href="/signup"
+                    className="px-4 py-2 bg-white text-blue-600 hover:bg-white/90 rounded-lg text-sm font-medium transition-colors"
+                    data-testid="signup-link"
+                  >
+                    Sign Up
+                  </Link>
+                </div>
               )}
             </div>
-
-            {/* Mobile Menu Button */}
-            <button
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="lg:hidden p-2 rounded-lg text-gray-700 hover:text-gray-900 hover:bg-sky-200/50 transition-colors min-w-[48px] min-h-[48px] flex items-center justify-center"
-              aria-label="Toggle menu"
-              data-testid="mobile-menu-button"
-            >
-              {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-            </button>
           </div>
         </div>
       </div>
 
-      {/* ============================================================
-          MOBILE MENU
-          ============================================================ */}
-      {mobileMenuOpen && (
-        <div 
-          className="lg:hidden fixed inset-0 top-16 bg-sky-100/98 backdrop-blur-lg z-40 overflow-y-auto"
-          data-testid="mobile-menu"
-        >
-          <div className="px-4 py-6 space-y-2">
-            {/* Nav Links */}
-            {NAV_LINKS.map((link) => (
+      {/* Compact Mobile Navigation - Always visible on small screens */}
+      <div className="lg:hidden border-t border-white/10">
+        <div className="max-w-7xl mx-auto px-4">
+          <div className="flex items-center justify-center gap-1 py-2 overflow-x-auto scrollbar-hide">
+            {NAV_LINKS.slice(0, 6).map((link) => (
               <Link
                 key={link.id}
                 href={link.href}
-                className={`flex items-center justify-between px-4 py-4 rounded-xl text-base font-medium transition-colors min-h-[48px] ${
+                className={`px-2 py-1 rounded text-xs font-medium whitespace-nowrap transition-colors ${
                   isActive(link.href)
-                    ? 'bg-cyan-600 text-white'
-                    : 'text-gray-700 hover:bg-sky-200/50 active:bg-sky-300/50'
+                    ? 'bg-white/25 text-white'
+                    : 'text-white/70 hover:text-white hover:bg-white/15'
                 }`}
-                onClick={() => setMobileMenuOpen(false)}
-                data-testid={`mobile-nav-${link.id}`}
               >
                 {link.label}
-                <ChevronRight className="w-5 h-5 text-gray-400" />
               </Link>
             ))}
-
-            {/* Divider */}
-            <div className="border-t border-sky-300 my-4" />
-
-            {/* Mobile Auth */}
-            {loading ? (
-              <div className="px-4 py-4">
-                <div className="h-12 bg-sky-200 rounded-xl animate-pulse" />
-              </div>
-            ) : user ? (
-              <>
-                {/* User Info */}
-                <div className="px-4 py-3 text-gray-600 text-sm">
-                  Signed in as <span className="text-gray-900 font-medium">{getDisplayName()}</span>
-                </div>
-                
-                {/* Dashboard Link */}
-                <Link
-                  href="/dashboard"
-                  className="flex items-center justify-between px-4 py-4 rounded-xl text-base font-medium text-gray-700 hover:bg-sky-200/50 min-h-[48px]"
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  <span className="flex items-center gap-3">
-                    <User className="w-5 h-5" />
-                    Dashboard
-                  </span>
-                  <ChevronRight className="w-5 h-5 text-gray-400" />
-                </Link>
-
-                {/* Admin Link */}
-                {isAdmin && (
-                  <Link
-                    href="/admin"
-                    className="flex items-center justify-between px-4 py-4 rounded-xl text-base font-medium text-amber-400 hover:bg-amber-500/10 min-h-[48px]"
-                    onClick={() => setMobileMenuOpen(false)}
-                  >
-                    <span className="flex items-center gap-3">
-                      <Shield className="w-5 h-5" />
-                      Admin Panel
-                    </span>
-                    <ChevronRight className="w-5 h-5 text-amber-500/50" />
-                  </Link>
-                )}
-
-                {/* Logout */}
-                <button
-                  onClick={handleSignOut}
-                  className="w-full flex items-center justify-between px-4 py-4 rounded-xl text-base font-medium text-red-400 hover:bg-red-500/10 min-h-[48px]"
-                >
-                  <span className="flex items-center gap-3">
-                    <LogOut className="w-5 h-5" />
-                    Logout
-                  </span>
-                </button>
-              </>
-            ) : (
-              // Logged Out Mobile
-              <div className="space-y-3 px-4">
-                <Link
-                  href="/login"
-                  className="block w-full py-4 text-center rounded-xl bg-cyan-600 hover:bg-cyan-700 text-gray-900 font-medium min-h-[48px]"
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  Log in
-                </Link>
-                <Link
-                  href="/signup"
-                  className="block w-full py-4 text-center rounded-xl border border-cyan-500 text-cyan-400 hover:bg-cyan-500/10 font-medium min-h-[48px]"
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  Sign Up Free
-                </Link>
-              </div>
-            )}
+            <Link
+              href="/about"
+              className="px-2 py-1 rounded text-xs font-medium whitespace-nowrap text-white/70 hover:text-white hover:bg-white/15"
+            >
+              More...
+            </Link>
           </div>
         </div>
-      )}
+      </div>
     </header>
   );
 }
