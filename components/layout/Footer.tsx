@@ -3,8 +3,9 @@
 /**
  * CR AudioViz AI - FOOTER COMPONENT
  * 
- * - Very compact spacing - links directly below each other
- * - Clean professional layout
+ * - TIGHT spacing - NO double spacing
+ * - Larger fonts but compact layout
+ * - Links directly stacked with minimal gap
  * 
  * @timestamp January 8, 2026
  */
@@ -43,7 +44,7 @@ export function Footer() {
   return (
     <footer className="bg-slate-950 border-t border-white/10" data-testid="site-footer">
       {/* Main Footer */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
           
           {/* Brand */}
@@ -54,46 +55,46 @@ export function Footer() {
               </div>
               <span className="text-white font-semibold text-sm">CR AudioViz AI</span>
             </Link>
-            <p className="text-gray-400 text-xs leading-snug">Your Story. Our Design.</p>
-            <p className="text-gray-500 text-xs leading-snug">AI-powered creative tools.</p>
+            <p className="text-gray-400 text-xs">Your Story. Our Design.</p>
+            <p className="text-gray-500 text-xs">AI-powered creative tools.</p>
           </div>
 
-          {/* Navigation - NO EXTRA SPACING */}
+          {/* Navigation - SINGLE SPACED, larger font */}
           <div>
-            <h3 className="text-white font-semibold text-xs mb-2">Navigation</h3>
+            <h3 className="text-white font-semibold text-sm mb-2">Navigation</h3>
             {NAV_LINKS.map((link) => (
               <Link 
                 key={link.href} 
                 href={link.href} 
-                className="block text-gray-400 hover:text-white text-xs leading-5"
+                className="block text-gray-400 hover:text-white text-sm leading-[1.4]"
               >
                 {link.label}
               </Link>
             ))}
           </div>
 
-          {/* Support - NO EXTRA SPACING */}
+          {/* Support - SINGLE SPACED, larger font */}
           <div>
-            <h3 className="text-white font-semibold text-xs mb-2">Support</h3>
+            <h3 className="text-white font-semibold text-sm mb-2">Support</h3>
             {SUPPORT_LINKS.map((link) => (
               <Link 
                 key={link.href} 
                 href={link.href} 
-                className="block text-gray-400 hover:text-white text-xs leading-5"
+                className="block text-gray-400 hover:text-white text-sm leading-[1.4]"
               >
                 {link.label}
               </Link>
             ))}
           </div>
 
-          {/* Legal - NO EXTRA SPACING */}
+          {/* Legal - SINGLE SPACED, larger font */}
           <div>
-            <h3 className="text-white font-semibold text-xs mb-2">Legal</h3>
+            <h3 className="text-white font-semibold text-sm mb-2">Legal</h3>
             {LEGAL_LINKS.map((link) => (
               <Link 
                 key={link.href} 
                 href={link.href} 
-                className="block text-gray-400 hover:text-white text-xs leading-5"
+                className="block text-gray-400 hover:text-white text-sm leading-[1.4]"
               >
                 {link.label}
               </Link>
