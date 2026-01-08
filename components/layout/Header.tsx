@@ -4,7 +4,7 @@
  * CR AudioViz AI - HEADER COMPONENT
  * 
  * Gradient header (blue-to-green)
- * - Logo on left (no box/outline)
+ * - Logo on left - BIGGER, rectangle shape (wider, shorter)
  * - Navigation links
  * - Auth section
  * 
@@ -103,7 +103,7 @@ export default function Header() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16 md:h-20">
           
-          {/* Logo - NO box/outline, just the image */}
+          {/* Logo - BIGGER, rectangle shape (wider) */}
           <Link 
             href="/" 
             className="flex items-center flex-shrink-0"
@@ -113,9 +113,9 @@ export default function Header() {
             <Image
               src="/craudiovizailogo.png"
               alt="CR AudioViz AI"
-              width={180}
-              height={50}
-              className="h-10 sm:h-12 md:h-14 w-auto"
+              width={280}
+              height={60}
+              className="h-12 sm:h-14 md:h-16 w-auto"
               priority
             />
           </Link>
