@@ -4,9 +4,9 @@
  * CR AudioViz AI - HEADER COMPONENT
  * 
  * FIXED HEIGHT header with properly sized logo
- * - Header: 72px mobile / 88px desktop (LOCKED)
- * - Logo: fits inside header, width-emphasized for readability
- * - No vertical padding inflation
+ * - Header: 80px mobile / 92px desktop (LOCKED)
+ * - Logo: width-emphasized wrapper, proper height scaling
+ * - Logo image cropped to 274x72 (no transparent padding)
  * 
  * @timestamp January 8, 2026
  */
@@ -139,24 +139,23 @@ export default function Header() {
 
   return (
     <header className="bg-gradient-to-r from-blue-600 to-green-600" data-testid="site-header">
-      {/* MAIN NAV BAR - FIXED HEIGHT: 72px mobile / 88px desktop */}
-      <div className="h-[72px] md:h-[88px] flex items-center overflow-hidden">
+      {/* MAIN NAV BAR - FIXED HEIGHT: 80px mobile / 92px desktop */}
+      <div className="h-[80px] md:h-[92px] flex items-center">
         <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between">
           
-          {/* Logo - Width-emphasized for readability */}
+          {/* Logo wrapper - WIDTH EMPHASIZED */}
           <Link 
             href="/" 
             data-testid="header-logo" 
             aria-label="CR AudioViz AI Home"
-            className="flex-shrink-0 h-full max-w-[260px] md:max-w-[340px] flex items-center"
+            className="flex-shrink-0 w-[260px] md:w-[340px] lg:w-[420px] flex items-center"
           >
             <Image
               src="/craudiovizailogo.png"
               alt="CR AudioViz AI"
-              width={400}
-              height={100}
-              className="h-[52px] md:h-[64px] w-auto object-contain"
-              sizes="(max-width: 768px) 260px, 340px"
+              width={274}
+              height={72}
+              className="h-[56px] md:h-[64px] lg:h-[72px] w-auto block"
               priority
             />
           </Link>
