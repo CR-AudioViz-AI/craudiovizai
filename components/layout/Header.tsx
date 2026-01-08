@@ -3,7 +3,7 @@
 /**
  * CR AudioViz AI - HEADER COMPONENT
  * 
- * - MUCH BIGGER logo (~2/3 bigger: 460x75)
+ * - MUCH BIGGER logo (2/3 larger = ~120px height on desktop)
  * - CR = CENTERED on page (its own row)
  * 
  * @timestamp January 8, 2026
@@ -138,9 +138,9 @@ export default function Header() {
   return (
     <header className="bg-gradient-to-r from-blue-600 to-green-600" data-testid="site-header">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Row 1: BIGGER Logo + Nav + Auth */}
-        <div className="flex items-center justify-between h-20 md:h-24">
-          {/* Logo - MUCH BIGGER: ~2/3 larger */}
+        {/* Row 1: MUCH BIGGER Logo + Nav + Auth */}
+        <div className="flex items-center justify-between h-28 md:h-36">
+          {/* Logo - 2/3 BIGGER: ~120px on desktop */}
           <Link 
             href="/" 
             data-testid="header-logo" 
@@ -150,9 +150,9 @@ export default function Header() {
             <Image
               src="/craudiovizailogo.png"
               alt="CR AudioViz AI"
-              width={460}
-              height={75}
-              className="h-14 sm:h-16 md:h-[75px] w-auto"
+              width={600}
+              height={120}
+              className="h-20 sm:h-24 md:h-28 lg:h-[120px] w-auto"
               priority
             />
           </Link>
