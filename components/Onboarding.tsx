@@ -61,7 +61,7 @@ function JavariAvatar({ speaking = false, size = 'md' }: { speaking?: boolean; s
       
       {/* Avatar */}
       <motion.div
-        className={`relative ${sizes[size]} bg-gradient-to-br from-blue-500 via-purple-500 to-pink-500 rounded-full flex items-center justify-center shadow-lg`}
+        className={`relative ${sizes[size]} bg-gradient-to-br from-blue-500 via-cyan-500 to-cyan-500 rounded-full flex items-center justify-center shadow-lg`}
         animate={speaking ? { scale: [1, 1.05, 1] } : {}}
         transition={{ duration: 0.5, repeat: speaking ? Infinity : 0 }}
       >
@@ -90,7 +90,7 @@ function JavariAvatar({ speaking = false, size = 'md' }: { speaking?: boolean; s
       </motion.div>
 
       {/* Status indicator */}
-      <div className="absolute bottom-0 right-0 w-4 h-4 bg-green-500 rounded-full border-2 border-white" />
+      <div className="absolute bottom-0 right-0 w-4 h-4 bg-cyan-500 rounded-full border-2 border-white" />
     </div>
   );
 }
@@ -635,7 +635,7 @@ export function JavariOnboarding({ userId, userEmail, userName, onComplete }: Ja
           <JavariAvatar size="sm" speaking={isTyping} />
           <div className="flex-1">
             <h1 className="font-semibold text-gray-900 dark:text-white">Javari</h1>
-            <p className="text-xs text-green-600 dark:text-green-400">Online • Ready to help</p>
+            <p className="text-xs text-cyan-500 dark:text-cyan-500">Online • Ready to help</p>
           </div>
           {/* Progress */}
           <div className="w-24 h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
