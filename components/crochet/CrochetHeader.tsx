@@ -36,7 +36,7 @@ export default function CrochetHeader({ user, creditBalance }: CrochetHeaderProp
   };
 
   return (
-    <header className="bg-white/80 backdrop-blur-lg border-b border-purple-100 sticky top-0 z-50">
+    <header className="bg-white/80 backdrop-blur-lg border-b border-cyan-500 sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 py-3">
         <div className="flex items-center justify-between">
           {/* Logo & Brand */}
@@ -53,11 +53,11 @@ export default function CrochetHeader({ user, creditBalance }: CrochetHeaderProp
             
             {/* Breadcrumb */}
             <div className="hidden sm:flex items-center text-sm text-gray-500">
-              <Link href="/apps" className="hover:text-purple-600">Apps</Link>
+              <Link href="/apps" className="hover:text-cyan-500">Apps</Link>
               <span className="mx-2">›</span>
-              <Link href="/hobbies" className="hover:text-purple-600">Hobbies</Link>
+              <Link href="/hobbies" className="hover:text-cyan-500">Hobbies</Link>
               <span className="mx-2">›</span>
-              <span className="text-purple-600 font-medium">CrochetAI</span>
+              <span className="text-cyan-500 font-medium">CrochetAI</span>
             </div>
           </div>
 
@@ -67,10 +67,10 @@ export default function CrochetHeader({ user, creditBalance }: CrochetHeaderProp
             {user && (
               <Link 
                 href="/pricing"
-                className="flex items-center gap-2 bg-gradient-to-r from-purple-50 to-pink-50 px-4 py-2 rounded-xl hover:from-purple-100 hover:to-pink-100 transition-colors"
+                className="flex items-center gap-2 bg-gradient-to-r from-cyan-500 to-cyan-500 px-4 py-2 rounded-xl hover:from-cyan-500 hover:to-cyan-500 transition-colors"
               >
-                <Coins className="w-4 h-4 text-purple-600" />
-                <span className="font-semibold text-purple-700">{creditBalance.toLocaleString()}</span>
+                <Coins className="w-4 h-4 text-cyan-500" />
+                <span className="font-semibold text-cyan-500">{creditBalance.toLocaleString()}</span>
                 <span className="text-xs text-gray-500">credits</span>
               </Link>
             )}
@@ -80,7 +80,7 @@ export default function CrochetHeader({ user, creditBalance }: CrochetHeaderProp
               <div className="relative">
                 <button
                   onClick={() => setShowDropdown(!showDropdown)}
-                  className="flex items-center gap-2 bg-white border border-gray-200 px-3 py-2 rounded-xl hover:border-purple-300 transition-colors"
+                  className="flex items-center gap-2 bg-white border border-gray-200 px-3 py-2 rounded-xl hover:border-cyan-500 transition-colors"
                 >
                   {user.avatar_url ? (
                     <Image
@@ -91,8 +91,8 @@ export default function CrochetHeader({ user, creditBalance }: CrochetHeaderProp
                       className="w-7 h-7 rounded-full"
                     />
                   ) : (
-                    <div className="w-7 h-7 bg-purple-100 rounded-full flex items-center justify-center">
-                      <User className="w-4 h-4 text-purple-600" />
+                    <div className="w-7 h-7 bg-cyan-500 rounded-full flex items-center justify-center">
+                      <User className="w-4 h-4 text-cyan-500" />
                     </div>
                   )}
                   <span className="hidden md:block text-sm font-medium max-w-24 truncate">
@@ -149,13 +149,13 @@ export default function CrochetHeader({ user, creditBalance }: CrochetHeaderProp
               <div className="flex items-center gap-2">
                 <Link
                   href="/login?redirect=/hobbies/crochet"
-                  className="text-sm font-medium text-gray-600 hover:text-purple-600 px-3 py-2"
+                  className="text-sm font-medium text-gray-600 hover:text-cyan-500 px-3 py-2"
                 >
                   Sign In
                 </Link>
                 <Link
                   href="/login?redirect=/hobbies/crochet&signup=true"
-                  className="text-sm font-medium bg-purple-600 text-white px-4 py-2 rounded-xl hover:bg-purple-700 transition-colors"
+                  className="text-sm font-medium bg-cyan-500 text-white px-4 py-2 rounded-xl hover:bg-cyan-500 transition-colors"
                 >
                   Get Started
                 </Link>
