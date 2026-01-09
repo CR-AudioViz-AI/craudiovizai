@@ -63,7 +63,7 @@ export default function Footer() {
         <div className="grid md:grid-cols-6 gap-8">
           <div className="md:col-span-2">
             <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-500 rounded-xl flex items-center justify-center">
+              <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-xl flex items-center justify-center">
                 <div className="relative">
                   <div className="flex gap-1 mb-0.5">
                     <div className="w-1.5 h-1.5 bg-white rounded-full" />
@@ -96,7 +96,7 @@ export default function Footer() {
                 </div>
               </form>
             ) : (
-              <p className="text-green-400 mb-6">✓ Subscribed!</p>
+              <p className="text-cyan-500 mb-6">✓ Subscribed!</p>
             )}
 
             <div className="flex gap-3">
