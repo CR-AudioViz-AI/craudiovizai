@@ -102,11 +102,11 @@ function NotificationToast({ notification, onClose }: NotificationToastProps) {
   const getIcon = () => {
     switch (notification.type) {
       case 'success':
-        return <CheckCircle className="w-5 h-5 text-green-600" />;
+        return <CheckCircle className="w-5 h-5 text-cyan-500" />;
       case 'error':
         return <AlertCircle className="w-5 h-5 text-red-600" />;
       case 'warning':
-        return <AlertTriangle className="w-5 h-5 text-yellow-600" />;
+        return <AlertTriangle className="w-5 h-5 text-cyan-400" />;
       case 'info':
         return <Info className="w-5 h-5 text-blue-600" />;
     }
@@ -115,11 +115,11 @@ function NotificationToast({ notification, onClose }: NotificationToastProps) {
   const getBgColor = () => {
     switch (notification.type) {
       case 'success':
-        return 'bg-green-50 border-green-200';
+        return 'bg-cyan-500 border-cyan-500';
       case 'error':
         return 'bg-red-50 border-red-200';
       case 'warning':
-        return 'bg-yellow-50 border-yellow-200';
+        return 'bg-cyan-400 border-cyan-400';
       case 'info':
         return 'bg-blue-50 border-blue-200';
     }
@@ -128,11 +128,11 @@ function NotificationToast({ notification, onClose }: NotificationToastProps) {
   const getTextColor = () => {
     switch (notification.type) {
       case 'success':
-        return 'text-green-900';
+        return 'text-cyan-500';
       case 'error':
         return 'text-red-900';
       case 'warning':
-        return 'text-yellow-900';
+        return 'text-cyan-400';
       case 'info':
         return 'text-blue-900';
     }
