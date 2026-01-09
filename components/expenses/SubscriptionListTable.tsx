@@ -125,9 +125,9 @@ export default function SubscriptionListTable({ onEdit, onDelete, onView }: Subs
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'active':
-        return <Badge className="bg-green-100 text-green-800"><CheckCircle className="h-3 w-3 mr-1" />Active</Badge>
+        return <Badge className="bg-cyan-500 text-cyan-500"><CheckCircle className="h-3 w-3 mr-1" />Active</Badge>
       case 'paused':
-        return <Badge className="bg-yellow-100 text-yellow-800"><PauseCircle className="h-3 w-3 mr-1" />Paused</Badge>
+        return <Badge className="bg-cyan-400 text-cyan-400"><PauseCircle className="h-3 w-3 mr-1" />Paused</Badge>
       case 'cancelled':
         return <Badge className="bg-gray-100 text-gray-800">Cancelled</Badge>
       default:
@@ -152,7 +152,7 @@ export default function SubscriptionListTable({ onEdit, onDelete, onView }: Subs
     } else if (days <= 7) {
       return <Badge className="bg-red-100 text-red-800"><AlertCircle className="h-3 w-3 mr-1" />{days}d</Badge>
     } else if (days <= 30) {
-      return <Badge className="bg-orange-100 text-orange-800"><Calendar className="h-3 w-3 mr-1" />{days}d</Badge>
+      return <Badge className="bg-cyan-500 text-cyan-500"><Calendar className="h-3 w-3 mr-1" />{days}d</Badge>
     } else {
       return <Badge variant="secondary"><Calendar className="h-3 w-3 mr-1" />{days}d</Badge>
     }
@@ -161,8 +161,8 @@ export default function SubscriptionListTable({ onEdit, onDelete, onView }: Subs
   const getCycleBadge = (cycle: string) => {
     const colors = {
       monthly: 'bg-blue-100 text-blue-800',
-      quarterly: 'bg-purple-100 text-purple-800',
-      annual: 'bg-indigo-100 text-indigo-800'
+      quarterly: 'bg-cyan-500 text-cyan-500',
+      annual: 'bg-cyan-500 text-cyan-500'
     }
     return <Badge className={colors[cycle as keyof typeof colors] || ''}>{cycle}</Badge>
   }
