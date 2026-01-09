@@ -168,18 +168,18 @@ function ProductCard({ product }: { product: Product }) {
       className="bg-white dark:bg-gray-800 rounded-xl overflow-hidden shadow-lg hover:shadow-xl transition-all"
     >
       {/* Thumbnail */}
-      <div className="h-40 bg-gradient-to-br from-blue-100 to-purple-100 dark:from-blue-900/30 dark:to-purple-900/30 flex items-center justify-center relative">
+      <div className="h-40 bg-gradient-to-br from-blue-100 to-cyan-500 dark:from-blue-900/30 dark:to-cyan-500/30 flex items-center justify-center relative">
         <span className="text-6xl">{product.thumbnail}</span>
         
         {/* Badges */}
         <div className="absolute top-3 left-3 flex gap-2">
           {product.featured && (
-            <span className="px-2 py-1 bg-yellow-500 text-white text-xs font-medium rounded-full">
+            <span className="px-2 py-1 bg-cyan-500 text-white text-xs font-medium rounded-full">
               ⭐ Featured
             </span>
           )}
           {product.isNew && (
-            <span className="px-2 py-1 bg-green-500 text-white text-xs font-medium rounded-full">
+            <span className="px-2 py-1 bg-cyan-500 text-white text-xs font-medium rounded-full">
               New
             </span>
           )}
@@ -235,10 +235,10 @@ function ProductCard({ product }: { product: Product }) {
 
 function CreatorCTA() {
   return (
-    <div className="bg-gradient-to-r from-purple-600 to-pink-600 rounded-2xl p-8 text-white">
+    <div className="bg-gradient-to-r from-cyan-500 to-cyan-500 rounded-2xl p-8 text-white">
       <div className="max-w-3xl mx-auto text-center">
         <h2 className="text-3xl font-bold mb-4">Become a Creator 🎨</h2>
-        <p className="text-purple-100 mb-6 text-lg">
+        <p className="text-cyan-500 mb-6 text-lg">
           Sell your digital products and keep 70% of every sale. 
           Templates, prompts, graphics, code - if you made it, you can sell it.
         </p>
@@ -247,24 +247,24 @@ function CreatorCTA() {
           <div className="bg-white/10 rounded-xl p-4 backdrop-blur">
             <div className="text-3xl mb-2">💰</div>
             <div className="font-bold">70% Revenue</div>
-            <div className="text-sm text-purple-200">You keep the majority</div>
+            <div className="text-sm text-cyan-500">You keep the majority</div>
           </div>
           <div className="bg-white/10 rounded-xl p-4 backdrop-blur">
             <div className="text-3xl mb-2">🚀</div>
             <div className="font-bold">Instant Payouts</div>
-            <div className="text-sm text-purple-200">Weekly to your account</div>
+            <div className="text-sm text-cyan-500">Weekly to your account</div>
           </div>
           <div className="bg-white/10 rounded-xl p-4 backdrop-blur">
             <div className="text-3xl mb-2">📊</div>
             <div className="font-bold">Full Analytics</div>
-            <div className="text-sm text-purple-200">Track every sale</div>
+            <div className="text-sm text-cyan-500">Track every sale</div>
           </div>
         </div>
 
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
           <Link
             href="/marketplace/sell"
-            className="px-8 py-3 bg-white text-purple-600 rounded-xl font-bold hover:bg-purple-50 transition-colors"
+            className="px-8 py-3 bg-white text-cyan-500 rounded-xl font-bold hover:bg-purple-50 transition-colors"
           >
             Start Selling →
           </Link>
@@ -328,7 +328,7 @@ export default function MarketplacePage() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <Link href="/" className="flex items-center gap-2">
-                <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl flex items-center justify-center">
+                <div className="w-10 h-10 bg-gradient-to-br from-cyan-500 to-cyan-500 rounded-xl flex items-center justify-center">
                   <span className="text-white text-xl">🏪</span>
                 </div>
               </Link>
@@ -356,10 +356,10 @@ export default function MarketplacePage() {
 
             {/* Actions */}
             <div className="flex items-center gap-4">
-              <Link href="/marketplace/sell" className="px-4 py-2 border border-purple-500 text-purple-600 dark:text-purple-400 rounded-lg hover:bg-purple-50 dark:hover:bg-purple-900/20 text-sm font-medium">
+              <Link href="/marketplace/sell" className="px-4 py-2 border border-cyan-500 text-cyan-500 dark:text-cyan-500 rounded-lg hover:bg-purple-50 dark:hover:bg-cyan-500/20 text-sm font-medium">
                 Sell Products
               </Link>
-              <Link href="/dashboard" className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 text-sm font-medium">
+              <Link href="/dashboard" className="px-4 py-2 bg-cyan-500 text-white rounded-lg hover:bg-cyan-500 text-sm font-medium">
                 My Purchases
               </Link>
             </div>
@@ -377,7 +377,7 @@ export default function MarketplacePage() {
                 onClick={() => setSelectedCategory(cat.id)}
                 className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
                   selectedCategory === cat.id
-                    ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300'
+                    ? 'bg-cyan-500 text-cyan-500 dark:bg-cyan-500/50 dark:text-cyan-500'
                     : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
                 }`}
               >
@@ -462,7 +462,7 @@ export default function MarketplacePage() {
               { icon: '🚀', title: 'Create', desc: 'Use in your projects immediately' }
             ].map((step, idx) => (
               <div key={idx} className="text-center">
-                <div className="w-16 h-16 bg-purple-100 dark:bg-purple-900/30 rounded-2xl flex items-center justify-center text-3xl mx-auto mb-4">
+                <div className="w-16 h-16 bg-cyan-500 dark:bg-cyan-500/30 rounded-2xl flex items-center justify-center text-3xl mx-auto mb-4">
                   {step.icon}
                 </div>
                 <h3 className="font-bold text-gray-900 dark:text-white mb-2">{step.title}</h3>
