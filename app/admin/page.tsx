@@ -207,19 +207,19 @@ const ADMIN_CARDS = [
 function AdminCard({ card, stats }: { card: typeof ADMIN_CARDS[0]; stats?: any }) {
   const Icon = card.icon;
   const colorClasses: Record<string, string> = {
-    green: 'from-green-500 to-green-600',
-    purple: 'from-purple-500 to-purple-600',
+    green: 'from-cyan-500 to-cyan-500',
+    purple: 'from-cyan-500 to-cyan-500',
     blue: 'from-blue-500 to-blue-600',
-    yellow: 'from-yellow-500 to-yellow-600',
-    orange: 'from-orange-500 to-orange-600',
+    yellow: 'from-cyan-400 to-cyan-400',
+    orange: 'from-cyan-500 to-cyan-500',
     red: 'from-red-500 to-red-600',
-    pink: 'from-pink-500 to-pink-600',
+    pink: 'from-cyan-500 to-cyan-500',
     teal: 'from-teal-500 to-teal-600',
-    indigo: 'from-indigo-500 to-indigo-600',
+    indigo: 'from-cyan-500 to-cyan-500',
     rose: 'from-rose-500 to-rose-600',
     slate: 'from-slate-500 to-slate-600',
     violet: 'from-violet-500 to-violet-600',
-    amber: 'from-amber-500 to-amber-600',
+    amber: 'from-cyan-500 to-cyan-500',
     cyan: 'from-cyan-500 to-cyan-600',
     gray: 'from-gray-500 to-gray-600',
   };
@@ -272,9 +272,9 @@ export default async function AdminDashboardPage() {
               <p className="text-gray-300">CR AudioViz AI Control Center</p>
             </div>
             <div className="flex items-center gap-4">
-              <div className="px-4 py-2 bg-green-500/20 border border-green-500/50 rounded-lg flex items-center gap-2">
-                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-                <span className="text-green-400 text-sm font-semibold">All Systems Operational</span>
+              <div className="px-4 py-2 bg-cyan-500/20 border border-cyan-500/50 rounded-lg flex items-center gap-2">
+                <div className="w-2 h-2 bg-cyan-500 rounded-full animate-pulse" />
+                <span className="text-cyan-500 text-sm font-semibold">All Systems Operational</span>
               </div>
             </div>
           </div>
@@ -290,7 +290,7 @@ export default async function AdminDashboardPage() {
           </div>
           <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-200">
             <p className="text-sm text-gray-500">Active Today</p>
-            <p className="text-2xl font-bold text-green-600">{stats.activeUsers.toLocaleString()}</p>
+            <p className="text-2xl font-bold text-cyan-500">{stats.activeUsers.toLocaleString()}</p>
           </div>
           <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-200">
             <p className="text-sm text-gray-500">Monthly Revenue</p>
@@ -298,11 +298,11 @@ export default async function AdminDashboardPage() {
           </div>
           <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-200">
             <p className="text-sm text-gray-500">Open Tickets</p>
-            <p className="text-2xl font-bold text-orange-600">{stats.openTickets}</p>
+            <p className="text-2xl font-bold text-cyan-500">{stats.openTickets}</p>
           </div>
           <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-200">
             <p className="text-sm text-gray-500">Credits Used Today</p>
-            <p className="text-2xl font-bold text-purple-600">{stats.creditsUsedToday.toLocaleString()}</p>
+            <p className="text-2xl font-bold text-cyan-500">{stats.creditsUsedToday.toLocaleString()}</p>
           </div>
         </div>
 
@@ -333,7 +333,7 @@ export default async function AdminDashboardPage() {
               </div>
             </div>
             <div className="flex items-center gap-4 p-3 bg-gray-50 rounded-lg">
-              <CreditCard className="w-5 h-5 text-green-500" />
+              <CreditCard className="w-5 h-5 text-cyan-500" />
               <div className="flex-1">
                 <p className="text-sm text-gray-900">$89.99 subscription payment received</p>
                 <p className="text-xs text-gray-500">32 minutes ago</p>
