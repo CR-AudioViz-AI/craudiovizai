@@ -18,7 +18,7 @@ export default function CRRotatingBar() {
   const showFullNames = rotation === 0
 
   return (
-    <div className="bg-gradient-to-r from-blue-600 via-cyan-500 to-cyan-500 text-white overflow-hidden">
+    <div className="bg-gradient-to-r from-cyan-600 via-cyan-500 to-cyan-500 text-white overflow-hidden">
       <div className="max-w-7xl mx-auto px-4">
         <div className="h-10 flex items-center justify-center">
           <div className="flex items-center space-x-2 animate-pulse">
@@ -27,26 +27,26 @@ export default function CRRotatingBar() {
               <div className="flex items-center space-x-3 font-bold text-lg">
                 <span className="text-cyan-500">Cindy</span>
                 <span className="text-2xl">💕</span>
-                <span className="text-blue-200">Roy</span>
+                <span className="text-cyan-200">Roy</span>
               </div>
             ) : (
               // Regular rotations: Show C = R pattern
               <div className="flex items-center space-x-4 text-base font-medium tracking-wider">
                 <span className="text-cyan-500">C</span>
                 <span className="text-white/60">=</span>
-                <span className="text-blue-200">R</span>
+                <span className="text-cyan-200">R</span>
                 <span className="text-white/60">=</span>
                 <span className="text-cyan-500">C</span>
                 <span className="text-white/60">=</span>
-                <span className="text-blue-200">R</span>
+                <span className="text-cyan-200">R</span>
                 <span className="text-white/60">=</span>
                 <span className="text-cyan-500">C</span>
                 <span className="text-white/60">=</span>
-                <span className="text-blue-200">R</span>
+                <span className="text-cyan-200">R</span>
                 <span className="text-white/60">=</span>
                 <span className="text-cyan-500">C</span>
                 <span className="text-white/60">=</span>
-                <span className="text-blue-200">R</span>
+                <span className="text-cyan-200">R</span>
               </div>
             )}
           </div>
