@@ -93,7 +93,7 @@ export default function CreditsBar() {
           {/* Purchase Button */}
           <button
             onClick={() => window.location.href = '/credits/purchase'}
-            className="flex items-center space-x-2 px-6 py-2 bg-gradient-to-r from-blue-600 to-cyan-500 text-white rounded-lg hover:from-blue-700 hover:to-cyan-500 transition-all shadow-md hover:shadow-lg font-semibold"
+            className="flex items-center space-x-2 px-6 py-2 bg-gradient-to-r from-cyan-600 to-cyan-500 text-white rounded-lg hover:from-cyan-700 hover:to-cyan-500 transition-all shadow-md hover:shadow-lg font-semibold"
           >
             <Plus className="w-5 h-5" />
             <span>Purchase More Credits</span>
