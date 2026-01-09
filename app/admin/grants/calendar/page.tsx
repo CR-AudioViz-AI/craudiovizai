@@ -180,7 +180,7 @@ export default async function GrantCalendarPage() {
               </button>
               <Link
                 href="/admin/grants/new"
-                className="flex items-center gap-2 px-4 py-2 text-sm text-white bg-green-600 rounded-lg hover:bg-green-700"
+                className="flex items-center gap-2 px-4 py-2 text-sm text-white bg-cyan-500 rounded-lg hover:bg-cyan-500"
               >
                 <Plus className="w-4 h-4" />
                 Add Grant
@@ -204,15 +204,15 @@ export default async function GrantCalendarPage() {
               <span className="text-sm text-gray-600">Milestones</span>
             </div>
             <div className="flex items-center gap-2">
-              <span className="w-3 h-3 rounded-full bg-orange-500"></span>
+              <span className="w-3 h-3 rounded-full bg-cyan-500"></span>
               <span className="text-sm text-gray-600">Reports Due</span>
             </div>
             <div className="flex items-center gap-2">
-              <span className="w-3 h-3 rounded-full bg-yellow-500"></span>
+              <span className="w-3 h-3 rounded-full bg-cyan-400"></span>
               <span className="text-sm text-gray-600">Follow-ups</span>
             </div>
             <div className="flex items-center gap-2">
-              <span className="w-3 h-3 rounded-full bg-purple-500"></span>
+              <span className="w-3 h-3 rounded-full bg-cyan-500"></span>
               <span className="text-sm text-gray-600">Decision Expected</span>
             </div>
           </div>
@@ -261,7 +261,7 @@ export default async function GrantCalendarPage() {
                           </div>
                           <div className={`text-right ${
                             daysUntil <= 7 ? 'text-red-600' : 
-                            daysUntil <= 14 ? 'text-orange-600' : 
+                            daysUntil <= 14 ? 'text-cyan-500' : 
                             'text-gray-600'
                           }`}>
                             <p className="text-sm font-bold">{daysUntil}d</p>
@@ -295,13 +295,13 @@ export default async function GrantCalendarPage() {
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-gray-600">Reports Due</span>
-                  <span className="font-semibold text-orange-600">
+                  <span className="font-semibold text-cyan-500">
                     {events.filter(e => e.type === 'report').length}
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-gray-600">Follow-ups</span>
-                  <span className="font-semibold text-yellow-600">
+                  <span className="font-semibold text-cyan-400">
                     {events.filter(e => e.type === 'followup').length}
                   </span>
                 </div>
