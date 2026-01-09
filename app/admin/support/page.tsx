@@ -56,27 +56,27 @@ interface Enhancement {
 // Status configs
 const TICKET_STATUSES = [
   { key: 'open', label: 'Open', color: '#3B82F6', bg: 'bg-blue-500' },
-  { key: 'auto_fixing', label: 'Auto-Fixing', color: '#F59E0B', bg: 'bg-yellow-500' },
-  { key: 'in_progress', label: 'In Progress', color: '#8B5CF6', bg: 'bg-purple-500' },
-  { key: 'awaiting_user', label: 'Awaiting User', color: '#F97316', bg: 'bg-orange-500' },
-  { key: 'resolved', label: 'Resolved', color: '#22C55E', bg: 'bg-green-500' },
+  { key: 'auto_fixing', label: 'Auto-Fixing', color: '#F59E0B', bg: 'bg-cyan-400' },
+  { key: 'in_progress', label: 'In Progress', color: '#8B5CF6', bg: 'bg-cyan-500' },
+  { key: 'awaiting_user', label: 'Awaiting User', color: '#F97316', bg: 'bg-cyan-500' },
+  { key: 'resolved', label: 'Resolved', color: '#22C55E', bg: 'bg-cyan-500' },
   { key: 'escalated', label: 'Escalated', color: '#EF4444', bg: 'bg-red-500' },
   { key: 'closed', label: 'Closed', color: '#6B7280', bg: 'bg-gray-500' },
 ];
 
 const ENHANCEMENT_STATUSES = [
   { key: 'submitted', label: 'Submitted', color: '#3B82F6', bg: 'bg-blue-500' },
-  { key: 'under_review', label: 'Under Review', color: '#F59E0B', bg: 'bg-yellow-500' },
-  { key: 'approved', label: 'Approved', color: '#22C55E', bg: 'bg-green-500' },
-  { key: 'in_development', label: 'In Development', color: '#8B5CF6', bg: 'bg-purple-500' },
-  { key: 'deployed', label: 'Deployed', color: '#10B981', bg: 'bg-emerald-500' },
+  { key: 'under_review', label: 'Under Review', color: '#F59E0B', bg: 'bg-cyan-400' },
+  { key: 'approved', label: 'Approved', color: '#22C55E', bg: 'bg-cyan-500' },
+  { key: 'in_development', label: 'In Development', color: '#8B5CF6', bg: 'bg-cyan-500' },
+  { key: 'deployed', label: 'Deployed', color: '#10B981', bg: 'bg-cyan-500' },
   { key: 'rejected', label: 'Rejected', color: '#EF4444', bg: 'bg-red-500' },
 ];
 
 const PRIORITY_STYLES: Record<string, string> = {
   critical: 'bg-red-600 text-white',
-  high: 'bg-orange-500 text-white',
-  medium: 'bg-yellow-400 text-black',
+  high: 'bg-cyan-500 text-white',
+  medium: 'bg-cyan-400 text-black',
   low: 'bg-gray-300 text-gray-700',
 };
 
@@ -206,7 +206,7 @@ export default function AdminSupportDashboard() {
                 {activeTab === 'tickets' && (
                   <>
                     <div className="text-center border-l pl-4">
-                      <div className="text-2xl font-bold text-green-600">{stats.autoFixed || 0}</div>
+                      <div className="text-2xl font-bold text-cyan-500">{stats.autoFixed || 0}</div>
                       <div className="text-xs text-gray-500">Auto-Fixed</div>
                     </div>
                     <div className="text-center border-l pl-4">
@@ -222,7 +222,7 @@ export default function AdminSupportDashboard() {
                 <button
                   onClick={runAutoFix}
                   disabled={processing}
-                  className="px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-lg hover:from-purple-700 hover:to-indigo-700 disabled:opacity-50 flex items-center gap-2"
+                  className="px-4 py-2 bg-gradient-to-r from-cyan-500 to-cyan-500 text-white rounded-lg hover:from-cyan-500 hover:to-cyan-500 disabled:opacity-50 flex items-center gap-2"
                 >
                   {processing ? (
                     <>
@@ -252,7 +252,7 @@ export default function AdminSupportDashboard() {
               <button
                 onClick={() => { setActiveTab('tickets'); setSelectedId(null); }}
                 className={`px-4 py-2 rounded-lg font-medium transition-all ${
-                  activeTab === 'tickets' ? 'bg-white shadow text-indigo-600' : 'text-gray-600'
+                  activeTab === 'tickets' ? 'bg-white shadow text-cyan-500' : 'text-gray-600'
                 }`}
               >
                 🎫 Tickets ({tickets.length})
@@ -260,7 +260,7 @@ export default function AdminSupportDashboard() {
               <button
                 onClick={() => { setActiveTab('enhancements'); setSelectedId(null); }}
                 className={`px-4 py-2 rounded-lg font-medium transition-all ${
-                  activeTab === 'enhancements' ? 'bg-white shadow text-indigo-600' : 'text-gray-600'
+                  activeTab === 'enhancements' ? 'bg-white shadow text-cyan-500' : 'text-gray-600'
                 }`}
               >
                 💡 Enhancements ({enhancements.length})
@@ -332,11 +332,11 @@ export default function AdminSupportDashboard() {
                               key={item.id}
                               onClick={() => handleCardClick(item.id)}
                               className={`bg-white rounded-lg shadow-sm p-3 cursor-pointer hover:shadow-md transition-all border-l-4 ${
-                                isSelected ? 'ring-2 ring-indigo-500 shadow-lg' : ''
+                                isSelected ? 'ring-2 ring-cyan-500 shadow-lg' : ''
                               } ${
                                 item.priority === 'critical' ? 'border-l-red-600' :
-                                item.priority === 'high' ? 'border-l-orange-500' :
-                                item.priority === 'medium' ? 'border-l-yellow-400' : 'border-l-gray-300'
+                                item.priority === 'high' ? 'border-l-cyan-500' :
+                                item.priority === 'medium' ? 'border-l-cyan-400' : 'border-l-gray-300'
                               }`}
                             >
                               {/* Card Header */}
@@ -355,9 +355,9 @@ export default function AdminSupportDashboard() {
                               {/* Bot Status */}
                               {isTicket && item.assigned_bot && (
                                 <div className={`text-xs px-2 py-1 rounded inline-flex items-center gap-1 mb-2 ${
-                                  item.auto_fix_successful === true ? 'bg-green-100 text-green-700' :
+                                  item.auto_fix_successful === true ? 'bg-cyan-500 text-cyan-500' :
                                   item.auto_fix_successful === false ? 'bg-red-100 text-red-700' :
-                                  item.auto_fix_attempted ? 'bg-yellow-100 text-yellow-700' : 'bg-blue-100 text-blue-700'
+                                  item.auto_fix_attempted ? 'bg-cyan-400 text-cyan-400' : 'bg-blue-100 text-blue-700'
                                 }`}>
                                   🤖 {item.auto_fix_successful === true ? 'Auto-Fixed' :
                                       item.auto_fix_successful === false ? 'Fix Failed' :
@@ -368,7 +368,7 @@ export default function AdminSupportDashboard() {
                               {/* Enhancement votes */}
                               {!isTicket && (
                                 <div className="flex items-center gap-2 text-xs mb-2">
-                                  <span className="text-green-600">👍 {item.upvotes || 0}</span>
+                                  <span className="text-cyan-500">👍 {item.upvotes || 0}</span>
                                   <span className="text-red-600">👎 {item.downvotes || 0}</span>
                                 </div>
                               )}
@@ -411,7 +411,7 @@ export default function AdminSupportDashboard() {
                       <tr
                         key={item.id}
                         onClick={() => handleCardClick(item.id)}
-                        className={`cursor-pointer hover:bg-gray-50 ${selectedId === item.id ? 'bg-indigo-50' : ''}`}
+                        className={`cursor-pointer hover:bg-gray-50 ${selectedId === item.id ? 'bg-cyan-500' : ''}`}
                       >
                         <td className="px-4 py-3">
                           <span className="font-mono text-sm text-gray-600">{number}</span>
@@ -435,7 +435,7 @@ export default function AdminSupportDashboard() {
                         <td className="px-4 py-3">
                           {isTicket && item.assigned_bot ? (
                             <span className={`text-xs px-2 py-0.5 rounded ${
-                              item.auto_fix_successful === true ? 'bg-green-100 text-green-700' :
+                              item.auto_fix_successful === true ? 'bg-cyan-500 text-cyan-500' :
                               item.auto_fix_successful === false ? 'bg-red-100 text-red-700' :
                               'bg-blue-100 text-blue-700'
                             }`}>
@@ -523,9 +523,9 @@ export default function AdminSupportDashboard() {
                 <div>
                   <h3 className="font-semibold text-gray-700 mb-2">🤖 Javari Auto-Fix Status</h3>
                   <div className={`rounded-lg p-4 ${
-                    selectedItem.auto_fix_successful === true ? 'bg-green-50 border border-green-200' :
+                    selectedItem.auto_fix_successful === true ? 'bg-cyan-500 border border-cyan-500' :
                     selectedItem.auto_fix_successful === false ? 'bg-red-50 border border-red-200' :
-                    selectedItem.auto_fix_attempted ? 'bg-yellow-50 border border-yellow-200' : 
+                    selectedItem.auto_fix_attempted ? 'bg-cyan-400 border border-cyan-400' : 
                     'bg-blue-50 border border-blue-200'
                   }`}>
                     <div className="flex items-center gap-2 mb-2">
@@ -559,7 +559,7 @@ export default function AdminSupportDashboard() {
                         <div className="space-y-1">
                           {selectedItem.auto_fix_actions.map((action: any, i: number) => (
                             <div key={i} className="flex items-center gap-2 text-sm">
-                              <span className="text-green-600">✓</span>
+                              <span className="text-cyan-500">✓</span>
                               <span>{action.action || action}</span>
                             </div>
                           ))}
@@ -572,12 +572,12 @@ export default function AdminSupportDashboard() {
                       <div className="mt-3 pt-3 border-t border-gray-200">
                         <button
                           onClick={() => setShowLogs(!showLogs)}
-                          className="text-sm font-medium text-indigo-600 hover:text-indigo-800"
+                          className="text-sm font-medium text-cyan-500 hover:text-cyan-500"
                         >
                           {showLogs ? '▼ Hide Bot Logs' : '▶ View Bot Logs'}
                         </button>
                         {showLogs && (
-                          <pre className="mt-2 text-xs bg-gray-900 text-green-400 p-3 rounded overflow-x-auto max-h-64 overflow-y-auto">
+                          <pre className="mt-2 text-xs bg-gray-900 text-cyan-500 p-3 rounded overflow-x-auto max-h-64 overflow-y-auto">
                             {selectedItem.auto_fix_logs}
                           </pre>
                         )}
@@ -597,7 +597,7 @@ export default function AdminSupportDashboard() {
               {'request_number' in selectedItem && selectedItem.ai_implementation_plan && (
                 <div>
                   <h3 className="font-semibold text-gray-700 mb-2">🧠 AI Analysis</h3>
-                  <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-4">
+                  <div className="bg-cyan-500 border border-cyan-500 rounded-lg p-4">
                     {selectedItem.ai_estimated_complexity && (
                       <div className="flex items-center gap-4 mb-3">
                         <div>
@@ -624,7 +624,7 @@ export default function AdminSupportDashboard() {
                   <div className="flex items-center gap-6">
                     <div className="text-center">
                       <div className="text-2xl">👍</div>
-                      <div className="font-bold text-green-600">{selectedItem.upvotes || 0}</div>
+                      <div className="font-bold text-cyan-500">{selectedItem.upvotes || 0}</div>
                     </div>
                     <div className="text-center">
                       <div className="text-2xl">👎</div>
