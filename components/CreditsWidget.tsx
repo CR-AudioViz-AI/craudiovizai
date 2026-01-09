@@ -55,16 +55,16 @@ export default function CreditsWidget({
   };
 
   const getStatusColor = () => {
-    if (credits >= 1000) return 'text-green-600';
+    if (credits >= 1000) return 'text-cyan-500';
     if (credits >= 100) return 'text-blue-600';
-    if (credits >= 10) return 'text-yellow-600';
+    if (credits >= 10) return 'text-cyan-400';
     return 'text-red-600';
   };
 
   const getStatusBg = () => {
-    if (credits >= 1000) return 'bg-green-50 border-green-200';
+    if (credits >= 1000) return 'bg-cyan-500 border-cyan-500';
     if (credits >= 100) return 'bg-blue-50 border-blue-200';
-    if (credits >= 10) return 'bg-yellow-50 border-yellow-200';
+    if (credits >= 10) return 'bg-cyan-400 border-cyan-400';
     return 'bg-red-50 border-red-200';
   };
 
@@ -109,7 +109,7 @@ export default function CreditsWidget({
         {showPurchase && (
           <Link
             href="/admin/credits"
-            className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-xl px-4 py-2 text-sm font-medium transition-all duration-200 flex items-center gap-2 shadow-sm hover:shadow-md"
+            className="bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-700 hover:to-cyan-500 text-white rounded-xl px-4 py-2 text-sm font-medium transition-all duration-200 flex items-center gap-2 shadow-sm hover:shadow-md"
           >
             <Plus className="w-4 h-4" />
             <span>Purchase</span>
@@ -120,7 +120,7 @@ export default function CreditsWidget({
       {/* Status Message */}
       <div className="space-y-2">
         {credits >= 1000 && (
-          <div className="flex items-center gap-2 text-sm text-green-700 bg-green-50 rounded-lg px-3 py-2">
+          <div className="flex items-center gap-2 text-sm text-cyan-500 bg-cyan-500 rounded-lg px-3 py-2">
             <TrendingUp className="w-4 h-4" />
             <span>Excellent! You're well-stocked with credits.</span>
           </div>
@@ -134,7 +134,7 @@ export default function CreditsWidget({
         )}
 
         {credits >= 10 && credits < 100 && (
-          <div className="flex items-center gap-2 text-sm text-yellow-700 bg-yellow-50 rounded-lg px-3 py-2">
+          <div className="flex items-center gap-2 text-sm text-cyan-400 bg-cyan-400 rounded-lg px-3 py-2">
             <AlertCircle className="w-4 h-4" />
             <span>Running low. Consider purchasing more credits soon.</span>
           </div>
