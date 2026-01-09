@@ -140,8 +140,8 @@ export default function BillingPage() {
                   </span>
                 </div>
                 {subscription.cancelAtPeriodEnd && (
-                  <div className="bg-yellow-50 border border-yellow-200 rounded p-3">
-                    <p className="text-sm text-yellow-800">
+                  <div className="bg-cyan-400 border border-cyan-400 rounded p-3">
+                    <p className="text-sm text-cyan-400">
                       Your subscription will be cancelled on {formatDate(subscription.currentPeriodEnd)}
                     </p>
                   </div>
