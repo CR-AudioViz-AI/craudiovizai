@@ -11,24 +11,24 @@ import Link from 'next/link';
 
 export default function FinancePage() {
   return (
-    <div className="min-h-screen bg-gradient-to-b from-emerald-50 to-white">
+    <div className="min-h-screen bg-gradient-to-b from-cyan-500 to-white">
       <header className="bg-white shadow-sm sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
-          <Link href="/" className="text-2xl font-bold bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">
+          <Link href="/" className="text-2xl font-bold bg-gradient-to-r from-cyan-500 to-teal-600 bg-clip-text text-transparent">
             CR AudioViz AI
           </Link>
           <nav className="flex items-center gap-6">
-            <Link href="/tools" className="text-gray-600 hover:text-emerald-600">Tools</Link>
-            <Link href="/pricing" className="text-gray-600 hover:text-emerald-600">Pricing</Link>
-            <Link href="/login" className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700">Sign In</Link>
+            <Link href="/tools" className="text-gray-600 hover:text-cyan-500">Tools</Link>
+            <Link href="/pricing" className="text-gray-600 hover:text-cyan-500">Pricing</Link>
+            <Link href="/login" className="px-4 py-2 bg-cyan-500 text-white rounded-lg hover:bg-cyan-500">Sign In</Link>
           </nav>
         </div>
       </header>
 
-      <section className="bg-gradient-to-r from-emerald-600 to-teal-600 text-white py-16">
+      <section className="bg-gradient-to-r from-cyan-500 to-teal-600 text-white py-16">
         <div className="max-w-7xl mx-auto px-4 text-center">
           <h1 className="text-4xl md:text-5xl font-bold mb-4">💰 Finance Hub</h1>
-          <p className="text-xl text-emerald-100 mb-8">AI-powered financial tools and market insights</p>
+          <p className="text-xl text-cyan-500 mb-8">AI-powered financial tools and market insights</p>
         </div>
       </section>
 
