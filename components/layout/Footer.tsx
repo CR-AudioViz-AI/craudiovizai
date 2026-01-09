@@ -66,7 +66,7 @@ export function Footer() {
                 <li key={link.href}>
                   <Link 
                     href={link.href} 
-                    className="footer-link text-slate-400 hover:text-cyan-400 text-sm transition-colors"
+                    className="footer-link min-h-[44px] py-2 inline-flex items-center text-slate-400 hover:text-cyan-400 text-sm transition-colors"
                   >
                     {link.label}
                   </Link>
@@ -83,7 +83,7 @@ export function Footer() {
                 <li key={link.href}>
                   <Link 
                     href={link.href} 
-                    className="footer-link text-slate-400 hover:text-cyan-400 text-sm transition-colors"
+                    className="footer-link min-h-[44px] py-2 inline-flex items-center text-slate-400 hover:text-cyan-400 text-sm transition-colors"
                   >
                     {link.label}
                   </Link>
@@ -100,7 +100,7 @@ export function Footer() {
                 <li key={link.href}>
                   <Link 
                     href={link.href} 
-                    className="footer-link text-slate-400 hover:text-cyan-400 text-sm transition-colors"
+                    className="footer-link min-h-[44px] py-2 inline-flex items-center text-slate-400 hover:text-cyan-400 text-sm transition-colors"
                   >
                     {link.label}
                   </Link>
