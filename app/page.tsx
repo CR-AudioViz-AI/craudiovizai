@@ -191,12 +191,12 @@ export default function LandingPage() {
 
             {/* Collectors & Hobby */}
             <motion.div 
-              className="bg-gray-800/70 p-6 rounded-2xl border border-amber-500/30 hover:border-amber-500/60 transition-all"
+              className="bg-gray-800/70 p-6 rounded-2xl border border-cyan-500/30 hover:border-cyan-500/60 transition-all"
               whileHover={{ y: -5 }}
             >
               <div className="flex items-center gap-3 mb-4">
-                <div className="w-12 h-12 bg-amber-500/20 rounded-xl flex items-center justify-center">
-                  <ShoppingBag className="w-6 h-6 text-amber-400" />
+                <div className="w-12 h-12 bg-cyan-500/20 rounded-xl flex items-center justify-center">
+                  <ShoppingBag className="w-6 h-6 text-cyan-400" />
                 </div>
                 <div>
                   <h3 className="text-white font-bold">Collectors & Hobby Apps</h3>
@@ -311,12 +311,12 @@ export default function LandingPage() {
 
             {/* Games & Fun */}
             <motion.div 
-              className="bg-gray-800/70 p-6 rounded-2xl border border-indigo-500/30 hover:border-indigo-500/60 transition-all"
+              className="bg-gray-800/70 p-6 rounded-2xl border border-cyan-500/30 hover:border-cyan-500/60 transition-all"
               whileHover={{ y: -5 }}
             >
               <div className="flex items-center gap-3 mb-4">
-                <div className="w-12 h-12 bg-indigo-500/20 rounded-xl flex items-center justify-center">
-                  <Gamepad2 className="w-6 h-6 text-indigo-400" />
+                <div className="w-12 h-12 bg-cyan-500/20 rounded-xl flex items-center justify-center">
+                  <Gamepad2 className="w-6 h-6 text-cyan-400" />
                 </div>
                 <div>
                   <h3 className="text-white font-bold">Games & Entertainment</h3>
