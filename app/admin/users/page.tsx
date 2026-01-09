@@ -112,7 +112,7 @@ export default async function AdminUsersPage() {
                 <tr key={user.id} className="border-b border-gray-100 hover:bg-gray-50">
                   <td className="py-4 px-6">
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-green-500 flex items-center justify-center text-white font-bold">
+                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center text-white font-bold">
                         {user.full_name?.[0] || user.email?.[0]?.toUpperCase() || '?'}
                       </div>
                       <div>
@@ -124,7 +124,7 @@ export default async function AdminUsersPage() {
                   <td className="py-4 px-6">
                     <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold ${
                       user.subscription_tier === 'premium' 
-                        ? 'bg-purple-100 text-purple-700'
+                        ? 'bg-cyan-500 text-cyan-500'
                         : user.subscription_tier === 'pro'
                         ? 'bg-blue-100 text-blue-700'
                         : 'bg-gray-100 text-gray-700'
@@ -141,10 +141,10 @@ export default async function AdminUsersPage() {
                   <td className="py-4 px-6">
                     <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold ${
                       user.status === 'active' 
-                        ? 'bg-green-100 text-green-700'
+                        ? 'bg-cyan-500 text-cyan-500'
                         : user.status === 'suspended'
                         ? 'bg-red-100 text-red-700'
-                        : 'bg-yellow-100 text-yellow-700'
+                        : 'bg-cyan-400 text-cyan-400'
                     }`}>
                       {user.status === 'active' ? (
                         <CheckCircle className="w-3 h-3" />
