@@ -326,7 +326,7 @@ export function SocialLinks({
 
 export function FollowCTA({ className = '' }: { className?: string }) {
   return (
-    <section className={`bg-gradient-to-br from-blue-600 via-purple-600 to-pink-600 rounded-2xl p-8 text-white ${className}`}>
+    <section className={`bg-gradient-to-br from-blue-600 via-cyan-500 to-cyan-500 rounded-2xl p-8 text-white ${className}`}>
       <div className="text-center mb-8">
         <h2 className="text-3xl font-bold mb-3">Join Our Community! 🎉</h2>
         <p className="text-blue-100 max-w-xl mx-auto">
@@ -402,8 +402,8 @@ export function SuggestPlatform() {
 
   if (submitted) {
     return (
-      <div className="bg-green-50 dark:bg-green-900/30 p-4 rounded-lg text-center">
-        <p className="text-green-600 dark:text-green-400 font-medium">
+      <div className="bg-cyan-500 dark:bg-cyan-500/30 p-4 rounded-lg text-center">
+        <p className="text-cyan-500 dark:text-cyan-500 font-medium">
           Thanks! We'll look into joining that platform! 🎉
         </p>
       </div>
