@@ -34,7 +34,7 @@ interface Conversation {
 function JavariAvatar({ speaking = false }: { speaking?: boolean }) {
   return (
     <div className={`relative ${speaking ? 'animate-pulse' : ''}`}>
-      <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center shadow-lg">
+      <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-full flex items-center justify-center shadow-lg">
         {/* Face */}
         <div className="relative">
           {/* Eyes */}
@@ -47,7 +47,7 @@ function JavariAvatar({ speaking = false }: { speaking?: boolean }) {
         </div>
       </div>
       {speaking && (
-        <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-white animate-pulse" />
+        <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-cyan-500 rounded-full border-2 border-white animate-pulse" />
       )}
     </div>
   );
@@ -296,7 +296,7 @@ export default function ChatPage() {
                 <JavariAvatar />
                 <div>
                   <h1 className="font-bold text-gray-900 dark:text-white">Javari AI</h1>
-                  <p className="text-xs text-green-600">Online • Ready to help</p>
+                  <p className="text-xs text-cyan-500">Online • Ready to help</p>
                 </div>
               </div>
             </div>
@@ -319,7 +319,7 @@ export default function ChatPage() {
             /* Empty State */
             <div className="h-full flex flex-col items-center justify-center">
               <div className="text-center mb-8">
-                <div className="w-20 h-20 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                <div className="w-20 h-20 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-full flex items-center justify-center mx-auto mb-4">
                   <div className="relative">
                     <div className="flex gap-2 mb-1">
                       <div className="w-3 h-3 bg-white rounded-full" />
