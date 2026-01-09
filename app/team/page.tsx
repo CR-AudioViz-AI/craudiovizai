@@ -119,12 +119,12 @@ export default function TeamPage() {
     const colors: Record<string, { bg: string; text: string; border: string }> = {
       blue: { bg: 'bg-blue-100', text: 'text-blue-600', border: 'border-blue-200' },
       red: { bg: 'bg-red-100', text: 'text-red-600', border: 'border-red-200' },
-      purple: { bg: 'bg-purple-100', text: 'text-purple-600', border: 'border-purple-200' },
+      purple: { bg: 'bg-cyan-500', text: 'text-cyan-500', border: 'border-cyan-500' },
       gray: { bg: 'bg-gray-100', text: 'text-gray-600', border: 'border-gray-200' },
-      green: { bg: 'bg-green-100', text: 'text-green-600', border: 'border-green-200' },
-      yellow: { bg: 'bg-yellow-100', text: 'text-yellow-600', border: 'border-yellow-200' },
-      orange: { bg: 'bg-orange-100', text: 'text-orange-600', border: 'border-orange-200' },
-      indigo: { bg: 'bg-indigo-100', text: 'text-indigo-600', border: 'border-indigo-200' },
+      green: { bg: 'bg-cyan-500', text: 'text-cyan-500', border: 'border-cyan-500' },
+      yellow: { bg: 'bg-cyan-400', text: 'text-cyan-400', border: 'border-cyan-400' },
+      orange: { bg: 'bg-cyan-500', text: 'text-cyan-500', border: 'border-cyan-500' },
+      indigo: { bg: 'bg-cyan-500', text: 'text-cyan-500', border: 'border-cyan-500' },
     };
     return colors[color] || colors.blue;
   };
@@ -132,14 +132,14 @@ export default function TeamPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Hero Section */}
-      <section className="bg-gradient-to-br from-blue-600 via-purple-600 to-pink-600 text-white px-4 py-12 md:py-16 lg:py-20">
+      <section className="bg-gradient-to-br from-blue-600 via-cyan-500 to-cyan-500 text-white px-4 py-12 md:py-16 lg:py-20">
         <div className="container mx-auto">
           <div className="max-w-4xl mx-auto text-center">
             <Users className="w-12 h-12 md:w-16 md:h-16 mx-auto mb-4 md:mb-6" />
             <h1 className="text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-bold mb-4 md:mb-6">
               Meet Our Team
             </h1>
-            <p className="text-base md:text-lg lg:text-xl text-purple-100 mb-6 md:mb-8">
+            <p className="text-base md:text-lg lg:text-xl text-cyan-500 mb-6 md:mb-8">
               31 specialized AI avatars working together to empower creators
             </p>
           </div>
@@ -170,7 +170,7 @@ export default function TeamPage() {
                     onClick={() => setSelectedDepartment(dept)}
                     className={`px-4 py-3 rounded-lg font-medium whitespace-nowrap transition-all flex-shrink-0 text-sm md:text-base ${
                       selectedDepartment === dept
-                        ? 'bg-purple-600 text-white shadow-lg'
+                        ? 'bg-cyan-500 text-white shadow-lg'
                         : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                     }`}
                   >
@@ -256,13 +256,13 @@ export default function TeamPage() {
       </section>
 
       {/* Join Team CTA */}
-      <section className="px-4 py-12 md:py-16 bg-gradient-to-br from-purple-600 to-pink-600 text-white">
+      <section className="px-4 py-12 md:py-16 bg-gradient-to-br from-cyan-500 to-cyan-500 text-white">
         <div className="container mx-auto text-center">
           <Award className="w-12 h-12 md:w-16 md:h-16 mx-auto mb-4 md:mb-6" />
           <h2 className="text-2xl md:text-3xl lg:text-4xl font-bold mb-4">
             Want to Join Our Team?
           </h2>
-          <p className="text-base md:text-lg lg:text-xl text-purple-100 mb-6 md:mb-8 max-w-2xl mx-auto">
+          <p className="text-base md:text-lg lg:text-xl text-cyan-500 mb-6 md:mb-8 max-w-2xl mx-auto">
             We're always looking for talented people to help build the future of AI-powered creativity
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center max-w-md mx-auto">
@@ -270,7 +270,7 @@ export default function TeamPage() {
               <MobileButton 
                 size="lg" 
                 fullWidth
-                className="bg-white text-purple-600 hover:bg-purple-50"
+                className="bg-white text-cyan-500 hover:bg-cyan-500"
               >
                 View Open Positions
               </MobileButton>
