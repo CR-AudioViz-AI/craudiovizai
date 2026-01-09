@@ -197,7 +197,7 @@ export default function GrantDiscoveryPage() {
               <button
                 onClick={discoverGrants}
                 disabled={searching}
-                className="flex items-center gap-2 px-4 py-2 text-sm text-white bg-purple-600 rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50"
+                className="flex items-center gap-2 px-4 py-2 text-sm text-white bg-cyan-500 rounded-lg hover:bg-cyan-500 transition-colors disabled:opacity-50"
               >
                 {searching ? (
                   <RefreshCw className="w-4 h-4 animate-spin" />
@@ -213,14 +213,14 @@ export default function GrantDiscoveryPage() {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         {/* API Sources Info */}
-        <div className="mb-6 p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl border border-blue-100">
+        <div className="mb-6 p-4 bg-gradient-to-r from-blue-50 to-cyan-500 rounded-xl border border-blue-100">
           <div className="flex items-start gap-3">
             <Database className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
             <div>
               <h3 className="font-semibold text-gray-900">Connected Data Sources</h3>
               <div className="mt-2 flex flex-wrap gap-3">
                 <span className="inline-flex items-center gap-1 px-3 py-1 bg-white rounded-full text-sm">
-                  <Globe className="w-4 h-4 text-green-600" />
+                  <Globe className="w-4 h-4 text-cyan-500" />
                   Grants.gov (Federal Grants)
                 </span>
                 <span className="inline-flex items-center gap-1 px-3 py-1 bg-white rounded-full text-sm">
@@ -228,7 +228,7 @@ export default function GrantDiscoveryPage() {
                   USASpending.gov (Award Data)
                 </span>
                 <span className="inline-flex items-center gap-1 px-3 py-1 bg-white rounded-full text-sm">
-                  <Sparkles className="w-4 h-4 text-purple-600" />
+                  <Sparkles className="w-4 h-4 text-cyan-500" />
                   AI Matching Engine
                 </span>
               </div>
@@ -294,7 +294,7 @@ export default function GrantDiscoveryPage() {
                                 type="checkbox"
                                 checked={selectedModules.includes(module.id)}
                                 onChange={() => toggleModule(module.id)}
-                                className="rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                                className="rounded border-gray-300 text-cyan-500 focus:ring-cyan-500"
                               />
                               <span className="text-sm text-gray-700">{module.name}</span>
                             </label>
@@ -363,7 +363,7 @@ export default function GrantDiscoveryPage() {
                 </p>
                 <button
                   onClick={discoverGrants}
-                  className="px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+                  className="px-6 py-3 bg-cyan-500 text-white rounded-lg hover:bg-cyan-500 transition-colors"
                 >
                   Start Discovery
                 </button>
@@ -372,7 +372,7 @@ export default function GrantDiscoveryPage() {
 
             {searching && (
               <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-12 text-center">
-                <RefreshCw className="w-16 h-16 text-purple-600 mx-auto mb-4 animate-spin" />
+                <RefreshCw className="w-16 h-16 text-cyan-500 mx-auto mb-4 animate-spin" />
                 <h3 className="text-lg font-semibold text-gray-900 mb-2">Searching Federal Databases...</h3>
                 <p className="text-gray-500">
                   Querying Grants.gov and matching against CRAIverse modules
@@ -391,8 +391,8 @@ export default function GrantDiscoveryPage() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
                           <span className={`px-2 py-0.5 rounded text-xs font-medium ${
-                            grant.match_score >= 80 ? 'bg-green-100 text-green-700' :
-                            grant.match_score >= 60 ? 'bg-yellow-100 text-yellow-700' :
+                            grant.match_score >= 80 ? 'bg-cyan-500 text-cyan-500' :
+                            grant.match_score >= 60 ? 'bg-cyan-400 text-cyan-400' :
                             'bg-gray-100 text-gray-700'
                           }`}>
                             {grant.match_score}% match
@@ -423,7 +423,7 @@ export default function GrantDiscoveryPage() {
                             {grant.target_modules.map((module) => (
                               <span
                                 key={module}
-                                className="px-2 py-0.5 bg-purple-50 text-purple-700 rounded text-xs"
+                                className="px-2 py-0.5 bg-cyan-500 text-cyan-500 rounded text-xs"
                               >
                                 {CRAIVERSE_MODULES.find(m => m.id === module)?.name || module}
                               </span>
@@ -434,8 +434,8 @@ export default function GrantDiscoveryPage() {
                         {/* Stats Row */}
                         <div className="flex items-center gap-4 text-sm">
                           <div className="flex items-center gap-1">
-                            <DollarSign className="w-4 h-4 text-green-600" />
-                            <span className="font-semibold text-green-600">
+                            <DollarSign className="w-4 h-4 text-cyan-500" />
+                            <span className="font-semibold text-cyan-500">
                               {formatCurrency(grant.amount_available)}
                             </span>
                           </div>
@@ -459,7 +459,7 @@ export default function GrantDiscoveryPage() {
                       {/* Actions */}
                       <div className="flex flex-col gap-2">
                         {importedIds.has(grant.id) ? (
-                          <span className="flex items-center gap-1 px-3 py-2 bg-green-100 text-green-700 rounded-lg text-sm">
+                          <span className="flex items-center gap-1 px-3 py-2 bg-cyan-500 text-cyan-500 rounded-lg text-sm">
                             <CheckCircle className="w-4 h-4" />
                             Imported
                           </span>
@@ -467,7 +467,7 @@ export default function GrantDiscoveryPage() {
                           <button
                             onClick={() => importGrant(grant)}
                             disabled={importingId === grant.id}
-                            className="flex items-center gap-1 px-3 py-2 bg-purple-600 text-white rounded-lg text-sm hover:bg-purple-700 transition-colors disabled:opacity-50"
+                            className="flex items-center gap-1 px-3 py-2 bg-cyan-500 text-white rounded-lg text-sm hover:bg-cyan-500 transition-colors disabled:opacity-50"
                           >
                             {importingId === grant.id ? (
                               <RefreshCw className="w-4 h-4 animate-spin" />
