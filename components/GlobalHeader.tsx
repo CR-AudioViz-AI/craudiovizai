@@ -118,7 +118,7 @@ export default function GlobalHeader({ variant = 'light' }: HeaderProps) {
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2 font-bold text-xl">
-            <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-lg flex items-center justify-center text-white">
+            <div className="w-8 h-8 bg-gradient-to-br from-cyan-500 to-cyan-500 rounded-lg flex items-center justify-center text-white">
               CR
             </div>
             <span className="hidden sm:inline">CR AudioViz AI</span>
@@ -138,7 +138,7 @@ export default function GlobalHeader({ variant = 'light' }: HeaderProps) {
                   className={`
                     flex items-center gap-2 px-4 py-2 rounded-lg transition-colors
                     ${isActive 
-                      ? 'bg-blue-500 text-white' 
+                      ? 'bg-cyan-500 text-white' 
                       : isDark 
                         ? 'text-gray-300 hover:bg-gray-800' 
                         : 'text-gray-700 hover:bg-gray-100'
@@ -177,7 +177,7 @@ export default function GlobalHeader({ variant = 'light' }: HeaderProps) {
             {user && (
               <Link
                 href="/pricing"
-                className="hidden sm:flex items-center gap-2 bg-gradient-to-r from-blue-500 to-cyan-500 text-white px-4 py-2 rounded-lg hover:shadow-lg transition-shadow"
+                className="hidden sm:flex items-center gap-2 bg-gradient-to-r from-cyan-500 to-cyan-500 text-white px-4 py-2 rounded-lg hover:shadow-lg transition-shadow"
               >
                 <Zap className="w-4 h-4" />
                 <span className="font-semibold">{credits.toLocaleString()}</span>
@@ -253,7 +253,7 @@ export default function GlobalHeader({ variant = 'light' }: HeaderProps) {
                 </Link>
                 <Link
                   href="/signup"
-                  className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors"
+                  className="bg-cyan-600 hover:bg-cyan-700 text-white px-4 py-2 rounded-lg transition-colors"
                 >
                   Get Started
                 </Link>
@@ -281,7 +281,7 @@ export default function GlobalHeader({ variant = 'light' }: HeaderProps) {
             {user && (
               <Link
                 href="/pricing"
-                className="flex items-center justify-between px-4 py-3 mb-2 bg-gradient-to-r from-blue-500 to-cyan-500 text-white rounded-lg"
+                className="flex items-center justify-between px-4 py-3 mb-2 bg-gradient-to-r from-cyan-500 to-cyan-500 text-white rounded-lg"
                 onClick={() => setMobileMenuOpen(false)}
               >
                 <span className="font-semibold">Credits</span>
@@ -304,7 +304,7 @@ export default function GlobalHeader({ variant = 'light' }: HeaderProps) {
                   href={item.href}
                   className={`
                     flex items-center gap-3 px-4 py-3 rounded-lg transition-colors
-                    ${isActive ? 'bg-blue-500 text-white' : 'hover:bg-gray-100'}
+                    ${isActive ? 'bg-cyan-500 text-white' : 'hover:bg-gray-100'}
                   `}
                   onClick={() => setMobileMenuOpen(false)}
                 >
