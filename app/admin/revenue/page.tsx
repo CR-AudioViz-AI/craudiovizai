@@ -112,7 +112,7 @@ export default async function AdminRevenuePage() {
           <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
             <p className="text-sm text-gray-500 mb-1">This Month</p>
             <p className="text-3xl font-bold text-gray-900">${data.thisMonth.toLocaleString()}</p>
-            <div className={`flex items-center gap-1 mt-2 text-sm ${data.growth >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+            <div className={`flex items-center gap-1 mt-2 text-sm ${data.growth >= 0 ? 'text-cyan-500' : 'text-red-600'}`}>
               {data.growth >= 0 ? <ArrowUpRight className="w-4 h-4" /> : <ArrowDownRight className="w-4 h-4" />}
               {Math.abs(data.growth).toFixed(1)}% vs last month
             </div>
@@ -127,7 +127,7 @@ export default async function AdminRevenuePage() {
           </div>
           <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
             <p className="text-sm text-gray-500 mb-1">Projected ARR</p>
-            <p className="text-3xl font-bold text-green-600">${(data.byType.subscriptions * 12).toLocaleString()}</p>
+            <p className="text-3xl font-bold text-cyan-500">${(data.byType.subscriptions * 12).toLocaleString()}</p>
           </div>
         </div>
 
@@ -175,7 +175,7 @@ export default async function AdminRevenuePage() {
               </div>
               <div className="w-full bg-gray-200 rounded-full h-2">
                 <div 
-                  className="bg-yellow-500 h-2 rounded-full" 
+                  className="bg-cyan-400 h-2 rounded-full" 
                   style={{ width: `${data.thisMonth > 0 ? (data.byProvider.paypal / data.thisMonth) * 100 : 0}%` }}
                 />
               </div>
@@ -222,7 +222,7 @@ export default async function AdminRevenuePage() {
                     <td className="py-3 px-4 capitalize text-sm text-gray-600">
                       {tx.type?.replace('_', ' ')}
                     </td>
-                    <td className="py-3 px-4 font-bold text-green-600">${tx.amount?.toFixed(2)}</td>
+                    <td className="py-3 px-4 font-bold text-cyan-500">${tx.amount?.toFixed(2)}</td>
                     <td className="py-3 px-4 capitalize text-sm text-gray-600">{tx.provider}</td>
                     <td className="py-3 px-4 text-sm text-gray-500">
                       {new Date(tx.created_at).toLocaleDateString()}
