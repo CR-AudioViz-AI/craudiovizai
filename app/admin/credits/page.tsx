@@ -63,9 +63,9 @@ export default async function AdminCreditsPage() {
   return (
     <div className="min-h-screen bg-gray-100">
       {/* Header */}
-      <div className="bg-gradient-to-r from-yellow-600 to-yellow-500 text-white py-6">
+      <div className="bg-gradient-to-r from-cyan-400 to-cyan-400 text-white py-6">
         <div className="container mx-auto px-4">
-          <Link href="/admin" className="inline-flex items-center gap-2 text-yellow-200 hover:text-white mb-4">
+          <Link href="/admin" className="inline-flex items-center gap-2 text-cyan-400 hover:text-white mb-4">
             <ArrowLeft className="w-4 h-4" />
             Back to Dashboard
           </Link>
@@ -75,14 +75,14 @@ export default async function AdminCreditsPage() {
                 <Coins className="w-8 h-8" />
                 Credit System Management
               </h1>
-              <p className="text-yellow-200">Monitor credit usage, purchases, and distribution</p>
+              <p className="text-cyan-400">Monitor credit usage, purchases, and distribution</p>
             </div>
             <div className="flex gap-3">
               <button className="px-4 py-2 bg-white/20 hover:bg-white/30 rounded-lg text-sm font-semibold">
                 <Gift className="w-4 h-4 inline mr-2" />
                 Grant Credits
               </button>
-              <button className="px-4 py-2 bg-white text-yellow-600 rounded-lg text-sm font-semibold hover:bg-yellow-50">
+              <button className="px-4 py-2 bg-white text-cyan-400 rounded-lg text-sm font-semibold hover:bg-cyan-400">
                 <RefreshCw className="w-4 h-4 inline mr-2" />
                 Process Refunds
               </button>
@@ -97,7 +97,7 @@ export default async function AdminCreditsPage() {
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
             <div className="flex items-center justify-between mb-2">
               <p className="text-sm text-gray-500">Total in Circulation</p>
-              <Coins className="w-5 h-5 text-yellow-500" />
+              <Coins className="w-5 h-5 text-cyan-400" />
             </div>
             <p className="text-3xl font-bold text-gray-900">{stats.totalInCirculation.toLocaleString()}</p>
             <p className="text-xs text-gray-400 mt-1">Across all users</p>
@@ -113,9 +113,9 @@ export default async function AdminCreditsPage() {
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
             <div className="flex items-center justify-between mb-2">
               <p className="text-sm text-gray-500">Purchased Today</p>
-              <TrendingUp className="w-5 h-5 text-green-500" />
+              <TrendingUp className="w-5 h-5 text-cyan-500" />
             </div>
-            <p className="text-3xl font-bold text-green-600">{stats.creditsPurchasedToday.toLocaleString()}</p>
+            <p className="text-3xl font-bold text-cyan-500">{stats.creditsPurchasedToday.toLocaleString()}</p>
             <p className="text-xs text-gray-400 mt-1">New credits sold</p>
           </div>
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
@@ -123,7 +123,7 @@ export default async function AdminCreditsPage() {
               <p className="text-sm text-gray-500">Net Flow Today</p>
               <Zap className="w-5 h-5 text-blue-500" />
             </div>
-            <p className={`text-3xl font-bold ${stats.creditsPurchasedToday - stats.creditsUsedToday >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+            <p className={`text-3xl font-bold ${stats.creditsPurchasedToday - stats.creditsUsedToday >= 0 ? 'text-cyan-500' : 'text-red-600'}`}>
               {stats.creditsPurchasedToday - stats.creditsUsedToday >= 0 ? '+' : ''}{(stats.creditsPurchasedToday - stats.creditsUsedToday).toLocaleString()}
             </p>
             <p className="text-xs text-gray-400 mt-1">Purchased - Used</p>
@@ -131,9 +131,9 @@ export default async function AdminCreditsPage() {
         </div>
 
         {/* Credit Policy Reminder */}
-        <div className="bg-green-50 border border-green-200 rounded-xl p-6 mb-8">
-          <h3 className="font-bold text-green-800 mb-2">✨ Credits Never Expire Policy</h3>
-          <p className="text-green-700">On paid plans, credits never expire. This is our customer promise. Free tier credits may have different policies.</p>
+        <div className="bg-cyan-500 border border-cyan-500 rounded-xl p-6 mb-8">
+          <h3 className="font-bold text-cyan-500 mb-2">✨ Credits Never Expire Policy</h3>
+          <p className="text-cyan-500">On paid plans, credits never expire. This is our customer promise. Free tier credits may have different policies.</p>
         </div>
 
         {/* Recent Transactions */}
@@ -160,7 +160,7 @@ export default async function AdminCreditsPage() {
                   </td>
                   <td className="py-3 px-6">
                     <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                      tx.type === 'purchase' ? 'bg-green-100 text-green-700' :
+                      tx.type === 'purchase' ? 'bg-cyan-500 text-cyan-500' :
                       tx.type === 'deduction' ? 'bg-red-100 text-red-700' :
                       tx.type === 'refund' ? 'bg-blue-100 text-blue-700' :
                       'bg-gray-100 text-gray-700'
@@ -169,7 +169,7 @@ export default async function AdminCreditsPage() {
                     </span>
                   </td>
                   <td className="py-3 px-6">
-                    <span className={`font-bold ${tx.credits > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                    <span className={`font-bold ${tx.credits > 0 ? 'text-cyan-500' : 'text-red-600'}`}>
                       {tx.credits > 0 ? '+' : ''}{tx.credits}
                     </span>
                   </td>
