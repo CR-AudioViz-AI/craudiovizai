@@ -77,18 +77,18 @@ export default function VirtualWorldHub() {
   const getTypeColor = (type: string) => {
     switch (type) {
       case 'community': return 'bg-blue-500/20 text-blue-400'
-      case 'business': return 'bg-green-500/20 text-green-400'
-      case 'entertainment': return 'bg-purple-500/20 text-purple-400'
-      case 'education': return 'bg-yellow-500/20 text-yellow-400'
-      case 'social': return 'bg-pink-500/20 text-pink-400'
+      case 'business': return 'bg-cyan-500/20 text-cyan-500'
+      case 'entertainment': return 'bg-cyan-500/20 text-cyan-500'
+      case 'education': return 'bg-cyan-400/20 text-cyan-400'
+      case 'social': return 'bg-cyan-500/20 text-cyan-500'
       default: return 'bg-gray-500/20 text-gray-400'
     }
   }
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'online': return 'bg-green-500'
-      case 'away': return 'bg-yellow-500'
+      case 'online': return 'bg-cyan-500'
+      case 'away': return 'bg-cyan-400'
       case 'busy': return 'bg-red-500'
       default: return 'bg-gray-500'
     }
@@ -97,7 +97,7 @@ export default function VirtualWorldHub() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 rounded-xl p-6">
+      <div className="bg-gradient-to-r from-cyan-500 via-cyan-500 to-cyan-500 rounded-xl p-6">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-4">
             <div className="w-14 h-14 bg-white/20 rounded-xl flex items-center justify-center">
@@ -105,10 +105,10 @@ export default function VirtualWorldHub() {
             </div>
             <div>
               <h1 className="text-2xl font-bold text-white">CRAIverse</h1>
-              <p className="text-purple-200">Your virtual world awaits</p>
+              <p className="text-cyan-500">Your virtual world awaits</p>
             </div>
           </div>
-          <button className="px-4 py-2 bg-white text-purple-600 rounded-lg font-medium flex items-center gap-2">
+          <button className="px-4 py-2 bg-white text-cyan-500 rounded-lg font-medium flex items-center gap-2">
             <Plus className="w-4 h-4" /> Create Space
           </button>
         </div>
@@ -117,19 +117,19 @@ export default function VirtualWorldHub() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <div className="bg-white/10 rounded-lg p-3 text-center">
             <p className="text-2xl font-bold text-white">{VIRTUAL_SPACES.reduce((s, v) => s + v.activeNow, 0).toLocaleString()}</p>
-            <p className="text-xs text-purple-200">Online Now</p>
+            <p className="text-xs text-cyan-500">Online Now</p>
           </div>
           <div className="bg-white/10 rounded-lg p-3 text-center">
             <p className="text-2xl font-bold text-white">{VIRTUAL_SPACES.length}</p>
-            <p className="text-xs text-purple-200">Active Spaces</p>
+            <p className="text-xs text-cyan-500">Active Spaces</p>
           </div>
           <div className="bg-white/10 rounded-lg p-3 text-center">
             <p className="text-2xl font-bold text-white">{UPCOMING_EVENTS.length}</p>
-            <p className="text-xs text-purple-200">Upcoming Events</p>
+            <p className="text-xs text-cyan-500">Upcoming Events</p>
           </div>
           <div className="bg-white/10 rounded-lg p-3 text-center">
             <p className="text-2xl font-bold text-white">{ONLINE_FRIENDS.filter(f => f.status === 'online').length}</p>
-            <p className="text-xs text-purple-200">Friends Online</p>
+            <p className="text-xs text-cyan-500">Friends Online</p>
           </div>
         </div>
       </div>
@@ -146,7 +146,7 @@ export default function VirtualWorldHub() {
             key={tab.id}
             onClick={() => setActiveTab(tab.id as any)}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg ${
-              activeTab === tab.id ? 'bg-purple-600 text-white' : 'bg-gray-800 text-gray-400'
+              activeTab === tab.id ? 'bg-cyan-500 text-white' : 'bg-gray-800 text-gray-400'
             }`}
           >
             <tab.icon className="w-4 h-4" />
@@ -176,7 +176,7 @@ export default function VirtualWorldHub() {
                   key={type}
                   onClick={() => setSelectedType(type)}
                   className={`px-3 py-2 rounded-lg text-sm capitalize ${
-                    selectedType === type ? 'bg-purple-600 text-white' : 'bg-gray-800 text-gray-400'
+                    selectedType === type ? 'bg-cyan-500 text-white' : 'bg-gray-800 text-gray-400'
                   }`}
                 >
                   {type}
@@ -188,26 +188,26 @@ export default function VirtualWorldHub() {
           {/* Featured Spaces */}
           <div className="bg-gray-900 rounded-xl border border-gray-700 p-4">
             <h3 className="font-semibold mb-4 flex items-center gap-2">
-              <Sparkles className="w-5 h-5 text-yellow-400" /> Featured Spaces
+              <Sparkles className="w-5 h-5 text-cyan-400" /> Featured Spaces
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {filteredSpaces.filter(s => s.featured).map(space => (
                 <div key={space.id} className="relative group cursor-pointer">
                   <div className={`aspect-video bg-gradient-to-br ${
                     space.type === 'community' ? 'from-blue-500/30 to-cyan-500/30' :
-                    space.type === 'business' ? 'from-green-500/30 to-emerald-500/30' :
-                    space.type === 'entertainment' ? 'from-purple-500/30 to-pink-500/30' :
+                    space.type === 'business' ? 'from-cyan-500/30 to-cyan-500/30' :
+                    space.type === 'entertainment' ? 'from-cyan-500/30 to-cyan-500/30' :
                     'from-gray-500/30 to-gray-600/30'
                   } rounded-xl flex items-center justify-center text-6xl`}>
                     {space.icon}
                     {space.premium && (
-                      <div className="absolute top-2 right-2 px-2 py-1 bg-yellow-500/20 rounded text-yellow-400 text-xs flex items-center gap-1">
+                      <div className="absolute top-2 right-2 px-2 py-1 bg-cyan-400/20 rounded text-cyan-400 text-xs flex items-center gap-1">
                         <Crown className="w-3 h-3" /> VIP
                       </div>
                     )}
                   </div>
                   <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity rounded-xl flex items-center justify-center">
-                    <button className="px-6 py-3 bg-purple-600 hover:bg-purple-700 rounded-lg font-medium flex items-center gap-2">
+                    <button className="px-6 py-3 bg-cyan-500 hover:bg-cyan-500 rounded-lg font-medium flex items-center gap-2">
                       <Play className="w-5 h-5" /> Enter
                     </button>
                   </div>
@@ -227,7 +227,7 @@ export default function VirtualWorldHub() {
           {/* All Spaces */}
           <div className="space-y-3">
             {filteredSpaces.map(space => (
-              <div key={space.id} className="bg-gray-900 rounded-xl border border-gray-700 p-4 flex items-center gap-4 hover:border-purple-500/50 transition-all cursor-pointer">
+              <div key={space.id} className="bg-gray-900 rounded-xl border border-gray-700 p-4 flex items-center gap-4 hover:border-cyan-500/50 transition-all cursor-pointer">
                 <div className="w-16 h-16 bg-gray-800 rounded-xl flex items-center justify-center text-3xl">
                   {space.icon}
                 </div>
@@ -238,7 +238,7 @@ export default function VirtualWorldHub() {
                       {space.type}
                     </span>
                     {space.premium && (
-                      <span className="px-2 py-0.5 bg-yellow-500/20 text-yellow-400 rounded text-xs flex items-center gap-1">
+                      <span className="px-2 py-0.5 bg-cyan-400/20 text-cyan-400 rounded text-xs flex items-center gap-1">
                         <Crown className="w-3 h-3" /> VIP
                       </span>
                     )}
@@ -246,10 +246,10 @@ export default function VirtualWorldHub() {
                   <p className="text-sm text-gray-400">{space.description}</p>
                   <div className="flex items-center gap-4 mt-1 text-xs text-gray-500">
                     <span>{space.members.toLocaleString()} members</span>
-                    <span className="text-green-400">{space.activeNow} online</span>
+                    <span className="text-cyan-500">{space.activeNow} online</span>
                   </div>
                 </div>
-                <button className="px-4 py-2 bg-purple-600 hover:bg-purple-700 rounded-lg font-medium">
+                <button className="px-4 py-2 bg-cyan-500 hover:bg-cyan-500 rounded-lg font-medium">
                   Enter
                 </button>
               </div>
@@ -277,7 +277,7 @@ export default function VirtualWorldHub() {
                 </div>
                 <div className="flex items-center gap-4">
                   <span className="text-sm text-gray-400">{event.attendees} attending</span>
-                  <button className="px-4 py-2 bg-purple-600 hover:bg-purple-700 rounded-lg">
+                  <button className="px-4 py-2 bg-cyan-500 hover:bg-cyan-500 rounded-lg">
                     {event.live ? 'Join Now' : 'RSVP'}
                   </button>
                 </div>
@@ -312,7 +312,7 @@ export default function VirtualWorldHub() {
                   <MessageSquare className="w-4 h-4" />
                 </button>
                 {friend.currentSpace && (
-                  <button className="px-3 py-2 bg-purple-600 hover:bg-purple-700 rounded-lg text-sm">
+                  <button className="px-3 py-2 bg-cyan-500 hover:bg-cyan-500 rounded-lg text-sm">
                     Join
                   </button>
                 )}
