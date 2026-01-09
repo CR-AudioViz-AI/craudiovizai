@@ -170,9 +170,9 @@ export default function GrantTrackingPage() {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'approved': return 'bg-green-500/20 text-green-400 border-green-500/30';
+      case 'approved': return 'bg-cyan-500/20 text-cyan-500 border-cyan-500/30';
       case 'submitted': return 'bg-blue-500/20 text-blue-400 border-blue-500/30';
-      case 'under_review': return 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30';
+      case 'under_review': return 'bg-cyan-400/20 text-cyan-400 border-cyan-400/30';
       case 'rejected': return 'bg-red-500/20 text-red-400 border-red-500/30';
       case 'draft': return 'bg-gray-500/20 text-gray-400 border-gray-500/30';
       default: return 'bg-gray-500/20 text-gray-400 border-gray-500/30';
@@ -182,9 +182,9 @@ export default function GrantTrackingPage() {
   const getPriorityColor = (priority: string) => {
     switch (priority) {
       case 'critical': return 'text-red-400';
-      case 'high': return 'text-orange-400';
-      case 'medium': return 'text-yellow-400';
-      case 'low': return 'text-green-400';
+      case 'high': return 'text-cyan-500';
+      case 'medium': return 'text-cyan-400';
+      case 'low': return 'text-cyan-500';
       default: return 'text-gray-400';
     }
   };
@@ -206,14 +206,14 @@ export default function GrantTrackingPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 p-4 md:p-8">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-cyan-500 to-slate-900 p-4 md:p-8">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-3">
-              <div className="p-3 bg-emerald-500/20 rounded-lg">
-                <FileText className="w-8 h-8 text-emerald-400" />
+              <div className="p-3 bg-cyan-500/20 rounded-lg">
+                <FileText className="w-8 h-8 text-cyan-500" />
               </div>
               <div>
                 <h1 className="text-3xl font-bold text-white">Grant Tracking</h1>
@@ -231,7 +231,7 @@ export default function GrantTrackingPage() {
               </button>
               <button
                 onClick={() => setShowAddModal(true)}
-                className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors"
+                className="flex items-center gap-2 px-4 py-2 bg-cyan-500 hover:bg-cyan-500 text-white rounded-lg transition-colors"
               >
                 <Plus className="w-4 h-4" />
                 Add Grant
@@ -251,7 +251,7 @@ export default function GrantTrackingPage() {
 
             <div className="bg-slate-800/50 backdrop-blur-sm p-4 rounded-lg border border-slate-700">
               <div className="flex items-center justify-between mb-2">
-                <DollarSign className="w-5 h-5 text-emerald-400" />
+                <DollarSign className="w-5 h-5 text-cyan-500" />
                 <span className="text-2xl font-bold text-white">${(stats.totalAmount / 1000)}K</span>
               </div>
               <p className="text-slate-400 text-sm">Total Amount</p>
@@ -259,7 +259,7 @@ export default function GrantTrackingPage() {
 
             <div className="bg-slate-800/50 backdrop-blur-sm p-4 rounded-lg border border-slate-700">
               <div className="flex items-center justify-between mb-2">
-                <CheckCircle className="w-5 h-5 text-green-400" />
+                <CheckCircle className="w-5 h-5 text-cyan-500" />
                 <span className="text-2xl font-bold text-white">{stats.approved}</span>
               </div>
               <p className="text-slate-400 text-sm">Approved</p>
@@ -267,7 +267,7 @@ export default function GrantTrackingPage() {
 
             <div className="bg-slate-800/50 backdrop-blur-sm p-4 rounded-lg border border-slate-700">
               <div className="flex items-center justify-between mb-2">
-                <TrendingUp className="w-5 h-5 text-green-400" />
+                <TrendingUp className="w-5 h-5 text-cyan-500" />
                 <span className="text-2xl font-bold text-white">${(stats.approvedAmount / 1000)}K</span>
               </div>
               <p className="text-slate-400 text-sm">Approved $</p>
@@ -275,7 +275,7 @@ export default function GrantTrackingPage() {
 
             <div className="bg-slate-800/50 backdrop-blur-sm p-4 rounded-lg border border-slate-700">
               <div className="flex items-center justify-between mb-2">
-                <Clock className="w-5 h-5 text-yellow-400" />
+                <Clock className="w-5 h-5 text-cyan-400" />
                 <span className="text-2xl font-bold text-white">{stats.pending}</span>
               </div>
               <p className="text-slate-400 text-sm">Pending</p>
@@ -283,7 +283,7 @@ export default function GrantTrackingPage() {
 
             <div className="bg-slate-800/50 backdrop-blur-sm p-4 rounded-lg border border-slate-700">
               <div className="flex items-center justify-between mb-2">
-                <AlertCircle className="w-5 h-5 text-yellow-400" />
+                <AlertCircle className="w-5 h-5 text-cyan-400" />
                 <span className="text-2xl font-bold text-white">${(stats.pendingAmount / 1000)}K</span>
               </div>
               <p className="text-slate-400 text-sm">Pending $</p>
@@ -301,14 +301,14 @@ export default function GrantTrackingPage() {
                 placeholder="Search grants..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 bg-slate-900 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                className="w-full pl-10 pr-4 py-2 bg-slate-900 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-cyan-500"
               />
             </div>
 
             <select
               value={filterStatus}
               onChange={(e) => setFilterStatus(e.target.value)}
-              className="px-4 py-2 bg-slate-900 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              className="px-4 py-2 bg-slate-900 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
             >
               <option value="all">All Status</option>
               <option value="draft">Draft</option>
@@ -321,7 +321,7 @@ export default function GrantTrackingPage() {
             <select
               value={filterPriority}
               onChange={(e) => setFilterPriority(e.target.value)}
-              className="px-4 py-2 bg-slate-900 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              className="px-4 py-2 bg-slate-900 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
             >
               <option value="all">All Priority</option>
               <option value="critical">Critical</option>
@@ -368,7 +368,7 @@ export default function GrantTrackingPage() {
                     setSelectedGrant(grant);
                     setShowDetailModal(true);
                   }}
-                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors"
+                  className="px-4 py-2 bg-cyan-500 hover:bg-cyan-500 text-white rounded-lg transition-colors"
                 >
                   View Details
                 </button>
@@ -481,7 +481,7 @@ export default function GrantTrackingPage() {
                             <FileText className="w-4 h-4" />
                             {doc}
                           </span>
-                          <button className="text-emerald-400 hover:text-emerald-300">
+                          <button className="text-cyan-500 hover:text-cyan-500">
                             <Download className="w-4 h-4" />
                           </button>
                         </div>
