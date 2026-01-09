@@ -109,9 +109,9 @@ export default function PricingPage() {
             ))}
           </div>
           
-          <div className="mt-4 bg-amber-50 border border-amber-200 rounded-lg p-4">
-            <h4 className="font-semibold text-amber-800 mb-2">Pack Rules</h4>
-            <ul className="text-sm text-amber-700 space-y-1">
+          <div className="mt-4 bg-cyan-50 border border-cyan-200 rounded-lg p-4">
+            <h4 className="font-semibold text-cyan-700 mb-2">Pack Rules</h4>
+            <ul className="text-sm text-cyan-600 space-y-1">
               <li>• Pack credits stay usable while subscription is active</li>
               <li>• Packs do NOT extend subscription term</li>
               <li>• Pack credits remain usable during 10-day grace period</li>
