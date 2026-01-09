@@ -224,7 +224,7 @@ export default function ExpenseListTable({ onEdit, onDelete, onView }: ExpenseLi
                   </TableCell>
                   <TableCell>
                     {expense.category?.deductible ? (
-                      <Badge variant="secondary" className="bg-green-100 text-green-800">
+                      <Badge variant="secondary" className="bg-cyan-500 text-cyan-500">
                         Deductible
                       </Badge>
                     ) : (
