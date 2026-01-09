@@ -21,7 +21,7 @@ const featuredApps = [
     name: 'Music Builder',
     description: 'Create original music with AI composition tools',
     href: '/apps/music-builder',
-    color: 'from-purple-500 to-purple-600',
+    color: 'from-cyan-500 to-cyan-500',
     features: ['Multiple genres', 'Pro quality', 'Instant export'],
   },
   {
@@ -31,7 +31,7 @@ const featuredApps = [
     name: 'Newsletter Pro',
     description: 'Enterprise email marketing and campaign management',
     href: '/apps/newsletter',
-    color: 'from-green-500 to-green-600',
+    color: 'from-cyan-500 to-cyan-500',
     features: ['Campaigns', 'Analytics', 'Templates'],
   },
 ];
@@ -69,7 +69,7 @@ export default function FeaturedApps() {
                     <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center text-3xl shadow-sm group-hover:scale-110 transition-transform">
                       {app.icon}
                     </div>
-                    <div className="flex items-center gap-1 bg-green-100 text-green-700 px-2 py-1 rounded-full text-xs font-semibold">
+                    <div className="flex items-center gap-1 bg-cyan-500 text-cyan-500 px-2 py-1 rounded-full text-xs font-semibold">
                       <CheckCircle className="w-3 h-3" />
                       Live
                     </div>
