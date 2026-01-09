@@ -228,7 +228,7 @@ function CheckoutContent() {
                   <ul className="space-y-2">
                     {plan.features.map((feature, i) => (
                       <li key={i} className="flex items-center gap-2 text-sm text-slate-300">
-                        <Check className="w-4 h-4 text-green-400 flex-shrink-0" />
+                        <Check className="w-4 h-4 text-cyan-500 flex-shrink-0" />
                         {feature}
                       </li>
                     ))}
@@ -251,7 +251,7 @@ function CheckoutContent() {
                 <div className="flex items-center justify-between mb-4">
                   <Gift className="w-8 h-8 text-cyan-400" />
                   {pack.bonus > 0 && (
-                    <span className="bg-green-500/20 text-green-400 text-xs font-bold px-2 py-1 rounded">
+                    <span className="bg-cyan-500/20 text-cyan-500 text-xs font-bold px-2 py-1 rounded">
                       +{pack.bonus} BONUS
                     </span>
                   )}
@@ -262,7 +262,7 @@ function CheckoutContent() {
                 <div className="text-slate-400 text-sm mb-4">credits</div>
                 <div className="text-2xl font-bold text-cyan-400">${pack.price}</div>
                 {pack.bonus > 0 && (
-                  <div className="text-sm text-green-400 mt-2">
+                  <div className="text-sm text-cyan-500 mt-2">
                     Total: {(pack.credits + pack.bonus).toLocaleString()} credits
                   </div>
                 )}
