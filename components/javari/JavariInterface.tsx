@@ -403,7 +403,7 @@ What would you like to work on?`,
       <header className="border-b border-white/10 bg-slate-900/80 backdrop-blur-sm sticky top-0 z-20">
         <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500 to-purple-600 flex items-center justify-center shadow-lg shadow-cyan-500/20">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500 to-cyan-500 flex items-center justify-center shadow-lg shadow-cyan-500/20">
               <Bot className="w-6 h-6 text-white" />
             </div>
             <div>
@@ -517,7 +517,7 @@ What would you like to work on?`,
                     >
                       <div className={`
                         w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0
-                        ${doc.status === 'ready' ? 'bg-green-500/20 text-green-400' :
+                        ${doc.status === 'ready' ? 'bg-cyan-500/20 text-cyan-500' :
                           doc.status === 'error' ? 'bg-red-500/20 text-red-400' :
                           'bg-cyan-500/20 text-cyan-400'}
                       `}>
@@ -563,7 +563,7 @@ What would you like to work on?`,
                   <div className={`
                     w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0
                     ${message.role === 'user' 
-                      ? 'bg-purple-500/20 text-purple-400' 
+                      ? 'bg-cyan-500/20 text-cyan-500' 
                       : 'bg-cyan-500/20 text-cyan-400'}
                   `}>
                     {message.role === 'user' ? <User className="w-4 h-4" /> : <Bot className="w-4 h-4" />}
@@ -571,7 +571,7 @@ What would you like to work on?`,
                   <div className={`
                     max-w-[85%] p-4 rounded-2xl
                     ${message.role === 'user' 
-                      ? 'bg-purple-500/20 text-white rounded-tr-sm' 
+                      ? 'bg-cyan-500/20 text-white rounded-tr-sm' 
                       : 'bg-white/10 text-gray-100 rounded-tl-sm'}
                   `}>
                     <div className="whitespace-pre-wrap text-sm leading-relaxed">{message.content}</div>
@@ -640,7 +640,7 @@ What would you like to work on?`,
                 <button
                   onClick={sendMessage}
                   disabled={!input.trim() || isLoading}
-                  className="p-3 bg-gradient-to-r from-cyan-500 to-purple-600 hover:from-cyan-400 hover:to-purple-500 disabled:opacity-40 disabled:cursor-not-allowed rounded-xl text-white transition shadow-lg shadow-cyan-500/20 disabled:shadow-none"
+                  className="p-3 bg-gradient-to-r from-cyan-500 to-cyan-500 hover:from-cyan-400 hover:to-cyan-500 disabled:opacity-40 disabled:cursor-not-allowed rounded-xl text-white transition shadow-lg shadow-cyan-500/20 disabled:shadow-none"
                 >
                   <Send className="w-5 h-5" />
                 </button>
