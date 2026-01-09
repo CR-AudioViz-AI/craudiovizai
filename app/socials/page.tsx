@@ -10,38 +10,38 @@ import Link from 'next/link';
 const SOCIAL_LINKS = [
   { name: 'Twitter/X', icon: '𝕏', url: 'https://twitter.com/CRAudioVizAI', color: 'bg-black' },
   { name: 'Facebook', icon: '📘', url: 'https://facebook.com/CRAudioVizAI', color: 'bg-blue-600' },
-  { name: 'Instagram', icon: '📸', url: 'https://instagram.com/CRAudioVizAI', color: 'bg-gradient-to-r from-purple-500 to-pink-500' },
+  { name: 'Instagram', icon: '📸', url: 'https://instagram.com/CRAudioVizAI', color: 'bg-gradient-to-r from-cyan-500 to-cyan-500' },
   { name: 'LinkedIn', icon: '💼', url: 'https://linkedin.com/company/craudiovizai', color: 'bg-blue-700' },
   { name: 'YouTube', icon: '▶️', url: 'https://youtube.com/@CRAudioVizAI', color: 'bg-red-600' },
   { name: 'TikTok', icon: '🎵', url: 'https://tiktok.com/@CRAudioVizAI', color: 'bg-black' },
-  { name: 'Discord', icon: '💬', url: 'https://discord.gg/javari', color: 'bg-indigo-500' },
+  { name: 'Discord', icon: '💬', url: 'https://discord.gg/javari', color: 'bg-cyan-500' },
   { name: 'Threads', icon: '🧵', url: 'https://threads.net/@CRAudioVizAI', color: 'bg-black' },
   { name: 'Pinterest', icon: '📌', url: 'https://pinterest.com/CRAudioVizAI', color: 'bg-red-500' },
-  { name: 'Reddit', icon: '🤖', url: 'https://reddit.com/r/CRAudioVizAI', color: 'bg-orange-500' },
-  { name: 'Twitch', icon: '🎮', url: 'https://twitch.tv/CRAudioVizAI', color: 'bg-purple-600' },
+  { name: 'Reddit', icon: '🤖', url: 'https://reddit.com/r/CRAudioVizAI', color: 'bg-cyan-500' },
+  { name: 'Twitch', icon: '🎮', url: 'https://twitch.tv/CRAudioVizAI', color: 'bg-cyan-500' },
   { name: 'Telegram', icon: '✈️', url: 'https://t.me/CRAudioVizAI', color: 'bg-blue-500' },
 ];
 
 export default function SocialsPage() {
   return (
-    <div className="min-h-screen bg-gradient-to-b from-purple-50 to-white">
+    <div className="min-h-screen bg-gradient-to-b from-cyan-500 to-white">
       <header className="bg-white shadow-sm sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
-          <Link href="/" className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+          <Link href="/" className="text-2xl font-bold bg-gradient-to-r from-cyan-500 to-cyan-500 bg-clip-text text-transparent">
             CR AudioViz AI
           </Link>
           <nav className="flex items-center gap-6">
-            <Link href="/tools" className="text-gray-600 hover:text-purple-600">Tools</Link>
-            <Link href="/pricing" className="text-gray-600 hover:text-purple-600">Pricing</Link>
-            <Link href="/login" className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700">Sign In</Link>
+            <Link href="/tools" className="text-gray-600 hover:text-cyan-500">Tools</Link>
+            <Link href="/pricing" className="text-gray-600 hover:text-cyan-500">Pricing</Link>
+            <Link href="/login" className="px-4 py-2 bg-cyan-500 text-white rounded-lg hover:bg-cyan-500">Sign In</Link>
           </nav>
         </div>
       </header>
 
-      <section className="bg-gradient-to-r from-purple-600 to-pink-600 text-white py-16">
+      <section className="bg-gradient-to-r from-cyan-500 to-cyan-500 text-white py-16">
         <div className="max-w-7xl mx-auto px-4 text-center">
           <h1 className="text-4xl md:text-5xl font-bold mb-4">🌐 Connect With Us</h1>
-          <p className="text-xl text-purple-100 mb-8">Follow us on social media for updates, tips, and community</p>
+          <p className="text-xl text-cyan-500 mb-8">Follow us on social media for updates, tips, and community</p>
         </div>
       </section>
 
