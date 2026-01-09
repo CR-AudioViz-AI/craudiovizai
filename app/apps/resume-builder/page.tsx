@@ -200,9 +200,9 @@ export default function ResumeBuilderPage() {
   // Loading state
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center" role="status" aria-label="Loading">
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-cyan-500 to-slate-900 flex items-center justify-center" role="status" aria-label="Loading">
         <div className="text-center">
-          <Loader2 className="w-12 h-12 text-purple-500 animate-spin mx-auto mb-4" />
+          <Loader2 className="w-12 h-12 text-cyan-500 animate-spin mx-auto mb-4" />
           <p className="text-gray-400">Loading Resume Builder...</p>
         </div>
       </div>
@@ -210,13 +210,13 @@ export default function ResumeBuilderPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900" role="main" aria-label="Resume Builder">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-cyan-500 to-slate-900" role="main" aria-label="Resume Builder">
       {/* Header */}
       <header className="border-b border-white/10 bg-black/20 backdrop-blur-sm">
         <div className="max-w-7xl mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center" aria-hidden="true">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center" aria-hidden="true">
                 <FileText className="w-5 h-5 text-white" />
               </div>
               <div>
@@ -227,12 +227,12 @@ export default function ResumeBuilderPage() {
             <div className="flex items-center gap-3">
               {/* Credits Display */}
               <div 
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg ${credits < 10 ? 'bg-yellow-600/20 border border-yellow-500/30' : 'bg-white/10'}`}
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg ${credits < 10 ? 'bg-cyan-500/20 border border-cyan-500/30' : 'bg-white/10'}`}
                 role="status"
                 aria-label={`${credits} credits remaining`}
               >
-                <Coins className={`w-4 h-4 ${credits < 10 ? 'text-yellow-400' : 'text-purple-400'}`} />
-                <span className={`font-medium ${credits < 10 ? 'text-yellow-400' : 'text-white'}`}>
+                <Coins className={`w-4 h-4 ${credits < 10 ? 'text-cyan-500' : 'text-cyan-500'}`} />
+                <span className={`font-medium ${credits < 10 ? 'text-cyan-500' : 'text-white'}`}>
                   {credits} credits
                 </span>
               </div>
@@ -240,7 +240,7 @@ export default function ResumeBuilderPage() {
               <button
                 onClick={generateWithAI}
                 disabled={isGenerating || credits < CREDIT_COST}
-                className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-lg hover:opacity-90 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-cyan-500 to-blue-600 text-white rounded-lg hover:opacity-90 transition disabled:opacity-50 disabled:cursor-not-allowed"
                 aria-label={`AI Enhance (costs ${CREDIT_COST} credits)`}
               >
                 {isGenerating ? (
@@ -251,7 +251,7 @@ export default function ResumeBuilderPage() {
                 {isGenerating ? 'Generating...' : `AI Enhance (${CREDIT_COST} credits)`}
               </button>
               <button 
-                className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition"
+                className="flex items-center gap-2 px-4 py-2 bg-cyan-500 text-white rounded-lg hover:bg-cyan-500 transition"
                 aria-label="Export resume as PDF"
               >
                 <Download className="w-4 h-4" />
@@ -312,7 +312,7 @@ export default function ResumeBuilderPage() {
                   <button
                     key={section.id}
                     onClick={() => setActiveSection(section.id as typeof activeSection)}
-                    className={`w-full flex items-center gap-3 p-3 rounded-xl transition ${activeSection === section.id ? 'bg-purple-600 text-white' : 'bg-white/5 text-gray-300 hover:bg-white/10'}`}
+                    className={`w-full flex items-center gap-3 p-3 rounded-xl transition ${activeSection === section.id ? 'bg-cyan-500 text-white' : 'bg-white/5 text-gray-300 hover:bg-white/10'}`}
                     aria-current={activeSection === section.id ? 'true' : undefined}
                   >
                     <section.icon className="w-5 h-5" aria-hidden="true" />
@@ -348,7 +348,7 @@ export default function ResumeBuilderPage() {
                               ...prev,
                               personalInfo: { ...prev.personalInfo, fullName: e.target.value }
                             }))}
-                            className="w-full pl-10 pr-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                            className="w-full pl-10 pr-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-cyan-500"
                             placeholder="John Doe"
                           />
                         </div>
@@ -365,7 +365,7 @@ export default function ResumeBuilderPage() {
                               ...prev,
                               personalInfo: { ...prev.personalInfo, email: e.target.value }
                             }))}
-                            className="w-full pl-10 pr-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                            className="w-full pl-10 pr-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-cyan-500"
                             placeholder="john@example.com"
                           />
                         </div>
@@ -382,7 +382,7 @@ export default function ResumeBuilderPage() {
                               ...prev,
                               personalInfo: { ...prev.personalInfo, phone: e.target.value }
                             }))}
-                            className="w-full pl-10 pr-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                            className="w-full pl-10 pr-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-cyan-500"
                             placeholder="(555) 123-4567"
                           />
                         </div>
@@ -399,7 +399,7 @@ export default function ResumeBuilderPage() {
                               ...prev,
                               personalInfo: { ...prev.personalInfo, location: e.target.value }
                             }))}
-                            className="w-full pl-10 pr-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                            className="w-full pl-10 pr-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-cyan-500"
                             placeholder="New York, NY"
                           />
                         </div>
@@ -415,7 +415,7 @@ export default function ResumeBuilderPage() {
                           personalInfo: { ...prev.personalInfo, summary: e.target.value }
                         }))}
                         rows={4}
-                        className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none"
+                        className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-cyan-500 resize-none"
                         placeholder="A brief summary of your professional background..."
                       />
                     </div>
@@ -426,7 +426,7 @@ export default function ResumeBuilderPage() {
                   <div className="space-y-4">
                     <div className="flex items-center justify-between mb-4">
                       <h3 className="text-xl font-semibold text-white">Work Experience</h3>
-                      <button onClick={addExperience} className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition">
+                      <button onClick={addExperience} className="px-4 py-2 bg-cyan-500 text-white rounded-lg hover:bg-cyan-500 transition">
                         + Add Experience
                       </button>
                     </div>
@@ -445,7 +445,7 @@ export default function ResumeBuilderPage() {
                                 newExp[index].title = e.target.value;
                                 setResumeData(prev => ({ ...prev, experience: newExp }));
                               }}
-                              className="px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                              className="px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-cyan-500"
                             />
                             <input type="text" placeholder="Company" value={exp.company}
                               onChange={(e) => {
@@ -453,7 +453,7 @@ export default function ResumeBuilderPage() {
                                 newExp[index].company = e.target.value;
                                 setResumeData(prev => ({ ...prev, experience: newExp }));
                               }}
-                              className="px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                              className="px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-cyan-500"
                             />
                           </div>
                           <textarea placeholder="Description..." value={exp.description} rows={3}
@@ -462,7 +462,7 @@ export default function ResumeBuilderPage() {
                               newExp[index].description = e.target.value;
                               setResumeData(prev => ({ ...prev, experience: newExp }));
                             }}
-                            className="w-full mt-4 px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none"
+                            className="w-full mt-4 px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-cyan-500 resize-none"
                           />
                         </div>
                       ))
@@ -474,7 +474,7 @@ export default function ResumeBuilderPage() {
                   <div className="space-y-4">
                     <div className="flex items-center justify-between mb-4">
                       <h3 className="text-xl font-semibold text-white">Education</h3>
-                      <button onClick={addEducation} className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition">
+                      <button onClick={addEducation} className="px-4 py-2 bg-cyan-500 text-white rounded-lg hover:bg-cyan-500 transition">
                         + Add Education
                       </button>
                     </div>
@@ -493,7 +493,7 @@ export default function ResumeBuilderPage() {
                                 newEdu[index].degree = e.target.value;
                                 setResumeData(prev => ({ ...prev, education: newEdu }));
                               }}
-                              className="px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                              className="px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-cyan-500"
                             />
                             <input type="text" placeholder="School" value={edu.school}
                               onChange={(e) => {
@@ -501,7 +501,7 @@ export default function ResumeBuilderPage() {
                                 newEdu[index].school = e.target.value;
                                 setResumeData(prev => ({ ...prev, education: newEdu }));
                               }}
-                              className="px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                              className="px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-cyan-500"
                             />
                           </div>
                         </div>
@@ -520,16 +520,16 @@ export default function ResumeBuilderPage() {
                         onChange={(e) => setNewSkill(e.target.value)}
                         onKeyDown={(e) => e.key === 'Enter' && addSkill()}
                         placeholder="Add a skill..."
-                        className="flex-1 px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                        className="flex-1 px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-cyan-500"
                         aria-label="New skill"
                       />
-                      <button onClick={addSkill} className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition">
+                      <button onClick={addSkill} className="px-4 py-2 bg-cyan-500 text-white rounded-lg hover:bg-cyan-500 transition">
                         Add
                       </button>
                     </div>
                     <div className="flex flex-wrap gap-2 mt-4" role="list" aria-label="Added skills">
                       {resumeData.skills.map((skill, index) => (
-                        <span key={index} role="listitem" className="px-3 py-1 bg-purple-600/30 text-purple-300 rounded-full text-sm flex items-center gap-2">
+                        <span key={index} role="listitem" className="px-3 py-1 bg-cyan-500/30 text-cyan-500 rounded-full text-sm flex items-center gap-2">
                           {skill}
                           <button onClick={() => removeSkill(index)} className="hover:text-white" aria-label={`Remove ${skill}`}>×</button>
                         </span>
