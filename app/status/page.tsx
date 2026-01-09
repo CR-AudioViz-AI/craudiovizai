@@ -18,7 +18,7 @@ export default function StatusPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Hero Section */}
-      <section className={`px-4 py-12 md:py-16 lg:py-20 ${allOperational ? 'bg-gradient-to-br from-green-600 to-teal-600' : 'bg-gradient-to-br from-yellow-500 to-orange-500'} text-white`}>
+      <section className={`px-4 py-12 md:py-16 lg:py-20 ${allOperational ? 'bg-gradient-to-br from-cyan-500 to-teal-600' : 'bg-gradient-to-br from-cyan-400 to-cyan-500'} text-white`}>
         <div className="container mx-auto">
           <div className="max-w-4xl mx-auto text-center">
             {allOperational ? (
@@ -53,8 +53,8 @@ export default function StatusPage() {
                         <span className="font-medium text-sm md:text-base">{service.name}</span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <div className={`w-3 h-3 rounded-full ${service.status === 'operational' ? 'bg-green-500' : 'bg-yellow-500'}`} />
-                        <span className={`text-xs md:text-sm font-medium ${service.status === 'operational' ? 'text-green-600' : 'text-yellow-600'}`}>
+                        <div className={`w-3 h-3 rounded-full ${service.status === 'operational' ? 'bg-cyan-500' : 'bg-cyan-400'}`} />
+                        <span className={`text-xs md:text-sm font-medium ${service.status === 'operational' ? 'text-cyan-500' : 'text-cyan-400'}`}>
                           {service.status === 'operational' ? 'Operational' : 'Degraded'}
                         </span>
                       </div>
@@ -76,19 +76,19 @@ export default function StatusPage() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
               <Card>
                 <CardContent className="p-4 md:p-6 text-center">
-                  <div className="text-3xl md:text-4xl font-bold text-green-600 mb-2">99.9%</div>
+                  <div className="text-3xl md:text-4xl font-bold text-cyan-500 mb-2">99.9%</div>
                   <div className="text-xs md:text-sm text-gray-600">Last 30 Days</div>
                 </CardContent>
               </Card>
               <Card>
                 <CardContent className="p-4 md:p-6 text-center">
-                  <div className="text-3xl md:text-4xl font-bold text-green-600 mb-2">99.95%</div>
+                  <div className="text-3xl md:text-4xl font-bold text-cyan-500 mb-2">99.95%</div>
                   <div className="text-xs md:text-sm text-gray-600">Last 90 Days</div>
                 </CardContent>
               </Card>
               <Card>
                 <CardContent className="p-4 md:p-6 text-center">
-                  <div className="text-3xl md:text-4xl font-bold text-green-600 mb-2">99.9%</div>
+                  <div className="text-3xl md:text-4xl font-bold text-cyan-500 mb-2">99.9%</div>
                   <div className="text-xs md:text-sm text-gray-600">All Time</div>
                 </CardContent>
               </Card>
@@ -98,7 +98,7 @@ export default function StatusPage() {
       </section>
 
       {/* Subscribe */}
-      <section className="px-4 py-12 md:py-16 bg-gradient-to-br from-blue-600 to-purple-600 text-white">
+      <section className="px-4 py-12 md:py-16 bg-gradient-to-br from-blue-600 to-cyan-500 text-white">
         <div className="container mx-auto text-center">
           <Clock className="w-12 h-12 md:w-16 md:h-16 mx-auto mb-4 md:mb-6" />
           <h2 className="text-2xl md:text-3xl font-bold mb-4">Stay Updated</h2>
