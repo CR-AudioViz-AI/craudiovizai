@@ -272,7 +272,7 @@ export default function SellPage() {
                   <ul className="space-y-2">
                     {plan.features.map((f, j) => (
                       <li key={j} className="flex items-center gap-2 text-slate-300 text-sm">
-                        <Check className="w-4 h-4 text-green-400" />
+                        <Check className="w-4 h-4 text-cyan-500" />
                         {f}
                       </li>
                     ))}
@@ -383,8 +383,8 @@ export default function SellPage() {
     return (
       <div className="min-h-screen bg-gradient-to-b from-slate-900 to-slate-800 flex items-center justify-center p-4">
         <div className="bg-slate-800 border border-slate-700 rounded-2xl p-8 max-w-md text-center">
-          <div className="w-16 h-16 bg-yellow-500/10 rounded-full flex items-center justify-center mx-auto mb-4">
-            <Loader2 className="w-8 h-8 text-yellow-400 animate-spin" />
+          <div className="w-16 h-16 bg-cyan-400/10 rounded-full flex items-center justify-center mx-auto mb-4">
+            <Loader2 className="w-8 h-8 text-cyan-400 animate-spin" />
           </div>
           <h2 className="text-2xl font-bold text-white mb-2">Application Under Review</h2>
           <p className="text-slate-400 mb-6">
@@ -449,7 +449,7 @@ export default function SellPage() {
             </div>
           </button>
           <button className="flex items-center gap-3 p-4 bg-slate-800 border border-slate-700 rounded-xl hover:border-cyan-500/50 transition-colors text-left">
-            <CreditCard className="w-6 h-6 text-green-400" />
+            <CreditCard className="w-6 h-6 text-cyan-500" />
             <div>
               <p className="font-medium text-white">Request Payout</p>
               <p className="text-sm text-slate-400">${stats?.pending_payout || 0} available</p>
@@ -500,7 +500,7 @@ export default function SellPage() {
                     <td className="px-4 py-3 text-slate-300">{listing.sales || 0}</td>
                     <td className="px-4 py-3">
                       <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                        listing.status === 'active' ? 'bg-green-500/10 text-green-400' : 'bg-slate-500/10 text-slate-400'
+                        listing.status === 'active' ? 'bg-cyan-500/10 text-cyan-500' : 'bg-slate-500/10 text-slate-400'
                       }`}>
                         {listing.status}
                       </span>
