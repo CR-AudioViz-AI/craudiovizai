@@ -10,9 +10,9 @@ export default function PrivacyPage() {
         <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-8">Privacy Policy</h1>
         <p className="text-gray-500 mb-8">Last updated: December 30, 2025</p>
 
-        <div className="bg-green-50 dark:bg-green-900/20 rounded-xl p-6 mb-12">
-          <h2 className="text-xl font-bold text-green-900 dark:text-green-100 mb-2">🔒 Our Promise</h2>
-          <p className="text-green-700 dark:text-green-300">
+        <div className="bg-cyan-50 dark:bg-slate-900/20 rounded-xl p-6 mb-12">
+          <h2 className="text-xl font-bold text-slate-900 dark:text-cyan-100 mb-2">🔒 Our Promise</h2>
+          <p className="text-cyan-700 dark:text-cyan-300">
             We never sell your data. Ever. Your privacy is fundamental to everything we build.
           </p>
         </div>
