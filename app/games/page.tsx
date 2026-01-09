@@ -82,7 +82,7 @@ function GameCard({ game }: { game: Game }) {
       whileHover={{ scale: 1.03, y: -4 }}
       className="bg-white dark:bg-gray-800 rounded-xl overflow-hidden shadow-lg hover:shadow-xl transition-all cursor-pointer"
     >
-      <div className="h-32 bg-gradient-to-br from-blue-400 to-cyan-500 flex items-center justify-center relative">
+      <div className="h-32 bg-gradient-to-br from-cyan-400 to-cyan-500 flex items-center justify-center relative">
         <span className="text-6xl">{game.thumbnail}</span>
         <div className="absolute top-2 left-2 flex gap-1">
           {game.isFeatured && (
@@ -259,7 +259,7 @@ export default function GamesHubPage() {
               <div className="text-gray-400">Games</div>
             </div>
             <div>
-              <div className="text-4xl font-bold text-blue-400">{CATEGORIES.length - 1}</div>
+              <div className="text-4xl font-bold text-cyan-400">{CATEGORIES.length - 1}</div>
               <div className="text-gray-400">Categories</div>
             </div>
             <div>
@@ -280,7 +280,7 @@ export default function GamesHubPage() {
           </p>
           <Link
             href="/hub"
-            className="inline-block px-8 py-3 bg-gradient-to-r from-blue-500 to-cyan-500 text-white rounded-xl font-medium hover:from-blue-600 hover:to-cyan-600"
+            className="inline-block px-8 py-3 bg-gradient-to-r from-cyan-500 to-cyan-500 text-white rounded-xl font-medium hover:from-cyan-600 hover:to-cyan-600"
           >
             Explore More Tools →
           </Link>
