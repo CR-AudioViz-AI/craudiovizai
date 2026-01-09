@@ -221,7 +221,7 @@ export function CrossSell({
   switch (style) {
     case 'banner':
       return (
-        <div className={`bg-gradient-to-r from-indigo-500 to-purple-600 text-white p-4 rounded-lg ${className}`}>
+        <div className={`bg-gradient-to-r from-cyan-500 to-cyan-500 text-white p-4 rounded-lg ${className}`}>
           <p className="text-sm font-medium mb-2">You might also like:</p>
           <div className="flex gap-4 overflow-x-auto">
             {recommendations.map(product => (
@@ -270,7 +270,7 @@ export function CrossSell({
             <React.Fragment key={product.id}>
               <button
                 onClick={() => handleClick(product.id, product.url)}
-                className="text-indigo-600 hover:text-indigo-800 dark:text-indigo-400"
+                className="text-cyan-500 hover:text-cyan-500 dark:text-cyan-500"
               >
                 {product.icon} {product.name}
               </button>
@@ -292,7 +292,7 @@ export function CrossSell({
               <button
                 key={product.id}
                 onClick={() => handleClick(product.id, product.url)}
-                className="flex flex-col items-center p-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl hover:shadow-lg hover:border-indigo-300 transition text-center"
+                className="flex flex-col items-center p-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl hover:shadow-lg hover:border-cyan-500 transition text-center"
               >
                 <span className="text-4xl mb-2">{product.icon}</span>
                 <h4 className="font-semibold text-gray-900 dark:text-white">{product.name}</h4>
