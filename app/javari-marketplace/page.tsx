@@ -4,7 +4,7 @@ import Link from 'next/link'
 
 export default function JavariMarketplacePage() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-gray-900 text-white">
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-slate-900 to-gray-900 text-white">
       <header className="border-b border-white/10 p-4">
         <Link href="/" className="flex items-center gap-2">
           <span className="text-2xl">🛒</span>
@@ -16,7 +16,7 @@ export default function JavariMarketplacePage() {
         <h1 className="text-4xl font-bold mb-4">Javari Market</h1>
         <p className="text-xl text-gray-300 mb-8">Creator marketplace</p>
         <div className="flex gap-4 justify-center">
-          <Link href="/signup" className="px-6 py-3 bg-purple-600 rounded-lg hover:bg-purple-700">Get Started</Link>
+          <Link href="/signup" className="px-6 py-3 bg-cyan-600 rounded-lg hover:bg-slate-700">Get Started</Link>
           <Link href="/demo" className="px-6 py-3 border border-white/20 rounded-lg hover:bg-white/10">Demo</Link>
         </div>
       </main>
