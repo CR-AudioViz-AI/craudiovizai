@@ -56,14 +56,14 @@ export default function CreditsWidget({
 
   const getStatusColor = () => {
     if (credits >= 1000) return 'text-cyan-500';
-    if (credits >= 100) return 'text-blue-600';
+    if (credits >= 100) return 'text-cyan-600';
     if (credits >= 10) return 'text-cyan-400';
     return 'text-red-600';
   };
 
   const getStatusBg = () => {
     if (credits >= 1000) return 'bg-cyan-500 border-cyan-500';
-    if (credits >= 100) return 'bg-blue-50 border-blue-200';
+    if (credits >= 100) return 'bg-cyan-50 border-cyan-200';
     if (credits >= 10) return 'bg-cyan-400 border-cyan-400';
     return 'bg-red-50 border-red-200';
   };
@@ -81,7 +81,7 @@ export default function CreditsWidget({
         {showPurchase && (
           <Link
             href="/admin/credits"
-            className="bg-blue-600 hover:bg-blue-700 text-white rounded-lg px-3 py-1.5 text-sm font-medium transition-colors flex items-center gap-1"
+            className="bg-cyan-600 hover:bg-cyan-700 text-white rounded-lg px-3 py-1.5 text-sm font-medium transition-colors flex items-center gap-1"
           >
             <Plus className="w-4 h-4" />
             <span>Add</span>
@@ -109,7 +109,7 @@ export default function CreditsWidget({
         {showPurchase && (
           <Link
             href="/admin/credits"
-            className="bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-700 hover:to-cyan-500 text-white rounded-xl px-4 py-2 text-sm font-medium transition-all duration-200 flex items-center gap-2 shadow-sm hover:shadow-md"
+            className="bg-gradient-to-r from-cyan-600 to-cyan-500 hover:from-cyan-700 hover:to-cyan-500 text-white rounded-xl px-4 py-2 text-sm font-medium transition-all duration-200 flex items-center gap-2 shadow-sm hover:shadow-md"
           >
             <Plus className="w-4 h-4" />
             <span>Purchase</span>
@@ -127,7 +127,7 @@ export default function CreditsWidget({
         )}
 
         {credits >= 100 && credits < 1000 && (
-          <div className="flex items-center gap-2 text-sm text-blue-700 bg-blue-50 rounded-lg px-3 py-2">
+          <div className="flex items-center gap-2 text-sm text-cyan-700 bg-cyan-50 rounded-lg px-3 py-2">
             <Coins className="w-4 h-4" />
             <span>Good balance! You have plenty of credits available.</span>
           </div>
