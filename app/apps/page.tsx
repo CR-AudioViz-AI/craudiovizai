@@ -38,7 +38,7 @@ function AppCard({ app }: { app: typeof FALLBACK_APPS[0] }) {
       <div className="text-4xl mb-4">{app.icon || '📱'}</div>
       <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">{app.name}</h3>
       <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">{app.description}</p>
-      <span className="inline-block px-3 py-1 text-xs font-medium bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded-full">
+      <span className="inline-block px-3 py-1 text-xs font-medium bg-cyan-100 dark:bg-slate-900 text-slate-800 dark:text-cyan-200 rounded-full">
         {app.category}
       </span>
     </Link>
