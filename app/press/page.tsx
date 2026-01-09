@@ -95,7 +95,7 @@ export default function PressPage() {
               <Card>
                 <CardHeader className="p-4 md:p-6">
                   <CardTitle className="flex items-center text-base md:text-lg">
-                    <ImageIcon className="w-5 h-5 mr-2 text-purple-600 flex-shrink-0" />
+                    <ImageIcon className="w-5 h-5 mr-2 text-cyan-500 flex-shrink-0" />
                     Product Screenshots
                   </CardTitle>
                 </CardHeader>
@@ -105,7 +105,7 @@ export default function PressPage() {
                   </p>
                   <MobileButton 
                     fullWidth
-                    className="bg-purple-600 hover:bg-purple-700"
+                    className="bg-cyan-500 hover:bg-cyan-500"
                     icon={<Download className="w-4 h-4" />}
                   >
                     Download Screenshots
@@ -116,7 +116,7 @@ export default function PressPage() {
               <Card>
                 <CardHeader className="p-4 md:p-6">
                   <CardTitle className="flex items-center text-base md:text-lg">
-                    <Video className="w-5 h-5 mr-2 text-green-600 flex-shrink-0" />
+                    <Video className="w-5 h-5 mr-2 text-cyan-500 flex-shrink-0" />
                     Videos & Demos
                   </CardTitle>
                 </CardHeader>
@@ -126,7 +126,7 @@ export default function PressPage() {
                   </p>
                   <MobileButton 
                     fullWidth
-                    className="bg-green-600 hover:bg-green-700"
+                    className="bg-cyan-500 hover:bg-cyan-500"
                     icon={<ExternalLink className="w-4 h-4" />}
                   >
                     View Video Library
@@ -137,7 +137,7 @@ export default function PressPage() {
               <Card>
                 <CardHeader className="p-4 md:p-6">
                   <CardTitle className="flex items-center text-base md:text-lg">
-                    <FileText className="w-5 h-5 mr-2 text-orange-600 flex-shrink-0" />
+                    <FileText className="w-5 h-5 mr-2 text-cyan-500 flex-shrink-0" />
                     Press Releases
                   </CardTitle>
                 </CardHeader>
@@ -147,7 +147,7 @@ export default function PressPage() {
                   </p>
                   <MobileButton 
                     fullWidth
-                    className="bg-orange-600 hover:bg-orange-700"
+                    className="bg-cyan-500 hover:bg-cyan-500"
                     icon={<Newspaper className="w-4 h-4" />}
                   >
                     View Press Releases
@@ -229,7 +229,7 @@ export default function PressPage() {
       </section>
 
       {/* Media Contact */}
-      <section className="px-4 py-12 md:py-16 bg-gradient-to-br from-blue-600 to-purple-600 text-white">
+      <section className="px-4 py-12 md:py-16 bg-gradient-to-br from-blue-600 to-cyan-500 text-white">
         <div className="container mx-auto">
           <div className="max-w-4xl mx-auto text-center">
             <Mail className="w-12 h-12 md:w-16 md:h-16 mx-auto mb-4 md:mb-6" />
