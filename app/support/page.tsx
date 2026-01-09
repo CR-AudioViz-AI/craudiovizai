@@ -143,13 +143,13 @@ function FAQItem({ faq, isOpen, toggle }: { faq: typeof FAQS[0]; isOpen: boolean
 function TicketRow({ ticket }: { ticket: Ticket }) {
   const statusColors = {
     open: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
-    pending: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400',
-    resolved: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+    pending: 'bg-cyan-100 text-cyan-700 dark:bg-slate-900/30 dark:text-cyan-400',
+    resolved: 'bg-cyan-100 text-cyan-700 dark:bg-slate-900/30 dark:text-cyan-400'
   };
 
   const priorityColors = {
     low: 'text-gray-500',
-    medium: 'text-yellow-600',
+    medium: 'text-cyan-600',
     high: 'text-red-600'
   };
 
@@ -290,7 +290,7 @@ export default function SupportPage() {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       {/* Hero Section */}
-      <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white py-16 px-4">
+      <div className="bg-gradient-to-r from-blue-600 to-cyan-600 text-white py-16 px-4">
         <div className="max-w-4xl mx-auto text-center">
           <h1 className="text-4xl font-bold mb-4">How can we help you?</h1>
           <p className="text-blue-100 mb-8">Search our knowledge base or contact support</p>
@@ -367,7 +367,7 @@ export default function SupportPage() {
 
             {/* Contact CTA */}
             <section className="text-center">
-              <div className="bg-gradient-to-r from-blue-500 to-purple-500 rounded-2xl p-8 text-white">
+              <div className="bg-gradient-to-r from-blue-500 to-cyan-500 rounded-2xl p-8 text-white">
                 <h2 className="text-2xl font-bold mb-4">Still need help?</h2>
                 <p className="text-blue-100 mb-6">Our support team typically responds within 24 hours</p>
                 <div className="flex flex-col sm:flex-row gap-4 justify-center">
