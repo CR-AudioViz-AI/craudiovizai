@@ -1,5 +1,6 @@
 import type { Config } from "tailwindcss"
-const config = {
+
+const config: Config = {
   darkMode: ["class"],
   content: [
     './pages/**/*.{ts,tsx}',
@@ -7,7 +8,6 @@ const config = {
     './app/**/*.{ts,tsx}',
     './src/**/*.{ts,tsx}',
   ],
-  prefix: "",
   theme: {
     container: {
       center: true,
@@ -18,6 +18,53 @@ const config = {
     },
     extend: {
       colors: {
+        // Official CR AudioViz AI Brand Colors (from logo)
+        navy: {
+          50: '#F0F3F7',
+          100: '#D9E1EB',
+          200: '#B3C3D7',
+          300: '#8CA5C3',
+          400: '#6687AF',
+          500: '#3F699B',
+          600: '#1E3A5F',  // PRIMARY - From logo circle
+          700: '#172D48',
+          800: '#0F1F32',
+          900: '#08121B',
+          950: '#040912',
+        },
+        red: {
+          50: '#FEF2F3',
+          100: '#FDE6E9',
+          200: '#FBCCD3',
+          300: '#F8B3BD',
+          400: '#F67F95',
+          500: '#F44668',
+          600: '#E31937',  // ACCENT - From logo play button
+          700: '#B6142C',
+          800: '#8A0F21',
+          900: '#5D0A16',
+          950: '#30050B',
+        },
+        cyan: {
+          50: '#E6F7FB',
+          100: '#CCEFF7',
+          200: '#99DFEF',
+          300: '#66CFE7',
+          400: '#33BFDF',
+          500: '#00B4D8',  // SECONDARY - From logo bars
+          600: '#0090AD',
+          700: '#006C82',
+          800: '#004856',
+          900: '#00242B',
+          950: '#001216',
+        },
+        // Convenience shortcuts
+        brand: {
+          navy: '#1E3A5F',
+          red: '#E31937',
+          cyan: '#00B4D8',
+        },
+        // Semantic colors
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",
@@ -57,27 +104,9 @@ const config = {
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
       },
-      keyframes: {
-        "accordion-down": {
-          from: { height: "0" },
-          to: { height: "var(--radix-accordion-content-height)" },
-        },
-        "accordion-up": {
-          from: { height: "var(--radix-accordion-content-height)" },
-          to: { height: "0" },
-        },
-        "fade-in": {
-          "0%": { opacity: "0" },
-          "100%": { opacity: "1" },
-        },
-      },
-      animation: {
-        "accordion-down": "accordion-down 0.2s ease-out",
-        "accordion-up": "accordion-up 0.2s ease-out",
-        "fade-in": "fade-in 0.5s ease-in-out",
-      },
     },
   },
   plugins: [require("tailwindcss-animate")],
-} satisfies Config
+}
+
 export default config
