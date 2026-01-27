@@ -3,6 +3,9 @@
 // One-time payments and subscription billing
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import {
+  buildNoRefundMetadata
+} from '@/lib/payments/no-refund-policy';
 
 const PAYPAL_CLIENT_ID = process.env.PAYPAL_CLIENT_ID || '';
 const PAYPAL_CLIENT_SECRET = process.env.PAYPAL_CLIENT_SECRET || '';
@@ -104,7 +107,8 @@ export async function POST(request: NextRequest) {
             productId,
             tierId,
             billingCycle,
-            credits: finalCredits
+            credits: finalCredits,
+            ...buildNoRefundMetadata()
           })
         }],
         application_context: {
