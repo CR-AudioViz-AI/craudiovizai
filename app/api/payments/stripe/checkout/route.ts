@@ -3,6 +3,10 @@
 // Creates checkout sessions for subscriptions and one-time purchases
 
 import { NextRequest, NextResponse } from 'next/server';
+import {
+  NO_REFUND_POLICY,
+  buildNoRefundMetadata
+} from '@/lib/payments/no-refund-policy';
 
 const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY;
 
@@ -54,8 +58,17 @@ export async function POST(req: NextRequest) {
       payment_method_types: ['card'],
       success_url: `${baseUrl}/checkout/success?provider=stripe&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${baseUrl}/pricing?cancelled=true`,
+      consent_collection: {
+        terms_of_service: 'required'
+      },
+      custom_text: {
+        submit: {
+          message: NO_REFUND_POLICY.CONSENT_MESSAGE
+        }
+      },
       metadata: {
-        user_id: userId
+        user_id: userId,
+        ...buildNoRefundMetadata()
       },
       customer_email: email
     };
@@ -80,7 +93,8 @@ export async function POST(req: NextRequest) {
           trial_period_days: 7,
           metadata: {
             user_id: userId,
-            tier
+            tier,
+            ...buildNoRefundMetadata()
           }
         },
         metadata: {
@@ -112,6 +126,11 @@ export async function POST(req: NextRequest) {
           price: pkg.priceId,
           quantity: 1
         }],
+        payment_intent_data: {
+          metadata: {
+            ...buildNoRefundMetadata()
+          }
+        },
         metadata: {
           ...sessionParams.metadata,
           package_id: packageId,
