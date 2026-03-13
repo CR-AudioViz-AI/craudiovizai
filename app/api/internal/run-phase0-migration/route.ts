@@ -1,12 +1,11 @@
 // app/api/internal/run-phase0-migration/route.ts
 // CR AudioViz AI — Phase 0 Migration Executor (ONE-SHOT)
-// Friday, March 13, 2026
-// ADMIN ONLY. Executes the Phase 0 SQL migration against Supabase production.
-// Uses SUPABASE_ACCESS_TOKEN from vault via Supabase Management API.
-// DELETE THIS FILE after migration is confirmed complete.
+// Friday, March 13, 2026 — FIXED: removed temporal dead zone on createServerClient
+// ADMIN ONLY. DELETE THIS FILE after migration is confirmed complete.
 
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient }        from '@supabase/ssr'
+import { createClient }              from '@supabase/supabase-js'
 import { cookies }                   from 'next/headers'
 
 const ADMIN_EMAILS = [
@@ -18,10 +17,9 @@ const ADMIN_EMAILS = [
 
 const PROJECT_REF = 'kteobfyferrukqeolofj'
 
-// Full migration SQL inline — no file I/O needed at runtime
 const MIGRATION_SQL = `
 -- Phase 0: SafetyOS + ComplianceOS tables
--- Idempotent: uses CREATE TABLE IF NOT EXISTS
+-- Idempotent: CREATE TABLE IF NOT EXISTS throughout
 
 CREATE TABLE IF NOT EXISTS moderation_events (
   id                    UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -95,15 +93,15 @@ DO $$ BEGIN
 EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
 CREATE TABLE IF NOT EXISTS user_safety_scores (
-  id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id          UUID NOT NULL UNIQUE REFERENCES auth.users(id) ON DELETE CASCADE,
-  trust_level      TEXT NOT NULL DEFAULT 'new' CHECK (trust_level IN ('new','trusted','flagged','suspended','banned')),
-  signal_counts    JSONB DEFAULT '{}',
-  last_signal_at   TIMESTAMPTZ,
+  id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id           UUID NOT NULL UNIQUE REFERENCES auth.users(id) ON DELETE CASCADE,
+  trust_level       TEXT NOT NULL DEFAULT 'new' CHECK (trust_level IN ('new','trusted','flagged','suspended','banned')),
+  signal_counts     JSONB DEFAULT '{}',
+  last_signal_at    TIMESTAMPTZ,
   suspension_reason TEXT,
-  suspended_until  TIMESTAMPTZ,
-  created_at       TIMESTAMPTZ DEFAULT now(),
-  updated_at       TIMESTAMPTZ DEFAULT now()
+  suspended_until   TIMESTAMPTZ,
+  created_at        TIMESTAMPTZ DEFAULT now(),
+  updated_at        TIMESTAMPTZ DEFAULT now()
 );
 ALTER TABLE user_safety_scores ENABLE ROW LEVEL SECURITY;
 DO $$ BEGIN
@@ -167,105 +165,128 @@ ALTER TABLE credit_transactions ADD COLUMN IF NOT EXISTS operation     TEXT;
 SELECT 'Phase 0 migration complete' AS result;
 `
 
-async function getSupabaseManagementToken(): Promise<string | null> {
-  // Decrypt SUPABASE_ACCESS_TOKEN from vault
-  // The vault uses PBKDF2(NEXTAUTH_SECRET, salt) as the AES-256-GCM key
-  // NEXTAUTH_SECRET is available as process.env.NEXTAUTH_SECRET inside the running app
-  const encryptedToken = process.env.SUPABASE_ACCESS_TOKEN_ENCRYPTED
-    ?? process.env.NEXT_PUBLIC_SUPABASE_URL  // just to test env access
-  
-  // Use platform_secrets RPC to get encrypted value, then decrypt with NEXTAUTH_SECRET
-  const { createClient } = await import('@supabase/supabase-js')
-  const sb = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  )
-  
-  const { data } = await sb.rpc('get_platform_secret', { name: 'SUPABASE_ACCESS_TOKEN' })
-  if (!data) return null
-  
-  // Decrypt with NEXTAUTH_SECRET
-  const { subtle } = globalThis.crypto
-  const NEXTAUTH_SECRET = process.env.NEXTAUTH_SECRET!
-  const envelope = JSON.parse(Buffer.from(data, 'base64').toString())
-  const { v, salt, iv, ct } = envelope
-  
-  const keyMaterial = await subtle.importKey('raw', Buffer.from(NEXTAUTH_SECRET), 'PBKDF2', false, ['deriveKey'])
-  const key = await subtle.deriveKey(
-    { name: 'PBKDF2', salt: Buffer.from(salt, 'hex'), iterations: 100000, hash: 'SHA-256' },
-    keyMaterial,
-    { name: 'AES-GCM', length: 256 },
-    false,
-    ['decrypt']
-  )
-  const decrypted = await subtle.decrypt(
-    { name: 'AES-GCM', iv: Buffer.from(iv, 'hex') },
-    key,
-    Buffer.from(ct, 'hex')
-  )
-  return new TextDecoder().decode(decrypted)
+// ── Decrypt SUPABASE_ACCESS_TOKEN from vault using NEXTAUTH_SECRET ─────────
+async function getManagementToken(): Promise<string | null> {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const serviceKey  = process.env.SUPABASE_SERVICE_ROLE_KEY
+  const authSecret  = process.env.NEXTAUTH_SECRET
+
+  if (!supabaseUrl || !serviceKey || !authSecret) {
+    console.error('Phase0 migration error: missing env vars for token decryption')
+    return null
+  }
+
+  const sb = createClient(supabaseUrl, serviceKey)
+  const { data, error } = await sb.rpc('get_platform_secret', { name: 'SUPABASE_ACCESS_TOKEN' })
+
+  if (error || !data) {
+    console.error('Phase0 migration error: vault RPC failed:', error?.message ?? 'no data')
+    return null
+  }
+
+  // Decrypt AES-256-GCM envelope with PBKDF2(NEXTAUTH_SECRET)
+  try {
+    const { subtle } = globalThis.crypto
+    const envelope   = JSON.parse(Buffer.from(data as string, 'base64').toString())
+    const { salt, iv, ct } = envelope as { salt: string; iv: string; ct: string }
+
+    const keyMaterial = await subtle.importKey(
+      'raw',
+      Buffer.from(authSecret),
+      'PBKDF2',
+      false,
+      ['deriveKey']
+    )
+    const key = await subtle.deriveKey(
+      { name: 'PBKDF2', salt: Buffer.from(salt, 'hex'), iterations: 100000, hash: 'SHA-256' },
+      keyMaterial,
+      { name: 'AES-GCM', length: 256 },
+      false,
+      ['decrypt']
+    )
+    const decrypted = await subtle.decrypt(
+      { name: 'AES-GCM', iv: Buffer.from(iv, 'hex') },
+      key,
+      Buffer.from(ct, 'hex')
+    )
+    return new TextDecoder().decode(decrypted)
+  } catch (decryptErr) {
+    console.error('Phase0 migration error: decryption failed:', decryptErr)
+    return null
+  }
 }
 
+// ── POST handler ───────────────────────────────────────────────────────────
 export async function POST(request: NextRequest) {
   try {
-    // 1. Auth check — admin only
+    // ── 1. Auth check — admin only ─────────────────────────────────────────
     const cookieStore = cookies()
-    const supabase = createServerClient(
+    const supabaseAnon = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      { cookies: { get: (name) => cookieStore.get(name)?.value } }
+      { cookies: { get: (name: string) => cookieStore.get(name)?.value } }
     )
 
-    // Inline imports to avoid circular deps
-    const { createServerClient } = await import('@supabase/ssr')
-
-    const { data: { user } } = await supabase.auth.getUser()
+    const { data: { user } } = await supabaseAnon.auth.getUser()
     if (!user?.email || !ADMIN_EMAILS.includes(user.email.toLowerCase())) {
       return NextResponse.json({ error: 'Admin access required' }, { status: 403 })
     }
 
-    // 2. Decrypt management token from vault
-    const managementToken = await getSupabaseManagementToken()
-    if (!managementToken) {
-      // Fallback: try direct env var (may be set in Vercel)
-      const fallbackToken = process.env.SUPABASE_ACCESS_TOKEN
-      if (!fallbackToken) {
-        return NextResponse.json({ error: 'Management token not available' }, { status: 500 })
-      }
+    // ── 2. Resolve management token ────────────────────────────────────────
+    // Try vault first (preferred). Fall back to direct env var if vault unavailable.
+    let token = await getManagementToken()
+    if (!token) {
+      token = process.env.SUPABASE_ACCESS_TOKEN ?? null
+    }
+    if (!token) {
+      console.error('Phase0 migration error: no management token available from vault or env')
+      return NextResponse.json(
+        { error: 'Supabase management token not available. Add SUPABASE_ACCESS_TOKEN to Vercel env vars.' },
+        { status: 500 }
+      )
     }
 
-    const token = managementToken ?? process.env.SUPABASE_ACCESS_TOKEN!
-
-    // 3. Execute migration via Supabase Management API
+    // ── 3. Execute migration via Supabase Management API ───────────────────
     const mgmtUrl = `https://api.supabase.com/v1/projects/${PROJECT_REF}/database/query`
     const mgmtResponse = await fetch(mgmtUrl, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
+        'Content-Type':  'application/json',
       },
       body: JSON.stringify({ query: MIGRATION_SQL }),
     })
 
     if (!mgmtResponse.ok) {
-      const err = await mgmtResponse.text()
-      console.error('[Migration] Management API error:', err)
-      return NextResponse.json({ error: 'Migration failed', detail: err.slice(0, 500) }, { status: 500 })
+      const errText = await mgmtResponse.text()
+      console.error('Phase0 migration error: Management API returned', mgmtResponse.status, errText)
+      return NextResponse.json(
+        { error: 'Migration failed', status: mgmtResponse.status, detail: errText.slice(0, 1000) },
+        { status: 500 }
+      )
     }
 
     const result = await mgmtResponse.json()
-    console.log('[Migration] Phase 0 complete:', result)
+    console.log('Phase0 migration success:', JSON.stringify(result))
 
     return NextResponse.json({
-      success:   true,
-      message:   'Phase 0 migration executed successfully',
-      tables:    ['moderation_events','safety_reports','dmca_notices','user_safety_scores','consent_records','data_subject_requests'],
-      credits:   'user_credits and credit_transactions columns updated',
+      success:  true,
+      message:  'Phase 0 migration executed successfully',
+      tables:   [
+        'moderation_events',
+        'safety_reports',
+        'dmca_notices',
+        'user_safety_scores',
+        'consent_records',
+        'data_subject_requests',
+      ],
+      credits:  'user_credits and credit_transactions columns updated',
       result,
     })
+
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'Unknown error'
-    console.error('[Migration] Unhandled error:', message)
+    console.error('Phase0 migration error:', err)
+    const message = err instanceof Error ? err.message : String(err)
     return NextResponse.json({ error: message }, { status: 500 })
   }
 }
