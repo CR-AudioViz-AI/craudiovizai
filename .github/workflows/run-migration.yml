@@ -1,0 +1,42 @@
+name: Run Phase 0 Migration
+
+on:
+  workflow_dispatch:
+    inputs:
+      db_password:
+        description: 'Supabase DB password (postgres user)'
+        required: true
+      confirm:
+        description: 'Type MIGRATE to proceed'
+        required: true
+
+jobs:
+  migrate:
+    name: Execute Phase 0 SQL Migration
+    runs-on: ubuntu-latest
+    if: ${{ inputs.confirm == 'MIGRATE' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install psql
+        run: sudo apt-get install -y postgresql-client
+
+      - name: Run migration
+        env:
+          PGPASSWORD: ${{ inputs.db_password }}
+        run: |
+          echo "Running Phase 0 migration..."
+          psql \
+            "postgresql://postgres.kteobfyferrukqeolofj:${{ inputs.db_password }}@aws-0-us-east-2.pooler.supabase.com:6543/postgres?sslmode=require" \
+            -f supabase/migrations/20260313000000_phase0_safety_compliance_credits.sql \
+            -v ON_ERROR_STOP=1
+
+          echo "Verifying tables..."
+          psql \
+            "postgresql://postgres.kteobfyferrukqeolofj:${{ inputs.db_password }}@aws-0-us-east-2.pooler.supabase.com:6543/postgres?sslmode=require" \
+            -c "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' AND table_name IN ('moderation_events','safety_reports','dmca_notices','user_safety_scores','consent_records','data_subject_requests') ORDER BY table_name;"
+
+      - name: Report result
+        if: success()
+        run: echo "Phase 0 migration complete. All 6 tables created."
