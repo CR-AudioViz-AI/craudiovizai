@@ -116,7 +116,7 @@ const MODULES: Module[] = [
     icon: '📚',
     category: 'creative',
     status: 'beta',
-    url: '/tools/ebook-studio',
+    url: 'https://javari-ebook-roy-hendersons-projects-1d3d5e94.vercel.app',
     isNew: true,
     tags: ['writing', 'publishing', 'books']
   },
@@ -330,6 +330,67 @@ const MODULES: Module[] = [
     url: '/modules/animal-rescue',
     tags: ['animals', 'rescue', 'adoption']
   }
+  // PHASE 2 MODULE FACTORY — Creator Tools (deployed 2026-03-15)
+  {
+    id: 'resume-builder',
+    name: 'Resume Builder',
+    description: 'AI-powered resume builder — land more interviews with a standout resume',
+    icon: '📄',
+    category: 'creative',
+    status: 'live',
+    url: 'https://javari-resume-builder-o61tndbm3.vercel.app',
+    creditCost: '2 credits/resume',
+    isNew: true,
+    tags: ['resume', 'career', 'jobs', 'ai', 'writing']
+  },
+  {
+    id: 'cover-letter-pro',
+    name: 'Cover Letter Pro',
+    description: 'AI cover letter generator — stand out from the crowd with personalized letters',
+    icon: '💼',
+    category: 'creative',
+    status: 'live',
+    url: 'https://javari-cover-letter-p0ktwmtbq-roy-hendersons-projects-1d3d5e94.vercel.app',
+    creditCost: '1 credit/letter',
+    isNew: true,
+    tags: ['cover-letter', 'career', 'jobs', 'ai', 'writing']
+  },
+  {
+    id: 'social-posts-creator',
+    name: 'Social Posts Creator',
+    description: 'Generate viral social media content for any platform in seconds',
+    icon: '📱',
+    category: 'creative',
+    status: 'live',
+    url: 'https://javari-social-posts-m8tv7437h-roy-hendersons-projects-1d3d5e94.vercel.app',
+    creditCost: '1 credit/post',
+    isNew: true,
+    tags: ['social-media', 'marketing', 'content', 'ai']
+  },
+  {
+    id: 'email-templates-builder',
+    name: 'Email Templates',
+    description: 'Professional AI email template builder — high-converting emails for any purpose',
+    icon: '✉️',
+    category: 'creative',
+    status: 'live',
+    url: 'https://javari-email-templates-85ccvbq3v.vercel.app',
+    creditCost: '1 credit/template',
+    isNew: true,
+    tags: ['email', 'marketing', 'templates', 'ai']
+  },
+  {
+    id: 'scrapbook-creator',
+    name: 'Javari Scrapbook',
+    description: 'AI-powered digital scrapbooking — create, share, and publish beautiful memory books',
+    icon: '📷',
+    category: 'creative',
+    status: 'live',
+    url: 'https://crav-scrapbook-8tymntthw-roy-hendersons-projects-1d3d5e94.vercel.app',
+    creditCost: '2 credits/scrapbook',
+    isNew: true,
+    tags: ['scrapbook', 'photos', 'memories', 'creative', 'design']
+  },
 ];
 
 const CATEGORIES = [
