@@ -100,12 +100,14 @@ const MODULES: Module[] = [
   {
     id: 'presentation-maker',
     name: 'Presentation Maker',
-    description: 'Build stunning presentations with AI',
+    description: 'Build stunning presentations with AI — professional slides in minutes',
     icon: '📊',
     category: 'creative',
-    status: 'coming_soon',
-    url: '/tools/presentations',
-    tags: ['presentations', 'business', 'slides']
+    status: 'live',
+    url: 'https://javari-presentation-maker-roy-hendersons-projects-1d3d5e94.vercel.app',
+    creditCost: '3 credits/deck',
+    isNew: true,
+    tags: ['presentations', 'business', 'slides', 'ai']
   },
   {
     id: 'ebook-studio',
