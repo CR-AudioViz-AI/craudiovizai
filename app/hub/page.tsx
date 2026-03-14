@@ -116,7 +116,7 @@ const MODULES: Module[] = [
     icon: '📚',
     category: 'creative',
     status: 'beta',
-    url: 'https://javari-ebook-roy-hendersons-projects-1d3d5e94.vercel.app',
+    url: 'https://javari-ebook-2qfpc15u4-roy-hendersons-projects-1d3d5e94.vercel.app',
     isNew: true,
     tags: ['writing', 'publishing', 'books']
   },
