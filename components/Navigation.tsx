@@ -26,6 +26,7 @@ export default function Navigation({ user }: NavigationProps) {
     { href: '/hub', label: 'Tools', icon: '🛠️' },
     { href: '/chat', label: 'Chat', icon: '💬' },
     { href: '/games', label: 'Games', icon: '🎮' },
+    { href: 'https://create.craudiovizai.com', label: 'Create', icon: '✏️' },
     { href: '/marketplace', label: 'Marketplace', icon: '🏪' },
     { href: '/pricing', label: 'Pricing', icon: '💎' }
   ];
