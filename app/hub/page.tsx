@@ -329,7 +329,7 @@ const MODULES: Module[] = [
     status: 'coming_soon',
     url: '/modules/animal-rescue',
     tags: ['animals', 'rescue', 'adoption']
-  }
+  },
   // PHASE 2 MODULE FACTORY — Creator Tools (deployed 2026-03-15)
   {
     id: 'resume-builder',
