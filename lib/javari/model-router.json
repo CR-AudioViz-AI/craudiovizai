@@ -1,0 +1,205 @@
+{
+  "version": "1.0.0",
+  "generated": "2026-03-13",
+  "description": "Javari AI multi-model router config. Read by the router at runtime. All routing free-first.",
+  "cost_guardrails": {
+    "max_task_cost_usd": 0.02,
+    "max_daily_cost_usd": 1.00,
+    "max_tokens_per_request": 2000,
+    "alert_threshold_usd": 0.75,
+    "hard_stop_on_exceed": true,
+    "note": "TODO: enforce via craudiovizai.com credit system when core ecosystem is live"
+  },
+  "fallback_chain": ["free", "low", "mid", "high"],
+  "task_routing": {
+    "planning": {
+      "description": "High-level plans, roadmaps, step-by-step breakdowns",
+      "required_capabilities": ["chat"],
+      "preferred_capabilities": ["reasoning"],
+      "max_tier": "free",
+      "preferred_models": [
+        "deepseek/deepseek-r1:free",
+        "qwen/qwen3-235b-a22b:free",
+        "openai/gpt-oss-120b:free",
+        "meta-llama/llama-3.1-8b-instruct:free"
+      ],
+      "max_tokens": 1000
+    },
+    "coding": {
+      "description": "Code generation, debugging, refactoring, code review",
+      "required_capabilities": ["code"],
+      "preferred_capabilities": ["reasoning", "function_calling"],
+      "max_tier": "low",
+      "preferred_models": [
+        "qwen/qwen3-coder-480b-a35b:free",
+        "deepseek/deepseek-r1:free",
+        "deepseek/deepseek-chat-v3-0324",
+        "mistralai/codestral-2501",
+        "meta-llama/llama-3.3-70b-instruct"
+      ],
+      "max_tokens": 4000
+    },
+    "validation": {
+      "description": "Fact checking, output review, error detection, quality assurance",
+      "required_capabilities": ["chat"],
+      "preferred_capabilities": ["reasoning"],
+      "max_tier": "free",
+      "preferred_models": [
+        "deepseek/deepseek-r1:free",
+        "qwen/qwen3-30b-a3b:free",
+        "nousresearch/hermes-3-llama-3.1-405b:free",
+        "mistralai/mistral-7b-instruct:free"
+      ],
+      "max_tokens": 800
+    },
+    "analysis": {
+      "description": "Data analysis, document understanding, summarization, insights",
+      "required_capabilities": ["chat"],
+      "preferred_capabilities": ["long_context", "reasoning"],
+      "max_tier": "mid",
+      "preferred_models": [
+        "google/gemini-flash-1.5:free",
+        "google/gemini-flash-1.5-8b:free",
+        "google/gemini-2.0-flash-001",
+        "google/gemini-2.5-flash-preview",
+        "deepseek/deepseek-r1"
+      ],
+      "max_tokens": 2000
+    },
+    "chat": {
+      "description": "Conversational responses, general Q&A, help and support",
+      "required_capabilities": ["chat"],
+      "preferred_capabilities": ["multilingual"],
+      "max_tier": "free",
+      "preferred_models": [
+        "google/gemini-flash-1.5:free",
+        "meta-llama/llama-3.1-8b-instruct:free",
+        "qwen/qwen3-8b:free",
+        "mistralai/mistral-nemo:free",
+        "google/gemma-2-9b-it:free"
+      ],
+      "max_tokens": 500
+    },
+    "vision": {
+      "description": "Image analysis, OCR, screenshot understanding, visual Q&A",
+      "required_capabilities": ["vision"],
+      "preferred_capabilities": ["reasoning"],
+      "max_tier": "low",
+      "preferred_models": [
+        "google/gemini-flash-1.5:free",
+        "google/gemini-2.0-flash-001",
+        "meta-llama/llama-3.2-11b-vision-instruct",
+        "meta-llama/llama-4-scout",
+        "google/gemini-2.5-flash-preview"
+      ],
+      "max_tokens": 1000
+    },
+    "web_search": {
+      "description": "Real-time information, current events, live data lookup",
+      "required_capabilities": ["web_search"],
+      "preferred_capabilities": ["reasoning"],
+      "max_tier": "mid",
+      "preferred_models": [
+        "perplexity/sonar",
+        "perplexity/sonar-pro",
+        "x-ai/grok-3-mini-beta",
+        "x-ai/grok-3-beta"
+      ],
+      "max_tokens": 1000
+    },
+    "reasoning": {
+      "description": "Math, logic, multi-step problems, scientific reasoning",
+      "required_capabilities": ["reasoning"],
+      "preferred_capabilities": ["function_calling"],
+      "max_tier": "low",
+      "preferred_models": [
+        "deepseek/deepseek-r1:free",
+        "qwen/qwq-32b",
+        "deepseek/deepseek-r1-distill-llama-70b",
+        "deepseek/deepseek-r1",
+        "google/gemini-2.0-flash-thinking-exp"
+      ],
+      "max_tokens": 3000
+    },
+    "multilingual": {
+      "description": "Non-English text, translation, multilingual content",
+      "required_capabilities": ["multilingual"],
+      "preferred_capabilities": ["chat"],
+      "max_tier": "low",
+      "preferred_models": [
+        "qwen/qwen3-235b-a22b:free",
+        "qwen/qwen3-8b:free",
+        "qwen/qwen-2.5-72b-instruct",
+        "mistralai/mistral-nemo",
+        "mistralai/mistral-small-3.1-24b-instruct"
+      ],
+      "max_tokens": 1000
+    },
+    "creative": {
+      "description": "Creative writing, storytelling, brainstorming, marketing copy",
+      "required_capabilities": ["chat"],
+      "preferred_capabilities": [],
+      "max_tier": "free",
+      "preferred_models": [
+        "nousresearch/hermes-3-llama-3.1-405b:free",
+        "gryphe/mythomax-l2-13b:free",
+        "sophosympatheia/rogue-rose-103b-v0.2:free",
+        "meta-llama/llama-3.3-70b-instruct",
+        "qwen/qwen3-235b-a22b:free"
+      ],
+      "max_tokens": 2000
+    },
+    "rag": {
+      "description": "Retrieval-augmented generation, document Q&A, knowledge base search",
+      "required_capabilities": ["long_context", "function_calling"],
+      "preferred_capabilities": ["reasoning"],
+      "max_tier": "mid",
+      "preferred_models": [
+        "google/gemini-flash-1.5:free",
+        "google/gemini-pro-1.5",
+        "cohere/command-r-plus-08-2024",
+        "google/gemini-2.5-flash-preview"
+      ],
+      "max_tokens": 2000
+    },
+    "media_recommendations": {
+      "description": "Movie, TV, music recommendations — Javari Omni-Media primary use case",
+      "required_capabilities": ["chat"],
+      "preferred_capabilities": [],
+      "max_tier": "free",
+      "preferred_models": [
+        "google/gemini-flash-1.5:free",
+        "google/gemini-flash-1.5-8b:free",
+        "meta-llama/llama-3.1-8b-instruct:free",
+        "mistralai/mistral-7b-instruct:free",
+        "qwen/qwen3-8b:free"
+      ],
+      "max_tokens": 300
+    }
+  },
+  "example_routing_decision": {
+    "input": {
+      "task_type": "coding",
+      "prompt": "Write a Python function to parse M3U playlists",
+      "user_tier": "free"
+    },
+    "router_logic": [
+      "1. Look up task_routing['coding']",
+      "2. required_capabilities = ['code'], max_tier = 'low'",
+      "3. Filter models: tier IN ['free','low'] AND 'code' IN capabilities",
+      "4. Sort by price_avg_per_m ASC",
+      "5. Try preferred_models in order: qwen3-coder-480b (free) → try it",
+      "6. If fails: next preferred → deepseek-r1:free",
+      "7. If all preferred fail: fallback to any model matching caps, cheapest first",
+      "8. Enforce max_tokens: 4000, max_task_cost: $0.02"
+    ],
+    "selected_model": "qwen/qwen3-coder-480b-a35b:free",
+    "estimated_cost": "$0.0000",
+    "fallback_sequence": [
+      "qwen/qwen3-coder-480b-a35b:free",
+      "deepseek/deepseek-r1:free",
+      "deepseek/deepseek-chat-v3-0324",
+      "mistralai/codestral-2501"
+    ]
+  }
+}
