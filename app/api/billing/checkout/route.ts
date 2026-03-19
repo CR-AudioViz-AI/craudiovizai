@@ -66,7 +66,7 @@ export async function POST(req: NextRequest) {
     const session = await s.checkout.sessions.create({
       customer:   customerId,
       mode:       'subscription',
-      line_items: [{ price: priceId, quantity: 1 }],
+      line_items: [{ price: 'price_1SdaKx7YeQ1dZTUvCeaYqKXh', quantity: 1 }],
       success_url: body.successUrl ?? `${baseUrl}/account/billing?success=1`,
       cancel_url:  body.cancelUrl  ?? `${baseUrl}/pricing?canceled=1`,
       metadata:   { userId },
