@@ -26,6 +26,7 @@ function db() {
 // Credit grants per price ID
 const CREDIT_MAP: Record<string, number> = {
   'price_1SdaKx7YeQ1dZTUvCeaYqKXh': 150, // Starter Plan
+  'price_1Sk8AZ7YeQ1dZTUvwpubHpWW': 2000,              // Pro Plan
 }
 
 // Support both key naming conventions across projects
