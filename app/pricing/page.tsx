@@ -27,7 +27,7 @@ const PLANS = [
     credits:     "500",
     description: "For serious creators and builders",
     features:    ["500 credits / month", "Javari Chat + Team", "Javari Forge", "Full access", "Priority queue"],
-    priceId:     "price_pro_monthly",
+    priceId:     "price_1Sk8AZ7YeQ1dZTUvwpubHpWW",
     popular:     true,
     accent:      "#f59e0b",
   },
