@@ -1,9 +1,8 @@
 // app/api/billing/webhook/route.ts
 // Central billing authority — Stripe webhook handler.
-// Moved from javari-ai. javari-ai no longer owns any billing logic.
 // Handles: checkout.session.completed, customer.subscription.updated/deleted,
 //          invoice.payment_failed
-// Writes to: user_subscriptions, billing_events (shared Supabase DB)
+// Writes to: user_subscriptions, billing_events, usage_ledger (credits)
 // Thursday, March 19, 2026
 import { NextRequest, NextResponse } from 'next/server'
 import Stripe from 'stripe'
@@ -24,10 +23,15 @@ function db() {
   )
 }
 
+// Credit grants per price ID
+const CREDIT_MAP: Record<string, number> = {
+  'price_1SdaKx7YeQ1dZTUvCeaYqKXh': 150, // Starter Plan
+}
+
 // Support both key naming conventions across projects
 const PRICE_TO_TIER: Record<string, string> = {
-  [process.env.STRIPE_PRO_PRICE_ID     ?? process.env.STRIPE_PRICE_PRO      ?? 'unset_pro']:     'pro',
-  [process.env.STRIPE_CREATOR_PRICE_ID ?? process.env.STRIPE_PRICE_PREMIUM  ?? 'unset_power']:   'power',
+  [process.env.STRIPE_PRO_PRICE_ID     ?? process.env.STRIPE_PRICE_PRO      ?? 'unset_pro']:   'pro',
+  [process.env.STRIPE_CREATOR_PRICE_ID ?? process.env.STRIPE_PRICE_PREMIUM  ?? 'unset_power']: 'power',
 }
 
 function getTier(sub: Stripe.Subscription): string {
@@ -55,6 +59,30 @@ async function upsertSubscription(
     current_period_end:       (sub.current_period_end ?? 0) * 1000,
     updated_at:               new Date().toISOString(),
   }, { onConflict: 'user_id,provider' })
+}
+
+/**
+ * Grant credits to a user on successful checkout.
+ * Idempotency: guarded by billing_events.processed — this only runs
+ * when processed=false, and processed is set to true atomically after.
+ * So double-grant cannot occur even on webhook retry.
+ */
+async function grantCredits(
+  supabase: ReturnType<typeof db>,
+  userId: string,
+  priceId: string,
+): Promise<void> {
+  const credits = CREDIT_MAP[priceId] ?? 0
+  if (credits === 0) return
+
+  await supabase.from('usage_ledger').insert({
+    user_id:     userId,
+    feature:     'credits',
+    usage_count: credits,
+    metadata:    { type: 'grant', source: 'stripe', price_id: priceId },
+  })
+
+  console.log(`[billing/webhook] Credits granted: ${credits} to ${userId}`)
 }
 
 export async function POST(req: NextRequest) {
@@ -105,9 +133,21 @@ export async function POST(req: NextRequest) {
       case 'checkout.session.completed': {
         const session = event.data.object as Stripe.Checkout.Session
         const userId  = session.metadata?.userId
-        if (!userId || !session.subscription) break
-        const sub = await s.subscriptions.retrieve(session.subscription as string)
-        await upsertSubscription(supabase, userId, sub)
+        if (!userId) break
+
+        // Get priceId from session line items or the hardcoded price
+        const priceId = (session as unknown as { amount_total?: number })
+          ? (session.metadata?.priceId ?? 'price_1SdaKx7YeQ1dZTUvCeaYqKXh')
+          : 'price_1SdaKx7YeQ1dZTUvCeaYqKXh'
+
+        // Grant credits — idempotent via billing_events.processed guard
+        await grantCredits(supabase, userId, priceId)
+
+        // Upsert subscription if present
+        if (session.subscription) {
+          const sub = await s.subscriptions.retrieve(session.subscription as string)
+          await upsertSubscription(supabase, userId, sub)
+        }
         break
       }
 
