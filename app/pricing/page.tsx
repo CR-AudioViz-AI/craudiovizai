@@ -1,7 +1,7 @@
 // app/pricing/page.tsx
-// Production pricing page — 3-tier plans with Stripe checkout.
-// Dark industrial theme. Client component for fetch + redirect.
-// Thursday, March 19, 2026
+// Production pricing page — CR AudioViz AI
+// Clean enterprise SaaS design. Stripe checkout integration.
+// Friday, March 20, 2026
 "use client"
 
 import { useState } from "react"
@@ -9,75 +9,306 @@ import { useState } from "react"
 const PLANS = [
   {
     id:          "starter",
-    name:        "STARTER",
+    name:        "Starter",
     price:       "$9.99",
-    period:      "/month",
-    credits:     "150",
-    description: "Get started with AI creation",
-    features:    ["150 credits / month", "Javari Chat", "Javari Forge", "Basic access"],
+    period:      "/ month",
+    credits:     "150 credits",
+    description: "Get started with AI-powered creation",
+    features: [
+      "150 credits per month",
+      "Javari Chat",
+      "Javari Forge",
+      "Basic platform access",
+    ],
     priceId:     "price_1SdaKx7YeQ1dZTUvCeaYqKXh",
+    cta:         "Get Starter",
     popular:     false,
-    accent:      "#6366f1",
+    accentColor: "#14B8A6",
   },
   {
     id:          "pro",
-    name:        "PRO",
+    name:        "Pro",
     price:       "$29.99",
-    period:      "/month",
-    credits:     "500",
+    period:      "/ month",
+    credits:     "500 credits",
     description: "For serious creators and builders",
-    features:    ["500 credits / month", "Javari Chat + Team", "Javari Forge", "Full access", "Priority queue"],
+    features: [
+      "500 credits per month",
+      "Javari Chat + Team",
+      "Javari Forge",
+      "Full platform access",
+      "Priority queue",
+    ],
     priceId:     "price_1Sk8AZ7YeQ1dZTUvwpubHpWW",
+    cta:         "Get Pro",
     popular:     true,
-    accent:      "#f59e0b",
+    accentColor: "#6366f1",
   },
   {
     id:          "premium",
-    name:        "PREMIUM",
+    name:        "Premium",
     price:       "$99.99",
-    period:      "/month",
-    credits:     "∞",
-    description: "Unlimited power for the dedicated",
-    features:    ["Unlimited credits", "All Javari features", "Full system access", "Priority support", "Early access"],
-    priceId:     "price_premium_monthly",
+    period:      "/ month",
+    credits:     "Enterprise credit allocation",
+    description: "Maximum power for the dedicated",
+    features: [
+      "Custom high-volume credits",
+      "All Javari features",
+      "Full system access",
+      "Priority support",
+      "Early feature access",
+    ],
+    priceId:     "price_1SdaLG7YeQ1dZTUvCzgdjaTp",
+    cta:         "Get Premium",
     popular:     false,
-    accent:      "#10b981",
+    accentColor: "#f59e0b",
   },
 ]
 
 const CSS = `
-  @import url("https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Space+Mono:wght@400;700&display=swap");
-  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-  .pr{min-height:100vh;background:#080810;color:#e8e8f0;font-family:"Syne",sans-serif;padding:80px 24px;position:relative;overflow:hidden}
-  .pr::before{content:"";position:fixed;top:-40%;left:50%;transform:translateX(-50%);width:800px;height:800px;background:radial-gradient(ellipse,rgba(99,102,241,.12) 0%,transparent 70%);pointer-events:none}
-  .pr::after{content:"";position:fixed;inset:0;background-image:linear-gradient(rgba(255,255,255,.025) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.025) 1px,transparent 1px);background-size:60px 60px;pointer-events:none}
-  .hdr{text-align:center;margin-bottom:72px;position:relative;z-index:1}
-  .ey{font-family:"Space Mono",monospace;font-size:11px;letter-spacing:.25em;text-transform:uppercase;color:#6366f1;margin-bottom:16px}
-  .ttl{font-size:clamp(36px,6vw,64px);font-weight:800;letter-spacing:-.03em;line-height:1;color:#fff;margin-bottom:16px}
-  .ttl span{background:linear-gradient(135deg,#6366f1,#f59e0b);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
-  .sub{font-size:17px;color:#6b6b80;max-width:440px;margin:0 auto;line-height:1.6}
-  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:20px;max-width:1020px;margin:0 auto;position:relative;z-index:1}
-  .card{background:#0e0e1a;border:1px solid rgba(255,255,255,.06);border-radius:16px;padding:36px 28px;display:flex;flex-direction:column;gap:24px;transition:border-color .2s,transform .2s;position:relative;overflow:hidden}
-  .card:hover{transform:translateY(-4px)}
-  .pop{border-color:rgba(245,158,11,.4)!important;background:#0f0f1c!important}
-  .card::before{content:"";position:absolute;top:0;left:0;right:0;height:2px;background:var(--acc);opacity:.7}
-  .badge{position:absolute;top:16px;right:16px;font-family:"Space Mono",monospace;font-size:10px;letter-spacing:.15em;text-transform:uppercase;color:#f59e0b;background:rgba(245,158,11,.12);border:1px solid rgba(245,158,11,.25);border-radius:4px;padding:4px 8px}
-  .pname{font-family:"Space Mono",monospace;font-size:12px;letter-spacing:.2em;text-transform:uppercase;color:var(--acc)}
-  .pr-row{display:flex;align-items:baseline;gap:4px}
-  .price{font-size:48px;font-weight:800;letter-spacing:-.04em;color:#fff;line-height:1}
-  .per{font-size:14px;color:#4a4a60;font-family:"Space Mono",monospace}
-  .ctag{display:inline-flex;align-items:center;gap:6px;font-family:"Space Mono",monospace;font-size:13px;color:var(--acc);background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06);border-radius:6px;padding:6px 12px;width:fit-content}
-  .cnum{font-size:18px;font-weight:700}
-  .feats{list-style:none;display:flex;flex-direction:column;gap:10px;flex:1}
-  .feats li{display:flex;align-items:center;gap:10px;font-size:14px;color:#9494a8;line-height:1.4}
-  .feats li::before{content:"--";color:var(--acc);font-family:"Space Mono",monospace;flex-shrink:0}
-  .btn{width:100%;padding:15px 0;border-radius:10px;font-family:"Space Mono",monospace;font-size:13px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;cursor:pointer;border:none;transition:opacity .15s,transform .15s;background:var(--acc);color:#080810}
-  .btn:hover:not(:disabled){opacity:.88;transform:translateY(-1px)}
-  .btn:disabled{opacity:.5;cursor:not-allowed}
-  .btn.out{background:transparent;color:var(--acc);border:1px solid var(--acc)}
-  .btn.out:hover:not(:disabled){background:rgba(255,255,255,.04)}
-  .ftn{text-align:center;margin-top:48px;font-family:"Space Mono",monospace;font-size:11px;color:#3a3a50;letter-spacing:.08em;position:relative;z-index:1}
-  @media(max-width:640px){.pr{padding:48px 16px}.grid{grid-template-columns:1fr;max-width:400px}}
+  @import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  .pg {
+    min-height: 100vh;
+    background: #fafafa;
+    color: #111;
+    font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+    padding: 80px 24px 100px;
+  }
+
+  /* ── Header ─────────────────────────────────────── */
+  .hdr {
+    text-align: center;
+    margin-bottom: 64px;
+  }
+  .eyebrow {
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: #6366f1;
+    margin-bottom: 14px;
+  }
+  .title {
+    font-size: clamp(28px, 5vw, 44px);
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    color: #0a0a0a;
+    margin-bottom: 12px;
+    line-height: 1.15;
+  }
+  .subtitle {
+    font-size: 16px;
+    color: #666;
+    max-width: 380px;
+    margin: 0 auto;
+    line-height: 1.6;
+  }
+
+  /* ── Grid ────────────────────────────────────────── */
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 24px;
+    max-width: 980px;
+    margin: 0 auto;
+    align-items: start;
+  }
+
+  /* ── Card ────────────────────────────────────────── */
+  .card {
+    background: #ffffff;
+    border: 1.5px solid #e5e7eb;
+    border-radius: 14px;
+    padding: 36px 32px;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+    transition: box-shadow 0.2s, border-color 0.2s;
+    position: relative;
+  }
+  .card:hover {
+    box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+  }
+  .card.popular {
+    border-color: #6366f1;
+    box-shadow: 0 4px 24px rgba(99,102,241,0.12);
+  }
+
+  /* Popular badge */
+  .popular-badge {
+    position: absolute;
+    top: -12px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #6366f1;
+    color: #fff;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 4px 14px;
+    border-radius: 20px;
+    white-space: nowrap;
+  }
+
+  /* Plan label */
+  .plan-name {
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 20px;
+  }
+
+  /* Price row — critical: no wrapping */
+  .price-row {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    white-space: nowrap;
+    flex-wrap: nowrap;
+    margin-bottom: 6px;
+  }
+  .price-amount {
+    font-size: 44px;
+    font-weight: 700;
+    letter-spacing: -0.04em;
+    color: #0a0a0a;
+    line-height: 1;
+    flex-shrink: 0;
+  }
+  .price-period {
+    font-size: 15px;
+    color: #9ca3af;
+    font-weight: 500;
+    flex-shrink: 0;
+  }
+
+  /* Description */
+  .plan-desc {
+    font-size: 13px;
+    color: #9ca3af;
+    margin-bottom: 24px;
+    line-height: 1.5;
+  }
+
+  /* Credits badge */
+  .credits-badge {
+    display: inline-flex;
+    align-items: center;
+    background: #f3f4f6;
+    color: #374151;
+    font-size: 13px;
+    font-weight: 500;
+    border-radius: 6px;
+    padding: 6px 12px;
+    margin-bottom: 28px;
+    border: 1px solid #e5e7eb;
+    width: fit-content;
+  }
+  .credits-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--accent);
+    margin-right: 8px;
+    flex-shrink: 0;
+  }
+
+  /* Features */
+  .features {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 32px;
+    flex: 1;
+  }
+  .features li {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 14px;
+    color: #4b5563;
+    line-height: 1.4;
+  }
+  .check {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: var(--accent);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    opacity: 0.85;
+  }
+  .check::after {
+    content: "";
+    width: 5px;
+    height: 3px;
+    border-left: 1.5px solid #fff;
+    border-bottom: 1.5px solid #fff;
+    transform: rotate(-45deg) translateY(-1px);
+    display: block;
+  }
+
+  /* CTA button */
+  .cta-btn {
+    width: 100%;
+    padding: 14px 0;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    cursor: pointer;
+    border: 1.5px solid var(--accent);
+    transition: background 0.15s, color 0.15s, opacity 0.15s;
+    background: transparent;
+    color: var(--accent);
+    margin-top: auto;
+  }
+  .cta-btn.filled {
+    background: var(--accent);
+    color: #fff;
+    border-color: var(--accent);
+  }
+  .cta-btn:hover:not(:disabled) {
+    opacity: 0.85;
+  }
+  .cta-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  /* Footer note */
+  .footer-note {
+    text-align: center;
+    margin-top: 52px;
+    font-size: 13px;
+    color: #9ca3af;
+    letter-spacing: 0.01em;
+  }
+  .footer-note span {
+    margin: 0 8px;
+    color: #d1d5db;
+  }
+
+  /* Responsive */
+  @media (max-width: 820px) {
+    .grid {
+      grid-template-columns: 1fr;
+      max-width: 420px;
+    }
+    .card {
+      padding: 32px 28px;
+    }
+  }
 `
 
 export default function PricingPage() {
@@ -111,45 +342,76 @@ export default function PricingPage() {
   return (
     <>
       <style dangerouslySetInnerHTML={{ __html: CSS }} />
-      <div className="pr">
+      <div className="pg">
+
+        {/* Header */}
         <div className="hdr">
-          <div className="ey">CR AudioViz AI</div>
-          <h1 className="ttl">Choose Your <span>Plan</span></h1>
-          <p className="sub">Power your AI with credits. Upgrade anytime.</p>
+          <div className="eyebrow">CR AudioViz AI</div>
+          <h1 className="title">Simple, transparent pricing</h1>
+          <p className="subtitle">Power your creative workflow. Upgrade or cancel anytime.</p>
         </div>
+
+        {/* Cards */}
         <div className="grid">
           {PLANS.map(plan => (
             <div
               key={plan.id}
-              className={"card" + (plan.popular ? " pop" : "")}
-              style={{ "--acc": plan.accent } as React.CSSProperties}
+              className={`card${plan.popular ? " popular" : ""}`}
+              style={{ "--accent": plan.accentColor } as React.CSSProperties}
             >
-              {plan.popular && <div className="badge">Most Popular</div>}
-              <div className="pname">{plan.name}</div>
-              <div className="pr-row">
-                <div className="price">{plan.price}</div>
-                <div className="per">{plan.period}</div>
+              {plan.popular && (
+                <div className="popular-badge">Most Popular</div>
+              )}
+
+              {/* Plan name */}
+              <div className="plan-name">{plan.name}</div>
+
+              {/* Price — explicit nowrap prevents wrapping */}
+              <div className="price-row">
+                <div className="price-amount">{plan.price}</div>
+                <div className="price-period">{plan.period}</div>
               </div>
-              <div className="ctag">
-                <span className="cnum">{plan.credits}</span>
-                <span>credits / mo</span>
+
+              {/* Description */}
+              <div className="plan-desc">{plan.description}</div>
+
+              {/* Credits badge */}
+              <div className="credits-badge">
+                <div className="credits-dot" />
+                {plan.credits}
               </div>
-              <ul className="feats">
-                {plan.features.map(f => <li key={f}>{f}</li>)}
+
+              {/* Features */}
+              <ul className="features">
+                {plan.features.map(f => (
+                  <li key={f}>
+                    <span className="check" />
+                    {f}
+                  </li>
+                ))}
               </ul>
+
+              {/* CTA */}
               <button
-                className={"btn" + (plan.popular ? "" : " out")}
+                className={`cta-btn${plan.popular ? " filled" : ""}`}
                 onClick={() => handleCheckout(plan)}
                 disabled={loading === plan.id}
               >
-                {loading === plan.id ? "Redirecting..." : "Get " + plan.name}
+                {loading === plan.id ? "Redirecting…" : plan.cta}
               </button>
             </div>
           ))}
         </div>
-        <div className="ftn">
-          Secure checkout via Stripe &middot; Cancel anytime &middot; Credits never expire on paid plans
+
+        {/* Footer */}
+        <div className="footer-note">
+          Secure checkout via Stripe
+          <span>·</span>
+          Cancel anytime
+          <span>·</span>
+          Credits never expire on paid plans
         </div>
+
       </div>
     </>
   )
