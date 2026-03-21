@@ -1,6 +1,12 @@
 // lib/pricing/config.ts
 // Pricing Configuration with Actual Stripe IDs
-// Timestamp: Dec 12, 2025 12:25 AM EST
+// Updated: March 21, 2026 — Henderson Standard pricing update
+// Rules: NO unlimited. Clear upgrade path. Margin buffer maintained.
+//
+// CREDIT ECONOMICS (1 credit = $0.10 value)
+// Starter:  150 cr @ $9.99  → $0.0666/credit ($0.10 value) = ~33% margin buffer
+// Pro:      600 cr @ $29.99 → $0.0499/credit ($0.10 value) = ~50% margin buffer
+// Premium: 2500 cr @ $99.99 → $0.0400/credit ($0.10 value) = ~60% margin buffer
 
 // ============================================
 // API COSTS (What We Pay)
@@ -38,21 +44,21 @@ export const API_COSTS = {
 
 // ============================================
 // CREDIT COSTS (What Users Pay)
-// Target: 5-10x markup, 1 credit = ~$0.10 value
+// Target: 5-10x markup on AI costs. 1 credit = ~$0.10 value.
 // ============================================
 export const CREDIT_COSTS = {
   image: {
     standard: 5,        // Cost: $0.003, Revenue: $0.50, Margin: 16.6x
     hd: 10,             // Cost: $0.008, Revenue: $1.00, Margin: 12.5x
-    premium: 25,        // Cost: $0.02, Revenue: $2.50, Margin: 12.5x
+    premium: 25,        // Cost: $0.02,  Revenue: $2.50, Margin: 12.5x
   },
   video: {
-    short: 25,          // Cost: $0.05, Revenue: $2.50, Margin: 5x
-    medium: 50,         // Cost: $0.15, Revenue: $5.00, Margin: 3.3x
-    long: 100,          // Cost: $0.35, Revenue: $10.00, Margin: 2.8x
+    short: 25,          // Cost: $0.05,  Revenue: $2.50, Margin: 5x
+    medium: 50,         // Cost: $0.15,  Revenue: $5.00, Margin: 3.3x
+    long: 100,          // Cost: $0.35,  Revenue: $10.00, Margin: 2.8x
   },
   voice: {
-    tts: 5,             // Per 1000 chars, Cost: $0.015, Revenue: $0.50
+    tts: 5,             // Per 1000 chars
     clone: 100,         // Setup fee
   },
   music: {
@@ -73,7 +79,20 @@ export const CREDIT_COSTS = {
 };
 
 // ============================================
+// TIER CREDIT ALLOCATION
+// Rule: NO unlimited. Every tier has a hard monthly cap.
+// Upgrade path enforced by clear credit jumps between tiers.
+// ============================================
+export const TIER_CREDITS = {
+  free:    25,    // Trial only, expires monthly
+  starter: 150,   // $9.99/mo  — 150 credits, never expire on paid plan
+  pro:     600,   // $29.99/mo — 600 credits, 4x jump from Starter
+  premium: 2500,  // $99.99/mo — 2,500 credits per month, ~4x jump from Pro
+} as const;
+
+// ============================================
 // STRIPE PRODUCTS & PRICES (LIVE)
+// NOTE: credits field MUST match TIER_CREDITS above
 // ============================================
 export const STRIPE_PRODUCTS = {
   subscriptions: {
@@ -82,24 +101,42 @@ export const STRIPE_PRODUCTS = {
       priceId: 'price_1SdaKx7YeQ1dZTUvCeaYqKXh',
       name: 'Starter',
       price: 9.99,
-      credits: 150,
-      features: ['150 credits/month', 'Credits never expire', '60+ AI tools', 'Email support'],
+      credits: 150,   // TIER_CREDITS.starter
+      features: [
+        '150 credits/month',
+        'Credits never expire on paid plan',
+        'Comprehensive AI tool suite',
+        'Email support',
+      ],
     },
     pro: {
       productId: 'prod_Tals9vp5UrtSCr',
       priceId: 'price_1SdaL67YeQ1dZTUv43H6YxGq',
       name: 'Pro',
       price: 29.99,
-      credits: 500,
-      features: ['500 credits/month', 'Credits never expire', '60+ AI tools', 'Priority support', 'Early access'],
+      credits: 600,   // TIER_CREDITS.pro — was 500, increased Mar 21 2026
+      features: [
+        '600 credits/month',
+        'Credits never expire on paid plan',
+        'Full AI tool suite',
+        'Priority support',
+        'Early access to new features',
+      ],
     },
     premium: {
       productId: 'prod_TalsiAi3IOLOaT',
       priceId: 'price_1SdaLG7YeQ1dZTUvCzgdjaTp',
       name: 'Premium',
       price: 99.99,
-      credits: 2000,
-      features: ['2,000 credits/month', 'Credits never expire', '60+ AI tools', 'VIP support', 'Early access', 'White-label options'],
+      credits: 2500,  // TIER_CREDITS.premium — was 2000, increased Mar 21 2026
+      features: [
+        '2,500 credits per month',
+        'Credits never expire on paid plan',
+        'Full AI tool suite',
+        'VIP support',
+        'Early access to new features',
+        'White-label options',
+      ],
     },
   },
   creditPacks: {
@@ -144,7 +181,7 @@ export const STRIPE_PRODUCTS = {
 };
 
 // ============================================
-// PAYPAL PLANS (To be created in PayPal Dashboard)
+// PAYPAL PLANS
 // ============================================
 export const PAYPAL_PLANS = {
   starter: {
@@ -157,13 +194,13 @@ export const PAYPAL_PLANS = {
     planId: process.env.PAYPAL_PLAN_PRO || 'P-PRO',
     name: 'Pro',
     price: 29.99,
-    credits: 500,
+    credits: 600,
   },
   premium: {
     planId: process.env.PAYPAL_PLAN_PREMIUM || 'P-PREMIUM',
     name: 'Premium',
     price: 99.99,
-    credits: 2000,
+    credits: 2500,
   },
 };
 
@@ -172,7 +209,7 @@ export const PAYPAL_PLANS = {
 // ============================================
 export const FREE_TIER = {
   credits: 25,
-  expires: true, // Monthly reset
+  expires: true,  // Monthly reset — free credits do NOT roll over
   watermark: true,
   features: ['25 credits/month', 'Basic tools only', 'Watermarked outputs'],
 };
@@ -182,19 +219,18 @@ export const FREE_TIER = {
 // ============================================
 export const REFERRAL_REWARDS = {
   referrer: {
-    signup: 50,         // Credits when friend signs up
-    upgrade: 100,       // Additional credits when friend upgrades
+    signup: 50,    // Credits when friend signs up
+    upgrade: 100,  // Additional credits when friend upgrades to paid
   },
   referee: {
-    signup: 25,         // Credits for new user
+    signup: 25,    // Credits for new user on signup
   },
 };
 
 // ============================================
-// TOOLS REGISTRY (60+ tools)
+// TOOLS REGISTRY
 // ============================================
 export const TOOLS_REGISTRY = {
-  // Image Tools
   'image-generator': {
     name: 'AI Image Generator',
     category: 'image',
@@ -225,8 +261,6 @@ export const TOOLS_REGISTRY = {
     apiProvider: 'replicate',
     capabilities: ['upscale'],
   },
-  
-  // Video Tools
   'video-generator': {
     name: 'AI Video Generator',
     category: 'video',
@@ -239,8 +273,6 @@ export const TOOLS_REGISTRY = {
     apiProvider: 'replicate',
     capabilities: ['text-to-video', 'image-to-video'],
   },
-  
-  // Audio Tools
   'text-to-speech': {
     name: 'Text to Speech',
     category: 'audio',
@@ -262,8 +294,6 @@ export const TOOLS_REGISTRY = {
     apiProvider: 'deepgram',
     capabilities: ['speech-to-text'],
   },
-  
-  // Music Tools
   'music-generator': {
     name: 'AI Music Generator',
     category: 'music',
@@ -275,8 +305,6 @@ export const TOOLS_REGISTRY = {
     apiProvider: 'replicate',
     capabilities: ['text-to-music'],
   },
-  
-  // Text Tools
   'ai-writer': {
     name: 'AI Writer',
     category: 'text',
@@ -291,8 +319,6 @@ export const TOOLS_REGISTRY = {
     apiProvider: 'anthropic',
     capabilities: ['generate-code', 'explain-code'],
   },
-  
-  // Utility Tools
   'qr-generator': {
     name: 'QR Code Generator',
     category: 'utility',
@@ -309,16 +335,18 @@ export const TOOLS_REGISTRY = {
   },
 };
 
-// Helper functions
+// ============================================
+// HELPER FUNCTIONS
+// ============================================
 export function getToolCredits(toolId: string, tier?: string): number {
   const tool = TOOLS_REGISTRY[toolId as keyof typeof TOOLS_REGISTRY];
-  if (!tool) return 10; // Default
-  
+  if (!tool) return 10;
+
   if (tier && 'tiers' in tool && tool.tiers) {
     const tierConfig = tool.tiers[tier as keyof typeof tool.tiers];
     return tierConfig?.credits || tool.baseCredits;
   }
-  
+
   return tool.baseCredits;
 }
 
@@ -332,6 +360,13 @@ export function calculateProfit(credits: number, costPerCredit: number = 0.01): 
   const cost = credits * costPerCredit;
   const profit = revenue - cost;
   const margin = (profit / revenue) * 100;
-  
   return { revenue, cost, profit, margin };
+}
+
+/**
+ * Returns monthly credit allocation for a subscription tier.
+ * Use this as the single source of truth for billing logic.
+ */
+export function getMonthlyCredits(tier: keyof typeof TIER_CREDITS): number {
+  return TIER_CREDITS[tier];
 }
