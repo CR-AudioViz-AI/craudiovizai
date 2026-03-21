@@ -1,172 +1,152 @@
 // app/account/credits/page.tsx
-// Credits dashboard — shows current balance and recent activity.
-// Reads from usage_ledger WHERE feature='credits' for user roy_test_user.
-// Thursday, March 19, 2026
-import { Suspense } from 'react'
-import { createClient } from '@supabase/supabase-js'
+// Credits account page — shows balance, purchase history, and post-purchase confirmation.
+// Landing target for Stripe success_url: /account/credits?success=1&pack=525
+// Updated: March 21, 2026 — Post-purchase confirmation + credit pack upsell display.
+'use client'
 
-interface LedgerRow {
-  id:          string
-  usage_count: number
-  metadata:    { type?: string; source?: string; price_id?: string } | null
-  created_at:  string
+import { useEffect, useState, Suspense } from 'react'
+import { useSearchParams } from 'next/navigation'
+
+interface CreditBalance {
+  balance:          number
+  lifetime_earned:  number
+  lifetime_spent:   number
+  plan_id:          string
+  subscription_active: boolean
 }
 
-async function fetchCredits(): Promise<{ balance: number; rows: LedgerRow[] }> {
-  try {
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    )
-
-    const { data: rows, error } = await supabase
-      .from('usage_ledger')
-      .select('id, usage_count, metadata, created_at')
-      .eq('user_id', 'roy_test_user')
-      .eq('feature', 'credits')
-      .order('created_at', { ascending: false })
-      .limit(10)
-
-    if (error) throw new Error(error.message)
-
-    const balance = (rows ?? []).reduce((s, r) => s + (r.usage_count ?? 0), 0)
-    return { balance, rows: rows ?? [] }
-  } catch {
-    return { balance: 0, rows: [] }
-  }
+const PACK_NAMES: Record<string, string> = {
+  '50':   'Starter Pack (50 credits)',
+  '150':  'Creator Pack (150 credits)',
+  '525':  'Pro Pack (525 credits)',
+  '1300': 'Studio Pack (1,300 credits)',
 }
 
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString('en-US', {
-    month: 'short', day: 'numeric', year: 'numeric',
-  })
-}
+function CreditsPageContent() {
+  const searchParams  = useSearchParams()
+  const isSuccess     = searchParams.get('success') === '1'
+  const purchasedPack = searchParams.get('pack') ?? null
 
-function formatSource(row: LedgerRow): string {
-  const src = row.metadata?.source ?? row.metadata?.type ?? '—'
-  return src.charAt(0).toUpperCase() + src.slice(1)
-}
+  const [balance, setBalance]   = useState<CreditBalance | null>(null)
+  const [loading, setLoading]   = useState(true)
 
-async function CreditsCard() {
-  const { balance, rows } = await fetchCredits()
+  useEffect(() => {
+    async function fetchBalance() {
+      try {
+        const res  = await fetch('/api/credits/balance')
+        const data = await res.json()
+        setBalance(data)
+      } catch {
+        // non-fatal
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchBalance()
+  }, [])
 
   return (
-    <div style={{
-      minHeight: '100vh', display: 'flex', alignItems: 'center',
-      justifyContent: 'center', background: '#f1f5f9', padding: 24,
-    }}>
-      <div style={{
-        background: '#ffffff', borderRadius: 12, padding: 40,
-        maxWidth: 560, width: '100%',
-        boxShadow: '0 4px 24px rgba(0,0,0,0.08)',
-      }}>
+    <div className="min-h-screen bg-gray-50">
+      <div className="max-w-2xl mx-auto px-4 py-12">
 
-        {/* Header */}
-        <div style={{ textAlign: 'center', marginBottom: 32 }}>
-          <div style={{ fontSize: 13, color: '#94a3b8', textTransform: 'uppercase',
-            letterSpacing: '0.08em', marginBottom: 6 }}>
-            CR AudioViz AI
-          </div>
-          <h1 style={{ fontSize: 26, fontWeight: 700, color: '#0f172a', margin: '0 0 24px' }}>
-            Your Credits
-          </h1>
-
-          {/* Balance */}
-          <div style={{
-            background: 'linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%)',
-            borderRadius: 12, padding: '28px 24px', marginBottom: 8,
-          }}>
-            <div style={{ fontSize: 64, fontWeight: 800, color: '#ffffff', lineHeight: 1 }}>
-              {balance.toLocaleString()}
-            </div>
-            <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.75)', marginTop: 8 }}>
-              Available Credits
+        {/* ── Post-purchase confirmation ─────────────────────────────────── */}
+        {isSuccess && (
+          <div className="mb-8 rounded-2xl bg-green-50 border border-green-200 px-6 py-5">
+            <div className="flex items-center gap-3">
+              <span className="text-2xl">✅</span>
+              <div>
+                <p className="font-semibold text-green-900">Credits added successfully!</p>
+                {purchasedPack && PACK_NAMES[purchasedPack] && (
+                  <p className="text-sm text-green-700 mt-0.5">
+                    {PACK_NAMES[purchasedPack]} has been added to your balance.
+                  </p>
+                )}
+                <p className="text-xs text-green-600 mt-1">
+                  Credits never expire on paid plans. Start using them right now.
+                </p>
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
-        {/* Activity */}
-        <div style={{ marginBottom: 28 }}>
-          <h2 style={{
-            fontSize: 13, fontWeight: 600, color: '#64748b',
-            textTransform: 'uppercase', letterSpacing: '0.06em',
-            margin: '0 0 16px',
-          }}>
-            Recent Activity
-          </h2>
+        {/* ── Balance card ───────────────────────────────────────────────── */}
+        <div className="rounded-2xl bg-white border border-gray-200 shadow-sm px-6 py-6 mb-6">
+          <h1 className="text-xl font-bold text-gray-900 mb-4">Your Credits</h1>
 
-          {rows.length === 0 ? (
-            <div style={{ color: '#94a3b8', fontSize: 14, textAlign: 'center',
-              padding: '24px 0', border: '1px dashed #e2e8f0', borderRadius: 8 }}>
-              No credit activity yet.
+          {loading ? (
+            <div className="animate-pulse space-y-2">
+              <div className="h-8 bg-gray-100 rounded w-32"/>
+              <div className="h-4 bg-gray-100 rounded w-48"/>
+            </div>
+          ) : balance ? (
+            <div>
+              <p className="text-4xl font-bold text-indigo-600 tabular-nums">
+                {balance.balance.toLocaleString()}
+              </p>
+              <p className="text-sm text-gray-500 mt-1">credits available</p>
+
+              <div className="mt-4 pt-4 border-t border-gray-100 grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <p className="text-gray-400">Lifetime earned</p>
+                  <p className="font-medium text-gray-700">{balance.lifetime_earned.toLocaleString()}</p>
+                </div>
+                <div>
+                  <p className="text-gray-400">Lifetime spent</p>
+                  <p className="font-medium text-gray-700">{balance.lifetime_spent.toLocaleString()}</p>
+                </div>
+              </div>
             </div>
           ) : (
-            <div style={{ border: '1px solid #e2e8f0', borderRadius: 8, overflow: 'hidden' }}>
-              {/* Table header */}
-              <div style={{
-                display: 'grid', gridTemplateColumns: '1fr auto auto',
-                background: '#f8fafc', padding: '10px 16px',
-                borderBottom: '1px solid #e2e8f0',
-              }}>
-                <span style={{ fontSize: 12, fontWeight: 600, color: '#64748b' }}>DATE</span>
-                <span style={{ fontSize: 12, fontWeight: 600, color: '#64748b',
-                  textAlign: 'center', minWidth: 80 }}>SOURCE</span>
-                <span style={{ fontSize: 12, fontWeight: 600, color: '#64748b',
-                  textAlign: 'right', minWidth: 60 }}>AMOUNT</span>
-              </div>
-
-              {/* Rows */}
-              {rows.map((row, i) => (
-                <div key={row.id} style={{
-                  display: 'grid', gridTemplateColumns: '1fr auto auto',
-                  padding: '12px 16px', alignItems: 'center',
-                  borderBottom: i < rows.length - 1 ? '1px solid #f1f5f9' : 'none',
-                  background: i % 2 === 0 ? '#ffffff' : '#fafafa',
-                }}>
-                  <span style={{ fontSize: 14, color: '#475569' }}>
-                    {formatDate(row.created_at)}
-                  </span>
-                  <span style={{ fontSize: 13, color: '#64748b',
-                    textAlign: 'center', minWidth: 80 }}>
-                    {formatSource(row)}
-                  </span>
-                  <span style={{
-                    fontSize: 14, fontWeight: 700,
-                    color: row.usage_count >= 0 ? '#059669' : '#dc2626',
-                    textAlign: 'right', minWidth: 60,
-                  }}>
-                    +{row.usage_count.toLocaleString()}
-                  </span>
-                </div>
-              ))}
-            </div>
+            <p className="text-gray-500 text-sm">Unable to load balance. Please refresh.</p>
           )}
         </div>
 
-        {/* CTA */}
-        <a href="/javari" style={{
-          display: 'block', width: '100%', padding: '14px 0',
-          background: '#4F46E5', color: '#ffffff', borderRadius: 8,
-          textAlign: 'center', textDecoration: 'none',
-          fontSize: 15, fontWeight: 600, boxSizing: 'border-box',
-        }}>
-          Go to Javari AI →
-        </a>
+        {/* ── Buy more credits ───────────────────────────────────────────── */}
+        <div className="rounded-2xl bg-white border border-gray-200 shadow-sm px-6 py-6">
+          <h2 className="text-base font-semibold text-gray-900 mb-1">Top up your credits</h2>
+          <p className="text-sm text-gray-500 mb-4">One-time purchase. Credits never expire on paid plans.</p>
+
+          <div className="space-y-2">
+            {([
+              { pack: '150',  label: 'Creator Pack',  credits: 150,   price: '$12.99', badge: 'Most Popular' },
+              { pack: '525',  label: 'Pro Pack',       credits: 525,   price: '$39.99', badge: 'Best Value' },
+              { pack: '1300', label: 'Studio Pack',    credits: 1300,  price: '$89.99', badge: 'Power User' },
+            ] as const).map(({ pack, label, credits, price, badge }) => (
+              <a
+                key={pack}
+                href={`/pricing?buy_pack=${pack}`}
+                className="flex items-center justify-between rounded-xl border-2 border-gray-200 px-4 py-3 hover:border-indigo-400 hover:bg-indigo-50 transition group"
+              >
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium text-gray-800 text-sm">{label}</span>
+                    <span className="text-xs bg-gray-100 group-hover:bg-indigo-100 text-gray-500 group-hover:text-indigo-600 px-2 py-0.5 rounded-full transition">
+                      {badge}
+                    </span>
+                  </div>
+                  <div className="text-xs text-gray-400 mt-0.5">{credits.toLocaleString()} credits</div>
+                </div>
+                <span className="font-bold text-gray-700 group-hover:text-indigo-600 transition">{price}</span>
+              </a>
+            ))}
+          </div>
+
+          <div className="mt-4 pt-4 border-t border-gray-100">
+            <a href="/pricing" className="text-sm text-indigo-600 hover:underline">
+              Compare subscription plans →
+            </a>
+          </div>
+        </div>
 
       </div>
     </div>
   )
 }
 
-export default async function CreditsPage() {
+export default function CreditsPage() {
   return (
-    <Suspense fallback={
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center',
-        justifyContent: 'center', background: '#f1f5f9', color: '#94a3b8' }}>
-        Loading credits...
-      </div>
-    }>
-      <CreditsCard />
+    <Suspense fallback={<div className="min-h-screen bg-gray-50"/>}>
+      <CreditsPageContent />
     </Suspense>
   )
 }
