@@ -41,8 +41,9 @@
   <text x="228" y="118"
         font-family="NunitoEB, Arial, sans-serif"
         font-size="68" font-weight="800"
-        fill="#0B2562"
-        letter-spacing="-0.5">CR AudioViz AI</text>
+        letter-spacing="-0.5">
+    <tspan fill="#14B8A6">CRAV</tspan><tspan fill="#0B2562"> AudioViz </tspan><tspan fill="#D90429">AI</tspan>
+  </text>
 
   <text x="236" y="164"
         font-family="DancingS, cursive"
