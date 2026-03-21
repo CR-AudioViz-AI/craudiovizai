@@ -1,9 +1,11 @@
 // app/api/billing/checkout/route.ts
 // Central billing authority — Stripe Checkout session creation.
-// Moved from javari-ai. javari-ai no longer owns any billing logic.
-// POST { priceId, userId, email, successUrl?, cancelUrl? }
+// Supports both subscription (plan upgrades) and payment (credit pack one-time) modes.
+// Updated: March 21, 2026 — Added payment mode for credit pack purchases.
+//
+// POST { priceId, userId, email, mode?, successUrl?, cancelUrl? }
+// mode: "subscription" (default) | "payment"
 // Returns { url } — redirect to Stripe hosted checkout.
-// Thursday, March 19, 2026
 import { NextRequest, NextResponse } from 'next/server'
 import Stripe from 'stripe'
 import { createClient } from '@supabase/supabase-js'
@@ -20,16 +22,38 @@ function db() {
   return createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
 }
 
-// Map Stripe price IDs to plan tiers — support both env var naming conventions
+// Subscription price → plan tier mapping
 const PRICE_TIERS: Record<string, string> = {
   [process.env.STRIPE_PRO_PRICE_ID     ?? process.env.STRIPE_PRICE_PRO     ?? '']: 'pro',
   [process.env.STRIPE_CREATOR_PRICE_ID ?? process.env.STRIPE_PRICE_PREMIUM ?? '']: 'power',
 }
 
+// Credit pack price → credit amount mapping (for metadata on webhook)
+const PACK_CREDITS: Record<string, number> = {
+  'price_1SdaLR7YeQ1dZTUvX4qPsy3c':  50,   // Starter Pack
+  'price_1SdaLa7YeQ1dZTUvsjFZWqjB':  150,  // Creator Pack  ($12.99)
+  'price_1SdaLk7YeQ1dZTUvdcDKtnTI':  525,  // Pro Pack      ($39.99) — includes 500+25 bonus
+  'price_1SdaLt7YeQ1dZTUvGhjqaNyk':  1300, // Studio Pack   ($89.99) — includes 1200+100 bonus
+}
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
-    const { priceId, userId, email } = body as { priceId: string; userId: string; email: string }
+    const {
+      priceId,
+      userId,
+      email,
+      mode       = 'subscription',
+      successUrl,
+      cancelUrl,
+    } = body as {
+      priceId:    string
+      userId:     string
+      email:      string
+      mode?:      'subscription' | 'payment'
+      successUrl?: string
+      cancelUrl?:  string
+    }
 
     if (!priceId || !userId || !email) {
       return NextResponse.json({ error: 'priceId, userId, and email are required' }, { status: 400 })
@@ -37,8 +61,9 @@ export async function POST(req: NextRequest) {
 
     const s        = stripe()
     const supabase = db()
+    const baseUrl  = process.env.NEXT_PUBLIC_APP_URL ?? 'https://craudiovizai.com'
 
-    // Reuse existing Stripe customer if present
+    // ── Resolve or create Stripe customer ────────────────────────────────────
     const { data: existingSub } = await supabase
       .from('user_subscriptions')
       .select('id, provider_subscription_id')
@@ -53,35 +78,73 @@ export async function POST(req: NextRequest) {
       try {
         const sub = await s.subscriptions.retrieve(existingSub.provider_subscription_id)
         customerId = typeof sub.customer === 'string' ? sub.customer : sub.customer.id
-      } catch (_) { /* subscription may have been deleted */ }
+      } catch (_) { /* subscription may have expired */ }
     }
 
     if (!customerId) {
-      const customer = await s.customers.create({ email, metadata: { userId } })
-      customerId = customer.id
+      // Check if a customer already exists for this email
+      const existing = await s.customers.list({ email, limit: 1 })
+      if (existing.data.length > 0) {
+        customerId = existing.data[0].id
+      } else {
+        const customer = await s.customers.create({ email, metadata: { userId } })
+        customerId = customer.id
+      }
     }
 
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://craudiovizai.com'
+    // ── Subscription mode ─────────────────────────────────────────────────────
+    if (mode === 'subscription') {
+      const session = await s.checkout.sessions.create({
+        customer:    customerId,
+        mode:        'subscription',
+        line_items:  [{ price: priceId, quantity: 1 }],
+        success_url: successUrl ?? `${baseUrl}/account/billing?success=1`,
+        cancel_url:  cancelUrl  ?? `${baseUrl}/pricing?canceled=1`,
+        metadata:    { userId, plan_tier: PRICE_TIERS[priceId] ?? 'unknown' },
+        subscription_data: { metadata: { userId } },
+        allow_promotion_codes: true,
+      })
+      return NextResponse.json({ url: session.url, sessionId: session.id })
+    }
 
-    const session = await s.checkout.sessions.create({
-      customer:   customerId,
-      mode:       'subscription',
-      line_items: [{ price: 'price_1SdaKx7YeQ1dZTUvCeaYqKXh', quantity: 1 }],
-      success_url: body.successUrl ?? `${baseUrl}/account/billing?success=1`,
-      cancel_url:  body.cancelUrl  ?? `${baseUrl}/pricing?canceled=1`,
-      metadata:   { userId },
-      subscription_data: { metadata: { userId } },
-      allow_promotion_codes: true,
-    })
+    // ── Payment mode — one-time credit pack purchase ───────────────────────
+    if (mode === 'payment') {
+      const creditsGranted = PACK_CREDITS[priceId]
+      if (!creditsGranted) {
+        return NextResponse.json(
+          { error: `Unknown credit pack priceId: ${priceId}` },
+          { status: 400 }
+        )
+      }
 
-    return NextResponse.json({ url: session.url, sessionId: session.id })
+      const session = await s.checkout.sessions.create({
+        customer:    customerId,
+        mode:        'payment',
+        line_items:  [{ price: priceId, quantity: 1 }],
+        success_url: successUrl ?? `${baseUrl}/account/credits?success=1`,
+        cancel_url:  cancelUrl  ?? `${baseUrl}/pricing?canceled=1`,
+        metadata: {
+          userId,
+          purchase_type:   'credit_pack',
+          credits_granted: String(creditsGranted),
+          price_id:        priceId,
+        },
+        payment_intent_data: {
+          metadata: {
+            userId,
+            credits_granted: String(creditsGranted),
+            price_id:        priceId,
+          },
+        },
+      })
+      return NextResponse.json({ url: session.url, sessionId: session.id })
+    }
+
+    return NextResponse.json({ error: `Unknown mode: ${mode}` }, { status: 400 })
+
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err)
-    console.error('[billing/checkout]', msg)
+    console.error('[billing/checkout] error:', msg)
     return NextResponse.json({ error: msg }, { status: 500 })
   }
-}
-
-export async function GET() {
-  return NextResponse.json({ error: 'Method not allowed' }, { status: 405 })
 }
