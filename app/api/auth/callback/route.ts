@@ -2,7 +2,7 @@
 // Supabase OAuth callback handler — exchangeCodeForSession, profile init.
 // Handles: Google, Apple, GitHub (and any future Supabase OAuth provider).
 // On first sign-in: creates profiles row + seeds initial credits.
-// Updated: March 22, 2026 — Signup bonus uses count-based idempotency, not JSONB filter.
+// Updated: March 22, 2026 — Hardened profile upsert with fallback, explicit logging.
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { cookies } from 'next/headers'
@@ -57,26 +57,54 @@ export async function GET(request: NextRequest) {
   const { user } = session
   const db       = serviceDb()
 
-  // ── Profile upsert — safe on every callback ────────────────────────────
+  // ── Profile upsert — full payload, fallback to minimal on failure ──────
+  // Attempt 1: full payload with all available OAuth metadata.
+  // Attempt 2: minimal (id + email + created_at) if columns don't exist yet.
+  // Never silently swallows errors — always logs outcome.
+  let profileCreated = false
+
   const { error: profileErr } = await db.from('profiles').upsert({
     id:         user.id,
     email:      user.email,
     full_name:  user.user_metadata?.full_name  ?? user.user_metadata?.name ?? null,
     avatar_url: user.user_metadata?.avatar_url ?? null,
-    provider:   user.app_metadata?.provider    ?? 'unknown',
+    provider:   user.app_metadata?.provider    ?? 'oauth',
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
   }, { onConflict: 'id', ignoreDuplicates: false })
 
   if (profileErr) {
-    console.error('[auth/callback] profile upsert failed:', profileErr.message)
+    console.error('profile_upsert_failed_full', {
+      userId: user.id.slice(0, 8),
+      error:  profileErr.message,
+      hint:   profileErr.hint ?? null,
+    })
+
+    // Attempt 2: minimal schema — just id + email + created_at
+    const { error: fallbackErr } = await db.from('profiles').upsert({
+      id:         user.id,
+      email:      user.email,
+      created_at: new Date().toISOString(),
+    }, { onConflict: 'id', ignoreDuplicates: false })
+
+    if (fallbackErr) {
+      console.error('profile_failed', {
+        userId: user.id.slice(0, 8),
+        error:  fallbackErr.message,
+        hint:   fallbackErr.hint ?? null,
+      })
+    } else {
+      console.log('profile_fallback_created', { userId: user.id.slice(0, 8) })
+      profileCreated = true
+    }
+  } else {
+    console.log('profile_upserted', { userId: user.id.slice(0, 8) })
+    profileCreated = true
   }
 
   // ── Signup bonus — idempotent, no JSONB filter ────────────────────────
-  // Count ALL credit grant rows for this user (usage_count > 0).
-  // If zero exist: this is a brand-new user — grant 25 credits.
-  // If any exist: user already has credits — skip (covers retry + re-login).
-  // Does NOT rely on JSONB operators which require specific column config.
+  // Count ALL positive credit rows for this user.
+  // Zero = new user, grant 25. Any = returning user, skip.
   const { count: existingCredits, error: countErr } = await db
     .from('usage_ledger')
     .select('id', { count: 'exact', head: true })
@@ -103,6 +131,13 @@ export async function GET(request: NextRequest) {
   }
 
   // ── Redirect ───────────────────────────────────────────────────────────
+  // profileCreated logged above — non-fatal if false, user is still authenticated
+  if (!profileCreated) {
+    console.warn('[auth/callback] profile not created — user authenticated but profile missing', {
+      userId: user.id.slice(0, 8),
+    })
+  }
+
   const destination = redirectTo.startsWith('http') ? redirectTo : `${baseUrl}${redirectTo}`
   return NextResponse.redirect(destination)
 }
