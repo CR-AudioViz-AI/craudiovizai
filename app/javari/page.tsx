@@ -1,15 +1,19 @@
-/**
- * JAVARI AI PAGE
- * Uses the proper MainJavariInterface with correct layout
- */
-import { MainJavariInterface } from '@/components/javari/MainJavariInterface';
-import type { Metadata } from 'next';
-
-export const metadata: Metadata = {
-  title: 'Javari AI - Your Intelligent Assistant | CR AudioViz AI',
-  description: 'Chat with Javari AI - upload documents, get answers with citations, and connect to multiple AI providers.',
-};
+// app/javari/page.tsx
+// CR AudioViz AI — Javari OS embed.
+// Renders the real Javari OS from javariai.com in a fullscreen iframe.
+// Auth passthrough deferred — users authenticate directly on javariai.com.
+// Updated: March 22, 2026
+'use client'
 
 export default function JavariPage() {
-  return <MainJavariInterface />;
+  return (
+    <div className="w-full h-[calc(100vh-80px)] bg-black">
+      <iframe
+        src="https://javariai.com/javari"
+        className="w-full h-full border-0"
+        allow="clipboard-read; clipboard-write; microphone; camera"
+        title="Javari AI"
+      />
+    </div>
+  )
 }
