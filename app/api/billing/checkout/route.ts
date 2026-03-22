@@ -1,11 +1,20 @@
 // app/api/billing/checkout/route.ts
 // Central billing authority — Stripe Checkout session creation.
 // Supports both subscription (plan upgrades) and payment (credit pack one-time) modes.
-// Updated: March 21, 2026 — Added payment mode for credit pack purchases.
+// Updated: March 21, 2026 — automatic_payment_methods enables Apple Pay, Google Pay, Link.
 //
 // POST { priceId, userId, email, mode?, successUrl?, cancelUrl? }
 // mode: "subscription" (default) | "payment"
 // Returns { url } — redirect to Stripe hosted checkout.
+//
+// PAYMENT METHODS:
+//   automatic_payment_methods: { enabled: true } lets Stripe surface the best
+//   options for each customer's browser/device:
+//   - Card (Visa, Mastercard, Amex)
+//   - Apple Pay (Safari on iPhone/Mac)
+//   - Google Pay (Chrome on Android/desktop)
+//   - Link (Stripe's one-click checkout for returning customers)
+//   No code changes required when Stripe adds new methods — automatic.
 import { NextRequest, NextResponse } from 'next/server'
 import Stripe from 'stripe'
 import { createClient } from '@supabase/supabase-js'
@@ -30,10 +39,10 @@ const PRICE_TIERS: Record<string, string> = {
 
 // Credit pack price → credit amount mapping (for metadata on webhook)
 const PACK_CREDITS: Record<string, number> = {
-  'price_1SdaLR7YeQ1dZTUvX4qPsy3c':  50,   // Starter Pack
-  'price_1SdaLa7YeQ1dZTUvsjFZWqjB':  150,  // Creator Pack  ($12.99)
-  'price_1SdaLk7YeQ1dZTUvdcDKtnTI':  525,  // Pro Pack      ($39.99) — includes 500+25 bonus
-  'price_1SdaLt7YeQ1dZTUvGhjqaNyk':  1300, // Studio Pack   ($89.99) — includes 1200+100 bonus
+  'price_1SdaLR7YeQ1dZTUvX4qPsy3c':  50,    // Starter Pack  ($4.99)
+  'price_1SdaLa7YeQ1dZTUvsjFZWqjB':  150,   // Creator Pack  ($12.99)
+  'price_1SdaLk7YeQ1dZTUvdcDKtnTI':  525,   // Pro Pack      ($39.99)
+  'price_1SdaLt7YeQ1dZTUvGhjqaNyk':  1300,  // Studio Pack   ($89.99)
 }
 
 export async function POST(req: NextRequest) {
@@ -47,10 +56,10 @@ export async function POST(req: NextRequest) {
       successUrl,
       cancelUrl,
     } = body as {
-      priceId:    string
-      userId:     string
-      email:      string
-      mode?:      'subscription' | 'payment'
+      priceId:     string
+      userId:      string
+      email:       string
+      mode?:       'subscription' | 'payment'
       successUrl?: string
       cancelUrl?:  string
     }
@@ -63,7 +72,7 @@ export async function POST(req: NextRequest) {
     const supabase = db()
     const baseUrl  = process.env.NEXT_PUBLIC_APP_URL ?? 'https://craudiovizai.com'
 
-    // ── Resolve or create Stripe customer ────────────────────────────────────
+    // ── Resolve or create Stripe customer ─────────────────────────────────────
     const { data: existingSub } = await supabase
       .from('user_subscriptions')
       .select('id, provider_subscription_id')
@@ -82,7 +91,6 @@ export async function POST(req: NextRequest) {
     }
 
     if (!customerId) {
-      // Check if a customer already exists for this email
       const existing = await s.customers.list({ email, limit: 1 })
       if (existing.data.length > 0) {
         customerId = existing.data[0].id
@@ -92,12 +100,15 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // ── Subscription mode ─────────────────────────────────────────────────────
+    // ── Subscription mode ──────────────────────────────────────────────────────
     if (mode === 'subscription') {
       const session = await s.checkout.sessions.create({
         customer:    customerId,
         mode:        'subscription',
         line_items:  [{ price: priceId, quantity: 1 }],
+        // automatic_payment_methods surfaces Apple Pay, Google Pay, Link, and card
+        // based on the customer's device and browser — no hard list needed.
+        automatic_payment_methods: { enabled: true },
         success_url: successUrl ?? `${baseUrl}/account/billing?success=1`,
         cancel_url:  cancelUrl  ?? `${baseUrl}/pricing?canceled=1`,
         metadata:    { userId, plan_tier: PRICE_TIERS[priceId] ?? 'unknown' },
@@ -107,7 +118,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ url: session.url, sessionId: session.id })
     }
 
-    // ── Payment mode — one-time credit pack purchase ───────────────────────
+    // ── Payment mode — one-time credit pack purchase ───────────────────────────
     if (mode === 'payment') {
       const creditsGranted = PACK_CREDITS[priceId]
       if (!creditsGranted) {
@@ -121,6 +132,8 @@ export async function POST(req: NextRequest) {
         customer:    customerId,
         mode:        'payment',
         line_items:  [{ price: priceId, quantity: 1 }],
+        // automatic_payment_methods surfaces Apple Pay, Google Pay, Link, and card.
+        automatic_payment_methods: { enabled: true },
         success_url: successUrl ?? `${baseUrl}/account/credits?success=1`,
         cancel_url:  cancelUrl  ?? `${baseUrl}/pricing?canceled=1`,
         metadata: {
