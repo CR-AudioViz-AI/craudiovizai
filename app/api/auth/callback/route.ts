@@ -2,7 +2,7 @@
 // Supabase OAuth callback handler — exchangeCodeForSession, profile init.
 // Handles: Google, Apple, GitHub (and any future Supabase OAuth provider).
 // On first sign-in: creates profiles row + seeds initial credits.
-// Updated: March 21, 2026 — OAuth auth system.
+// Updated: March 22, 2026 — Signup bonus uses count-based idempotency, not JSONB filter.
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { cookies } from 'next/headers'
@@ -11,7 +11,7 @@ import { createClient as createServiceClient } from '@supabase/supabase-js'
 export const dynamic = 'force-dynamic'
 export const runtime  = 'nodejs'
 
-// Service role client — used for profile upsert (bypasses RLS)
+// Service role client — bypasses RLS for profile upsert and credit grant
 function serviceDb() {
   return createServiceClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -20,32 +20,31 @@ function serviceDb() {
 }
 
 export async function GET(request: NextRequest) {
-  const requestUrl  = new URL(request.url)
-  const code        = requestUrl.searchParams.get('code')
-  const redirectTo  = requestUrl.searchParams.get('redirect_to') ?? '/dashboard'
-  const baseUrl     = process.env.NEXT_PUBLIC_APP_URL ?? 'https://craudiovizai.com'
+  const requestUrl = new URL(request.url)
+  const code       = requestUrl.searchParams.get('code')
+  const redirectTo = requestUrl.searchParams.get('redirect_to') ?? '/dashboard'
+  const baseUrl    = process.env.NEXT_PUBLIC_APP_URL ?? 'https://craudiovizai.com'
 
   if (!code) {
-    // No code — redirect to login with error
     console.error('[auth/callback] no code in query params')
     return NextResponse.redirect(`${baseUrl}/login?error=missing_code`)
   }
 
-  // ── Cookie-aware Supabase client (required for session persistence) ────────
+  // ── Cookie-aware client — required for session persistence ────────────
   const cookieStore = cookies()
   const supabase    = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        get:    (name)          => cookieStore.get(name)?.value,
-        set:    (name, value, options) => { try { cookieStore.set({ name, value, ...options }) } catch {} },
-        remove: (name, options) => { try { cookieStore.set({ name, value: '', ...options }) } catch {} },
+        get:    (name: string)                           => cookieStore.get(name)?.value,
+        set:    (name: string, value: string, options: CookieOptions) => { try { cookieStore.set({ name, value, ...options }) } catch {} },
+        remove: (name: string, options: CookieOptions)  => { try { cookieStore.set({ name, value: '', ...options }) } catch {} },
       },
     }
   )
 
-  // ── Exchange code for session ───────────────────────────────────────────────
+  // ── Exchange code for session ──────────────────────────────────────────
   const { data: { session }, error } = await supabase.auth.exchangeCodeForSession(code)
 
   if (error || !session) {
@@ -58,9 +57,7 @@ export async function GET(request: NextRequest) {
   const { user } = session
   const db       = serviceDb()
 
-  // ── First sign-in detection: upsert profile ───────────────────────────────
-  // Uses onConflict:'id' — safe to run on every callback.
-  // Only creates the row if it doesn't exist; never overwrites existing data.
+  // ── Profile upsert — safe on every callback ────────────────────────────
   const { error: profileErr } = await db.from('profiles').upsert({
     id:         user.id,
     email:      user.email,
@@ -72,31 +69,40 @@ export async function GET(request: NextRequest) {
   }, { onConflict: 'id', ignoreDuplicates: false })
 
   if (profileErr) {
-    // Non-fatal — user is authenticated, profile sync can retry later
     console.error('[auth/callback] profile upsert failed:', profileErr.message)
   }
 
-  // ── Seed initial credits for brand-new users ──────────────────────────────
-  // usage_ledger insert only — getCreditBalance() aggregates from this table.
-  // Using ignoreDuplicates-style check: only insert if no prior grant exists.
-  const { count } = await db
+  // ── Signup bonus — idempotent, no JSONB filter ────────────────────────
+  // Count ALL credit grant rows for this user (usage_count > 0).
+  // If zero exist: this is a brand-new user — grant 25 credits.
+  // If any exist: user already has credits — skip (covers retry + re-login).
+  // Does NOT rely on JSONB operators which require specific column config.
+  const { count: existingCredits, error: countErr } = await db
     .from('usage_ledger')
     .select('id', { count: 'exact', head: true })
     .eq('user_id', user.id)
     .eq('feature', 'credits')
-    .eq('metadata->>source', 'signup_bonus')
+    .gt('usage_count', 0)
 
-  if (count === 0) {
-    await db.from('usage_ledger').insert({
+  if (countErr) {
+    console.error('[auth/callback] credit count check failed:', countErr.message)
+  } else if (existingCredits === 0) {
+    const { error: insertErr } = await db.from('usage_ledger').insert({
       user_id:     user.id,
       feature:     'credits',
-      usage_count: 25,   // Matches FREE_TIER.credits in lib/pricing/config.ts
-      metadata:    { type: 'grant', source: 'signup_bonus', provider: user.app_metadata?.provider },
+      usage_count: 25,
+      metadata:    { type: 'grant', source: 'signup_bonus', provider: user.app_metadata?.provider ?? 'unknown' },
     })
-    console.log(`[auth/callback] signup bonus granted: 25 credits to ${user.id.slice(0,8)}…`)
+    if (insertErr) {
+      console.error('signup_bonus_failed', { userId: user.id.slice(0, 8), error: insertErr.message })
+    } else {
+      console.log('signup_bonus_granted', { userId: user.id.slice(0, 8), credits: 25 })
+    }
+  } else {
+    console.log('signup_bonus_skipped', { userId: user.id.slice(0, 8), existing: existingCredits })
   }
 
-  // ── Redirect to intended destination ──────────────────────────────────────
+  // ── Redirect ───────────────────────────────────────────────────────────
   const destination = redirectTo.startsWith('http') ? redirectTo : `${baseUrl}${redirectTo}`
   return NextResponse.redirect(destination)
 }
