@@ -108,6 +108,7 @@ function Avatar({ state }: { state: AvState }) {
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src="/javari-portrait-v3.png"
+          onError={(e) => { (e.currentTarget as HTMLImageElement).src = '/default-avatar.png' }}
           alt="Javari AI"
           style={{
             width:          '100%',
@@ -209,6 +210,7 @@ export default function JavariOSPage() {
   const [userId,    setUserId]    = useState<string | null>(null)
   const [authToken, setAuthToken] = useState<string | null>(null)
   const [userTier,  setUserTier]  = useState<string>('free')
+  const [balance,   setBalance]   = useState<number | null>(null)
 
   const bottomRef  = useRef<HTMLDivElement>(null)
   const feedRef    = useRef<HTMLDivElement>(null)
@@ -277,6 +279,16 @@ export default function JavariOSPage() {
       }
     })
   }, [supabase])
+
+  useEffect(() => {
+    if (!userId || !authToken) return
+    fetch('https://craudiovizai.com/api/credits/balance', {
+      headers: { Authorization: `Bearer ${authToken}` },
+    })
+      .then(res => res.ok ? res.json() : null)
+      .then(data => setBalance((data?.total ?? 0) as number))
+      .catch(() => setBalance(0))
+  }, [userId, authToken])
 
   // ── Send message ───────────────────────────────────────────────────────────
   const send = useCallback(async (override?: string) => {
@@ -401,7 +413,7 @@ export default function JavariOSPage() {
   }, [])
 
   const PROMPTS = ['Write a business plan', 'Create brand content', 'Analyze my strategy', 'Build a campaign', 'Draft an email', 'Explain this concept']
-  const hasChat = messages.filter(m => m.role !== 'system').length > 0
+  const hasChat = (messages ?? []).filter(m => m.role !== 'system').length > 0
 
   return (
     <>
@@ -432,6 +444,7 @@ export default function JavariOSPage() {
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src="/javari-logo.png"
+              onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none' }}
               alt="Javari AI"
               style={{ height: '40px', width: 'auto', maxHeight: '40px', objectFit: 'contain', display: 'block' }}
               draggable={false}
@@ -472,6 +485,13 @@ export default function JavariOSPage() {
           </div>
 
           <div className="flex-1" />
+
+          {balance !== null && (
+            <div className="hidden md:flex items-center gap-1.5 font-mono text-[10px]">
+              <span className="text-zinc-600">◈</span>
+              <span className="text-green-400 tabular-nums">{balance.toLocaleString()} cr</span>
+            </div>
+          )}
 
           {/* Status pill */}
           {sysStatus && (
@@ -588,7 +608,7 @@ export default function JavariOSPage() {
                     >
                       <Send className="w-3 h-3 text-blue-200" />
                     </button>
-                    {messages.filter(m => m.role !== 'system').length > 0 && (
+                    {(messages ?? []).filter(m => m.role !== 'system').length > 0 && (
                       <button
                         onClick={clearChat}
                         className="w-6 h-6 rounded flex items-center justify-center text-zinc-700
@@ -687,7 +707,7 @@ export default function JavariOSPage() {
                 })}
 
                 {/* Empty-state prompt chips */}
-                {messages.filter(m => m.role !== 'system').length === 0 && !loading && (
+                {(messages ?? []).filter(m => m.role !== 'system').length === 0 && !loading && (
                   <div className="flex flex-col items-center justify-center h-full gap-3 py-8 select-none">
                     <p className="font-mono text-[9px] text-zinc-800 tracking-[0.3em] uppercase">
                       Feed empty
