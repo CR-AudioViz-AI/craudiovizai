@@ -1,21 +1,18 @@
 'use client';
 
 /**
- * CR AudioViz AI - HEADER COMPONENT (FIXED LAYOUT)
- * 
- * FIX: Nav links centered, auth section visible on right
- * - Three-column layout: Logo | Nav (centered) | Auth
- * - Prevents auth section from being pushed off-screen
- * 
- * @timestamp January 8, 2026 - LAYOUT FIX
+ * CR AudioViz AI - Header Component
+ * Auth state from global Providers context (useAuth).
+ * Credits from /api/credits/balance via Providers — usage_ledger-based.
+ * Updated: March 22, 2026 — useAuth() replaces local Supabase calls.
  */
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
-import { createClient } from '@/lib/supabase/client';
-import { User, LogOut, Sparkles, Zap } from 'lucide-react';
+import { useAuth } from '@/app/providers';
+import { LogOut, Sparkles, Zap } from 'lucide-react';
 
 const NAV_LINKS = [
   { id: 'home', href: '/', label: 'Home' },
@@ -47,17 +44,12 @@ const CR_PHRASES = [
 ];
 
 export default function Header() {
-  const pathname = usePathname();
-  const [user, setUser] = useState<any>(null);
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [credits, setCredits] = useState<number | null>(null);
-  const [plan, setPlan] = useState<string>('Free');
-  const [loading, setLoading] = useState(true);
+  const pathname  = usePathname();
+  const { user, credits, plan, isAdmin, loading, signOut } = useAuth()
+
   const [currentPhraseIndex, setCurrentPhraseIndex] = useState(0);
   const [rotationCount, setRotationCount] = useState(0);
   const [showCindyRoy, setShowCindyRoy] = useState(false);
-  
-  const supabase = createClient();
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -71,54 +63,7 @@ export default function Header() {
     return () => clearInterval(interval);
   }, []);
 
-  useEffect(() => {
-    async function checkAuth() {
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user) {
-          setUser(user);
-          const adminEmails = ['royhenderson@craudiovizai.com', 'cindyhenderson@craudiovizai.com'];
-          const isAdminEmail = user.email && adminEmails.includes(user.email.toLowerCase());
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('credits, subscription_tier, is_admin, role')
-            .eq('id', user.id)
-            .single();
-          const isAdminUser = profile?.is_admin || profile?.role === 'admin' || isAdminEmail;
-          setIsAdmin(isAdminUser);
-          if (isAdminUser) {
-            setPlan('Admin');
-            setCredits(null);
-          } else if (profile) {
-            setCredits(profile.credits ?? 0);
-            setPlan(profile.subscription_tier || 'Free');
-          }
-        }
-      } catch (error) {
-        console.error('Auth check error:', error);
-      } finally {
-        setLoading(false);
-      }
-    }
-    checkAuth();
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(() => checkAuth());
-    return () => subscription.unsubscribe();
-  }, [supabase]);
-
-  const handleSignOut = async () => {
-    try {
-      await supabase.auth.signOut();
-      setUser(null);
-      setIsAdmin(false);
-      setCredits(null);
-      setPlan('Free');
-      window.location.href = '/';
-    } catch (error) {
-      console.error('Sign out error:', error);
-      // Force redirect even on error
-      window.location.href = '/';
-    }
-  };
+  const handleSignOut = signOut;
 
   const getDisplayName = () => {
     if (!user) return '';
