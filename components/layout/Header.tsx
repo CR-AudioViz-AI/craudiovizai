@@ -12,7 +12,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/app/providers';
-import { LogOut, Sparkles, Zap } from 'lucide-react';
+import { User, LogOut, Sparkles, Zap } from 'lucide-react';
 
 const NAV_LINKS = [
   { id: 'home', href: '/', label: 'Home' },
@@ -46,6 +46,18 @@ const CR_PHRASES = [
 export default function Header() {
   const pathname  = usePathname();
   const { user, credits, plan, isAdmin, loading, signOut } = useAuth()
+
+  // Auth state validation log
+  if (typeof window !== 'undefined') {
+    console.log('AUTH STATE', { user: user?.email, credits, plan })
+  }
+
+  const getDisplayName = () => {
+    if (!user) return ''
+    return user.user_metadata?.full_name || user.user_metadata?.name || user.email?.split('@')[0] || 'User'
+  }
+
+  const handleSignOut = signOut
 
   const [currentPhraseIndex, setCurrentPhraseIndex] = useState(0);
   const [rotationCount, setRotationCount] = useState(0);
@@ -126,8 +138,11 @@ export default function Header() {
                 <div className="flex items-center gap-3">
                   <Link href="/dashboard" className="flex items-center gap-1.5 px-2 py-1 text-sm text-slate-700 hover:text-cyan-600">
                     <User className="w-4 h-4" />
-                    <span>{getDisplayName()}</span>
+                    <span className="text-sm text-green-600">{user.email}</span>
                   </Link>
+                  <span className="text-xs text-slate-400">
+                    {plan} • {credits ?? 0} credits
+                  </span>
                   <button type="button" onClick={handleSignOut} className="flex items-center gap-1.5 px-2 py-1 text-sm text-slate-500 hover:text-cyan-600">
                     <LogOut className="w-4 h-4" />
                     <span>Logout</span>

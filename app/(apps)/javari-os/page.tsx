@@ -3,7 +3,7 @@
 // TRUE 2×2 QUADRANT: grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr
 // Each quadrant = exactly 50% width × 50% height. No dominant panel.
 // Design: SCIF terminal / NORAD ops floor — deep black, glowing separators, phosphor status
-// Updated: March 22, 2026 — Fixed stale closure: userId/authToken added to send() dep array.
+// Updated: March 22, 2026 — Auth from useAuth() Providers context. Local getSession() removed.
 'use client'
 
 import {
@@ -11,6 +11,7 @@ import {
 } from 'react'
 import { Send, Zap, ChevronDown, RotateCcw } from 'lucide-react'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { useAuth } from '@/app/providers'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -205,11 +206,13 @@ export default function JavariOSPage() {
   const [sysStatus,   setSysStatus]   = useState<SysStatus | null>(null)
   const [execPulse,   setExecPulse]   = useState(false)
 
-  // ── Auth session ──────────────────────────────────────────────────────────
-  const supabase    = createClientComponentClient()
-  const [userId,    setUserId]    = useState<string | null>(null)
-  const [authToken, setAuthToken] = useState<string | null>(null)
-  const [userTier,  setUserTier]  = useState<string>('free')
+  // ── Auth from global Providers context ───────────────────────────────────
+  const { user: authUser, session: authSession, plan: userTier } = useAuth()
+  const userId    = authUser?.id ?? null
+  const authToken = authSession?.access_token ?? null
+  // Keep local state aliases for backward compat with existing fetch logic
+  const [_userId,    setUserId]    = useState<string | null>(null)
+  const [_authToken, setAuthToken] = useState<string | null>(null)
   const [balance,   setBalance]   = useState<number | null>(null)
 
   const bottomRef  = useRef<HTMLDivElement>(null)
@@ -270,15 +273,13 @@ export default function JavariOSPage() {
     return () => clearInterval(t)
   }, [loadStatus])
 
+  // Session loaded by global Providers — log for validation
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) {
-        setUserId(session.user.id)
-        setAuthToken(session.access_token)
-        console.log('JAVARI_SESSION_LOADED', { userId: session.user.id.slice(0,8) })
-      }
-    })
-  }, [supabase])
+    if (userId) {
+      console.log('JAVARI_SESSION_LOADED', { userId: userId.slice(0,8) })
+      console.log('AUTH STATE', { userId: userId.slice(0,8), plan: userTier })
+    }
+  }, [userId, userTier])
 
   useEffect(() => {
     if (!userId || !authToken) return
