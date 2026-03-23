@@ -144,6 +144,7 @@ function AccountColumn({ user, credits, plan, isAdmin }: {
         }),
       })
       const data = await res.json()
+      console.log('CHECKOUT RESPONSE', { status: res.status, data })
       if (data.url) {
         window.location.href = data.url
       } else {
