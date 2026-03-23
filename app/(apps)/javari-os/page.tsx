@@ -3,7 +3,7 @@
 // TRUE 2×2 QUADRANT: grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr
 // Each quadrant = exactly 50% width × 50% height. No dominant panel.
 // Design: SCIF terminal / NORAD ops floor — deep black, glowing separators, phosphor status
-// Updated: March 22, 2026 — Migrated into craudiovizai. API calls use absolute javari-ai.vercel.app URLs.
+// Updated: March 22, 2026 — Fixed stale closure: userId/authToken added to send() dep array.
 'use client'
 
 import {
@@ -360,7 +360,7 @@ export default function JavariOSPage() {
       setLoading(false)
       setTimeout(() => setAvState('idle'), 2000)
     }
-  }, [input, loading, mode])
+  }, [input, loading, mode, userId, authToken, userTier])
 
   // ── Run Loop ───────────────────────────────────────────────────────────────
   const runLoop = useCallback(async () => {
