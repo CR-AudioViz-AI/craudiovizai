@@ -126,6 +126,38 @@ function AccountColumn({ user, credits, plan, isAdmin }: {
 
   const avatarUrl = user?.user_metadata?.avatar_url
 
+  const [buyLoading, setBuyLoading] = React.useState(false)
+
+  async function handleBuyCredits() {
+    setBuyLoading(true)
+    try {
+      const res = await fetch('/api/billing/checkout', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          priceId:    'price_1SdaLa7YeQ1dZTUvsjFZWqjB',
+          userId:     user?.id ?? '',
+          email:      user?.email ?? '',
+          mode:       'payment',
+          successUrl: window.location.origin + '/dashboard?success=credits',
+          cancelUrl:  window.location.origin + '/dashboard',
+        }),
+      })
+      const data = await res.json()
+      if (data.url) {
+        window.location.href = data.url
+      } else {
+        console.error('Checkout failed', data)
+        alert('Unable to start checkout. Please try again.')
+      }
+    } catch (err) {
+      console.error(err)
+      alert('Error connecting to payment system. Please try again.')
+    } finally {
+      setBuyLoading(false)
+    }
+  }
+
   return (
     <div className="space-y-4">
 
@@ -192,16 +224,25 @@ function AccountColumn({ user, credits, plan, isAdmin }: {
           </div>
         )}
         <div className="flex flex-col gap-2">
-          <Link
-            href="/pricing"
-            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-cyan-600 hover:bg-cyan-700 text-white rounded-xl text-sm font-semibold transition-colors"
+          <button
+            type="button"
+            onClick={handleBuyCredits}
+            disabled={buyLoading}
+            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-cyan-600 hover:bg-cyan-700 disabled:bg-cyan-400 text-white rounded-xl text-sm font-semibold transition-colors disabled:cursor-wait"
           >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                d="M12 4v16m8-8H4" />
-            </svg>
-            Buy Credits
-          </Link>
+            {buyLoading ? (
+              <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+              </svg>
+            ) : (
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                  d="M12 4v16m8-8H4" />
+              </svg>
+            )}
+            {buyLoading ? 'Redirecting...' : 'Buy Credits'}
+          </button>
           <Link
             href="/account/credits"
             className="w-full flex items-center justify-center gap-2 px-4 py-2 border border-gray-200 hover:border-cyan-300 text-gray-600 hover:text-cyan-700 rounded-xl text-sm font-medium transition-colors"
