@@ -47,19 +47,14 @@ export default function Header() {
   const pathname  = usePathname();
   const { user, credits, plan, isAdmin, loading, signOut } = useAuth()
 
-  // Auth state validation log
-  if (typeof window !== 'undefined') {
-    console.log('AUTH STATE', { user: user?.email, credits, plan })
-  }
-
-  const getDisplayName = () => {
-    if (!user) return ''
-    return user.user_metadata?.full_name || user.user_metadata?.name || user.email?.split('@')[0] || 'User'
-  }
-
   const [currentPhraseIndex, setCurrentPhraseIndex] = useState(0);
   const [rotationCount, setRotationCount] = useState(0);
   const [showCindyRoy, setShowCindyRoy] = useState(false);
+
+  // Auth state validation log — in useEffect, not render body
+  useEffect(() => {
+    console.log('AUTH STATE', { user: user?.email, credits, plan })
+  }, [user, credits, plan])
 
   useEffect(() => {
     const interval = setInterval(() => {
