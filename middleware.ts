@@ -24,7 +24,7 @@ const CONFIG = {
 const ATTACK_PATTERNS = {
   sqlInjection: [/union.*select/i, /insert.*into/i, /drop.*table/i, /exec\s*\(/i],
   xss: [/<script[\s\S]*?>/i, /javascript:/i, /onerror\s*=/i],
-  pathTraversal: [\/\.\.\/\.\.\/\/, /\.\.\\\.\.\\/, /%2e%2e%2f/i],
+  pathTraversal: [/\.\.\/\.\.\//, /\.\.\\\.\.\\/, /%2e%2e%2f/i],
 };
 
 const BLOCKED_USER_AGENTS = ['sqlmap', 'nikto', 'nmap', 'metasploit'];
@@ -42,6 +42,7 @@ export async function middleware(request: NextRequest) {
   const proto = request.headers.get('x-forwarded-proto');
   const host = request.headers.get('host') || '';
 
+  // Force HTTPS redirect (check x-forwarded-proto header from Cloudflare/proxy)
   if (CONFIG.FORCE_HTTPS && proto === 'http' && !host.includes('localhost')) {
     const httpsUrl = `https://${host}${pathname}${url.search}`;
     return NextResponse.redirect(httpsUrl, { status: 301 });
@@ -124,10 +125,9 @@ export async function middleware(request: NextRequest) {
   // ============================================
   // 8. SUPABASE SESSION REFRESH + CONTINUE
   // ============================================
-  // Create response first — supabase cookie setter writes into it.
-  // Call getUser() to validate and refresh the session token.
-  // Return the response so updated cookies are sent to the browser.
-  // This is the required @supabase/ssr middleware pattern.
+  // Required by @supabase/ssr — refreshes session token on every request.
+  // Without this, session expires silently after first load.
+  // Cookie set/remove writes into both request and response objects.
   let response = NextResponse.next({ request })
 
   try {
@@ -151,7 +151,7 @@ export async function middleware(request: NextRequest) {
       }
     )
 
-    // Refresh session — non-fatal if user is not logged in
+    // Validates and refreshes the session — non-fatal if no session exists
     await supabase.auth.getUser()
   } catch {
     // Never block a request due to auth errors
