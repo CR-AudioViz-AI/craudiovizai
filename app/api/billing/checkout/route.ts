@@ -106,9 +106,6 @@ export async function POST(req: NextRequest) {
         customer:    customerId,
         mode:        'subscription',
         line_items:  [{ price: priceId, quantity: 1 }],
-        // automatic_payment_methods surfaces Apple Pay, Google Pay, Link, and card
-        // based on the customer's device and browser — no hard list needed.
-        automatic_payment_methods: { enabled: true },
         success_url: successUrl ?? `${baseUrl}/account/billing?success=1`,
         cancel_url:  cancelUrl  ?? `${baseUrl}/pricing?canceled=1`,
         metadata:    { userId, plan_tier: PRICE_TIERS[priceId] ?? 'unknown' },
@@ -132,8 +129,6 @@ export async function POST(req: NextRequest) {
         customer:    customerId,
         mode:        'payment',
         line_items:  [{ price: priceId, quantity: 1 }],
-        // automatic_payment_methods surfaces Apple Pay, Google Pay, Link, and card.
-        automatic_payment_methods: { enabled: true },
         success_url: successUrl ?? `${baseUrl}/account/credits?success=1`,
         cancel_url:  cancelUrl  ?? `${baseUrl}/pricing?canceled=1`,
         metadata: {
