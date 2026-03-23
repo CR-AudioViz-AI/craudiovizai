@@ -30,10 +30,6 @@
           "value": "nosniff"
         },
         {
-          "key": "X-Frame-Options",
-          "value": "DENY"
-        },
-        {
           "key": "X-XSS-Protection",
           "value": "1; mode=block"
         },
@@ -44,6 +40,10 @@
         {
           "key": "Strict-Transport-Security",
           "value": "max-age=31536000; includeSubDomains"
+        },
+        {
+          "key": "Content-Security-Policy",
+          "value": "connect-src 'self' https://javari-ai.vercel.app https://*.supabase.co https://*.vercel.app https://api.resend.com https://api.stripe.com https://www.paypal.com; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdnjs.cloudflare.com https://js.stripe.com https://www.paypal.com https://www.google-analytics.com https://www.googletagmanager.com https://static.cloudflareinsights.com; img-src 'self' data: https://*; frame-src 'self' https://javariai.com https://javari-ai.vercel.app https://js.stripe.com https://www.paypal.com; default-src 'self';"
         }
       ]
     },
