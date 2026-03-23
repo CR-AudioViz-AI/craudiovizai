@@ -128,16 +128,13 @@ export default function Header() {
               {loading ? (
                 <div className="w-20 h-8 bg-cyan-100 rounded animate-pulse" />
               ) : user ? (
-                <div className="flex items-center gap-3">
-                  <Link href="/dashboard" className="flex items-center gap-1.5 px-2 py-1 text-sm text-slate-700 hover:text-cyan-600">
-                    <User className="w-4 h-4" />
-                    <span className="text-sm text-green-600">{user.email}</span>
+                <div className="flex items-center gap-2 whitespace-nowrap">
+                  <Link href="/dashboard" className="flex items-center gap-1.5 px-2 py-1 text-sm font-medium text-slate-700 hover:text-cyan-600">
+                    <User className="w-4 h-4 flex-shrink-0" />
+                    <span className="text-sm text-slate-800">{user.email}</span>
                   </Link>
-                  <span className="text-xs text-slate-400">
-                    {plan} • {credits ?? 0} credits
-                  </span>
-                  <button type="button" onClick={handleSignOut} className="flex items-center gap-1.5 px-2 py-1 text-sm text-slate-500 hover:text-cyan-600">
-                    <LogOut className="w-4 h-4" />
+                  <button type="button" onClick={handleSignOut} className="flex items-center gap-1.5 px-2 py-1 text-sm text-slate-500 hover:text-cyan-600 hover:underline">
+                    <LogOut className="w-4 h-4 flex-shrink-0" />
                     <span>Logout</span>
                   </button>
                 </div>
@@ -172,13 +169,14 @@ export default function Header() {
               {loading ? (
                 <div className="w-16 h-7 bg-cyan-100 rounded animate-pulse" />
               ) : user ? (
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 whitespace-nowrap">
                   <Link href="/dashboard" className="flex items-center gap-1 px-2 py-1 text-sm text-slate-700">
-                    <User className="w-4 h-4" />
-                    <span className="hidden sm:inline">{getDisplayName()}</span>
+                    <User className="w-4 h-4 flex-shrink-0" />
+                    <span className="hidden sm:inline max-w-[120px] truncate text-sm text-slate-800">{user.email}</span>
                   </Link>
-                  <button type="button" onClick={handleSignOut} className="flex items-center gap-1 text-sm text-slate-500">
-                    <LogOut className="w-4 h-4" />
+                  <button type="button" onClick={handleSignOut} className="flex items-center gap-1 text-sm text-slate-500 hover:text-cyan-600 hover:underline">
+                    <LogOut className="w-4 h-4 flex-shrink-0" />
+                    <span className="hidden sm:inline">Logout</span>
                   </button>
                 </div>
               ) : (
