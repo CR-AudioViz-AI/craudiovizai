@@ -1,11 +1,12 @@
 /**
  * CR AudioViz AI - Root Layout
- * 
+ *
  * FEATURES:
  * - Flex layout for sticky footer
  * - Mobile-first responsive design
- * 
- * @timestamp January 8, 2026
+ * - Global auth provider (Providers wraps all children)
+ *
+ * Updated: March 22, 2026 — Added Providers for global session sharing
  */
 
 import type { Metadata, Viewport } from "next";
@@ -17,6 +18,7 @@ import Footer from "@/components/layout/Footer";
 import SocialMediaButtons from "@/components/SocialMediaButtons";
 import JavariWidget from '@/components/JavariWidget';
 import { CanonicalLink } from '@/components/seo/canonical-link';
+import Providers from './providers';
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -88,22 +90,24 @@ export default function RootLayout({
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
       </head>
       <body className={`${inter.className} min-h-screen flex flex-col`}>
-        <CanonicalLink />
-        
-        {/* Sticky header - inside the flex container */}
-        <Header />
-        
-        {/* Main content - flex-1 takes all available space */}
-        <main className="flex-1">
-          {children}
-        </main>
-        
-        {/* Social + Footer - pushed to bottom by flex-1 main */}
-        <SocialMediaButtons />
-        <Footer />
-        
-        {/* Widget overlay */}
-        <JavariWidget />
+        <Providers>
+          <CanonicalLink />
+
+          {/* Sticky header */}
+          <Header />
+
+          {/* Main content */}
+          <main className="flex-1">
+            {children}
+          </main>
+
+          {/* Footer */}
+          <SocialMediaButtons />
+          <Footer />
+
+          {/* Widget overlay */}
+          <JavariWidget />
+        </Providers>
       </body>
     </html>
   );
