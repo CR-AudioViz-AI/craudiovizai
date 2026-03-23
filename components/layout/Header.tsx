@@ -57,8 +57,6 @@ export default function Header() {
     return user.user_metadata?.full_name || user.user_metadata?.name || user.email?.split('@')[0] || 'User'
   }
 
-  const handleSignOut = signOut
-
   const [currentPhraseIndex, setCurrentPhraseIndex] = useState(0);
   const [rotationCount, setRotationCount] = useState(0);
   const [showCindyRoy, setShowCindyRoy] = useState(false);
