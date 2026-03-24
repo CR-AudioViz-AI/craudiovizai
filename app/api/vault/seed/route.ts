@@ -102,7 +102,7 @@ export async function GET(req: NextRequest) {
   const supabase = getSupabase()
   const { error: writeErr } = await supabase.rpc('set_platform_secret', {
     p_key:         'STRIPE_SECRET_KEY',
-    p_encrypted:   encrypted,
+    p_value_encrypted: encrypted,
     p_description: 'Stripe secret key (vault-managed) — seeded ' + new Date().toISOString(),
   })
 
