@@ -1,3 +1,5 @@
+// DEBUG — remove after identifying active file
+console.log('DASHBOARD FILE: app/dashboard/layout.tsx');
 import { Metadata } from "next";
 
 export const metadata: Metadata = {
