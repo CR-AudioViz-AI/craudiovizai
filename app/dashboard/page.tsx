@@ -229,7 +229,7 @@ function AccountColumn({ user, credits, plan, isAdmin }: {
             type="button"
             onClick={handleBuyCredits}
             disabled={buyLoading}
-            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-cyan-600 hover:bg-cyan-700 disabled:bg-cyan-400 text-white rounded-xl text-sm font-semibold transition-colors disabled:cursor-wait"
+            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white rounded-md text-sm font-semibold transition-colors disabled:cursor-wait"
           >
             {buyLoading ? (
               <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
@@ -276,12 +276,13 @@ function AccountColumn({ user, credits, plan, isAdmin }: {
           <PlanBadge plan={isAdmin ? 'Admin' : plan} />
         </div>
         <div className="flex flex-col gap-2">
-          <Link
-            href="/pricing"
-            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-gray-900 hover:bg-gray-800 text-white rounded-xl text-sm font-semibold transition-colors"
+          <button
+            type="button"
+            onClick={() => window.location.href = '/pricing'}
+            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-black hover:bg-gray-800 text-white rounded-md text-sm font-semibold transition-colors"
           >
             Upgrade Plan
-          </Link>
+          </button>
           <button
             type="button"
             disabled
@@ -355,9 +356,21 @@ export default function DashboardPage() {
               ? `Welcome back, ${user.user_metadata?.full_name || user.email?.split('@')[0] || 'there'}`
               : 'Dashboard'}
           </h1>
-          <p className="text-sm text-gray-500 mt-1">
-            {user ? `Signed in as ${user.email}` : 'Sign in to manage your account'}
-          </p>
+          <div className="flex items-center gap-4 whitespace-nowrap overflow-hidden mt-1">
+            <p className="text-sm text-gray-500 truncate">
+              {user ? user.email : 'Sign in to manage your account'}
+            </p>
+            {user && (
+              <>
+                <span className="text-sm text-gray-300">·</span>
+                <span className="text-sm text-gray-500 capitalize flex-shrink-0">{plan}</span>
+                <span className="text-sm text-gray-300">·</span>
+                <span className="text-sm text-cyan-600 font-medium flex-shrink-0">
+                  {isAdmin ? '∞' : (credits ?? 0).toLocaleString()} credits
+                </span>
+              </>
+            )}
+          </div>
         </div>
 
         {isDegraded && (
