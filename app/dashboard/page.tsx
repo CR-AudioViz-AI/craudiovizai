@@ -6,6 +6,9 @@
 
 'use client';
 
+// DEBUG — remove after identifying active file
+console.log('DASHBOARD FILE: app/dashboard/page.tsx');
+
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/app/providers';
