@@ -253,25 +253,6 @@ function AccountColumn({ user, credits, plan, isAdmin }: {
         </div>
       </Card>
 
-      {/* ── Always-visible action row ────────────────────────────── */}
-      <div className="flex gap-3 mt-4">
-        <button
-          type="button"
-          onClick={handleBuyCredits}
-          disabled={buyLoading}
-          className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white px-4 py-2 rounded-md text-sm font-semibold transition-colors disabled:cursor-wait"
-        >
-          {buyLoading ? 'Redirecting...' : 'Buy Credits'}
-        </button>
-        <button
-          type="button"
-          onClick={() => window.location.href = '/pricing'}
-          className="flex-1 bg-black hover:bg-gray-800 text-white px-4 py-2 rounded-md text-sm font-semibold transition-colors"
-        >
-          Upgrade Plan
-        </button>
-      </div>
-
       {/* ── Billing ──────────────────────────────────────────────── */}
       <Card>
         <SectionTitle>Billing</SectionTitle>
@@ -413,6 +394,24 @@ export default function DashboardPage() {
                 plan={plan}
                 isAdmin={isAdmin}
               />
+            </div>
+
+            {/* ── Action buttons — outside AccountColumn, no conditionals ── */}
+            <div className="flex gap-3 mt-4 lg:col-span-1">
+              <button
+                type="button"
+                onClick={handleBuyCredits}
+                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-semibold"
+              >
+                Buy Credits
+              </button>
+              <button
+                type="button"
+                onClick={() => window.location.href='/pricing'}
+                className="flex-1 bg-black hover:bg-gray-800 text-white px-4 py-2 rounded-md text-sm font-semibold"
+              >
+                Upgrade Plan
+              </button>
             </div>
 
             {/* Right column: apps + CTA */}
