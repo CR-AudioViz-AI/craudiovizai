@@ -3,7 +3,7 @@
 // Handles: checkout.session.completed, customer.subscription.updated/deleted,
 //          invoice.payment_failed
 // Writes to: user_subscriptions, billing_events, usage_ledger (credits)
-// Updated: March 21, 2026 — Credit pack grant support.
+// Updated: March 26, 2026 — vault-first STRIPE_SECRET_KEY + STRIPE_WEBHOOK_SECRET.
 //
 // IDEMPOTENCY GUARANTEE:
 //   Every event is logged to billing_events with processed=false on arrival.
@@ -21,13 +21,17 @@
 import { NextRequest, NextResponse } from 'next/server'
 import Stripe from 'stripe'
 import { createClient } from '@supabase/supabase-js'
+import { getSecret } from '@/lib/vault/getSecret'
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
 
-function stripe() {
-  if (!process.env.STRIPE_SECRET_KEY) throw new Error('STRIPE_SECRET_KEY not set')
-  return new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: '2024-06-20' })
+async function stripe(): Promise<Stripe> {
+  const STRIPE_SECRET_KEY =
+    (await getSecret('STRIPE_SECRET_KEY').catch(() => null)) ||
+    process.env.STRIPE_SECRET_KEY
+  if (!STRIPE_SECRET_KEY) throw new Error('STRIPE_SECRET_KEY not set')
+  return new Stripe(STRIPE_SECRET_KEY, { apiVersion: '2024-06-20' })
 }
 
 function db() {
@@ -38,7 +42,6 @@ function db() {
 }
 
 // ── Subscription plan → monthly credit grant ──────────────────────────────────
-// Used when purchase_type is NOT "credit_pack" (i.e. plan subscription checkout).
 const SUBSCRIPTION_CREDIT_MAP: Record<string, number> = {
   'price_1SdaKx7YeQ1dZTUvCeaYqKXh': 150,   // Starter Plan  ($9.99/mo)
   'price_1SdaL67YeQ1dZTUv43H6YxGq': 600,   // Pro Plan      ($29.99/mo)
@@ -47,15 +50,11 @@ const SUBSCRIPTION_CREDIT_MAP: Record<string, number> = {
 }
 
 // ── Credit pack → exact credit grant ─────────────────────────────────────────
-// Used when purchase_type === "credit_pack".
-// These match CREDIT_PACKS in lib/billing/upsell.ts (javari-ai).
-// The checkout route also embeds credits_granted in metadata — that value
-// is used as the primary source. This map is the authoritative fallback.
 const PACK_CREDIT_MAP: Record<string, number> = {
   'price_1SdaLR7YeQ1dZTUvX4qPsy3c': 50,    // Starter Pack  ($4.99)
   'price_1SdaLa7YeQ1dZTUvsjFZWqjB': 150,   // Creator Pack  ($12.99)
-  'price_1SdaLk7YeQ1dZTUvdcDKtnTI': 525,   // Pro Pack      ($39.99) — 500 + 25 bonus
-  'price_1SdaLt7YeQ1dZTUvGhjqaNyk': 1300,  // Studio Pack   ($89.99) — 1200 + 100 bonus
+  'price_1SdaLk7YeQ1dZTUvdcDKtnTI': 525,   // Pro Pack      ($39.99)
+  'price_1SdaLt7YeQ1dZTUvGhjqaNyk': 1300,  // Studio Pack   ($89.99)
 }
 
 // ── Subscription tier map ─────────────────────────────────────────────────────
@@ -91,19 +90,6 @@ async function upsertSubscription(
   }, { onConflict: 'user_id,provider' })
 }
 
-// ── Credit grant — shared by both subscription and pack flows ─────────────────
-/**
- * grantCreditsToLedger — insert a positive usage_count into usage_ledger.
- *
- * Idempotency is handled upstream by billing_events.processed guard.
- * This function fires at most once per event.id.
- *
- * @param userId       - platform user UUID
- * @param credits      - exact credit amount to grant (must be > 0)
- * @param source       - "stripe_subscription" | "stripe_pack" — for audit trail
- * @param priceId      - Stripe price ID for audit trail
- * @param stripeEventId - Stripe event ID for cross-reference
- */
 async function grantCreditsToLedger(
   supabase:       ReturnType<typeof db>,
   userId:         string,
@@ -141,11 +127,15 @@ async function grantCreditsToLedger(
 // ── Webhook POST handler ──────────────────────────────────────────────────────
 export async function POST(req: NextRequest) {
   const supabase = db()
-  const s        = stripe()
+  const s        = await stripe()
 
   const payload   = await req.text()
   const signature = req.headers.get('stripe-signature') ?? ''
-  const secret    = process.env.STRIPE_WEBHOOK_SECRET ?? ''
+
+  // Vault-first webhook secret with process.env fallback
+  const secret =
+    (await getSecret('STRIPE_WEBHOOK_SECRET').catch(() => null)) ||
+    process.env.STRIPE_WEBHOOK_SECRET ?? ''
 
   if (!secret) {
     console.error('[billing/webhook] STRIPE_WEBHOOK_SECRET not configured')
@@ -162,7 +152,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid signature' }, { status: 400 })
   }
 
-  // ── Idempotency guard — skip already-processed events ─────────────────────
+  // ── Idempotency guard ──────────────────────────────────────────────────────
   const { data: existing } = await supabase
     .from('billing_events')
     .select('id')
@@ -175,7 +165,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ received: true, skipped: 'duplicate' })
   }
 
-  // ── Log raw event before processing (never lose an event) ─────────────────
+  // ── Log raw event ─────────────────────────────────────────────────────────
   await supabase.from('billing_events').upsert({
     stripe_event_id: event.id,
     event_type:      event.type,
@@ -186,27 +176,20 @@ export async function POST(req: NextRequest) {
   try {
     switch (event.type) {
 
-      // ── checkout.session.completed ────────────────────────────────────────
       case 'checkout.session.completed': {
         const session      = event.data.object as Stripe.Checkout.Session
         const userId       = session.metadata?.userId
-        const purchaseType = session.metadata?.purchase_type  // "credit_pack" | undefined
+        const purchaseType = session.metadata?.purchase_type
 
         if (!userId) {
           console.warn('[billing/webhook] checkout.session.completed — no userId in metadata')
           break
         }
 
-        // ── Branch A: one-time credit pack purchase ───────────────────────
         if (purchaseType === 'credit_pack') {
-          const priceId       = session.metadata?.price_id ?? ''
-          const metaCredits   = parseInt(session.metadata?.credits_granted ?? '0', 10)
-
-          // Primary source: metadata.credits_granted (embedded by checkout route)
-          // Fallback source: PACK_CREDIT_MAP (authoritative backup if metadata missing)
-          const credits = metaCredits > 0
-            ? metaCredits
-            : (PACK_CREDIT_MAP[priceId] ?? 0)
+          const priceId     = session.metadata?.price_id ?? ''
+          const metaCredits = parseInt(session.metadata?.credits_granted ?? '0', 10)
+          const credits     = metaCredits > 0 ? metaCredits : (PACK_CREDIT_MAP[priceId] ?? 0)
 
           if (credits === 0) {
             console.error('[billing/webhook] credit_pack — credits=0, priceId:', priceId)
@@ -217,9 +200,6 @@ export async function POST(req: NextRequest) {
           break
         }
 
-        // ── Branch B: subscription checkout (default) ─────────────────────
-        // Resolve priceId from subscription line items — the reliable source.
-        // Never use a hardcoded fallback priceId; that caused incorrect grants.
         let subPriceId = ''
         let credits    = 0
 
@@ -233,14 +213,12 @@ export async function POST(req: NextRequest) {
         if (credits > 0) {
           await grantCreditsToLedger(supabase, userId, credits, 'stripe_subscription', subPriceId, event.id)
         } else if (session.mode === 'subscription') {
-          // Subscription checkout with no matching price — log but don't error
           console.warn('[billing/webhook] subscription checkout — no credit grant for priceId:', subPriceId)
         }
 
         break
       }
 
-      // ── customer.subscription.updated ─────────────────────────────────────
       case 'customer.subscription.updated': {
         const sub    = event.data.object as Stripe.Subscription
         const userId = sub.metadata?.userId
@@ -249,7 +227,6 @@ export async function POST(req: NextRequest) {
         break
       }
 
-      // ── customer.subscription.deleted ─────────────────────────────────────
       case 'customer.subscription.deleted': {
         const sub    = event.data.object as Stripe.Subscription
         const userId = sub.metadata?.userId
@@ -261,7 +238,6 @@ export async function POST(req: NextRequest) {
         break
       }
 
-      // ── invoice.payment_failed ─────────────────────────────────────────────
       case 'invoice.payment_failed': {
         const invoice = event.data.object as Stripe.Invoice
         const userId  = (invoice.subscription_details?.metadata?.userId) as string | undefined
@@ -274,7 +250,6 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // ── Mark processed — idempotency lock ─────────────────────────────────
     await supabase.from('billing_events')
       .update({ processed: true })
       .eq('stripe_event_id', event.id)
@@ -284,7 +259,6 @@ export async function POST(req: NextRequest) {
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err)
     console.error('[billing/webhook] handler error:', { type: event.type, msg })
-    // Do NOT mark processed=true on error — allow Stripe to retry
     return NextResponse.json({ error: msg }, { status: 500 })
   }
 }
