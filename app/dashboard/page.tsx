@@ -2,7 +2,7 @@
 // CR AudioViz AI — Dashboard + Account Panel.
 // Auth from useAuth() (Providers context). Apps from /api/apps.
 // Account: avatar, name, email, plan, credits, billing, profile actions.
-// Updated: March 22, 2026 — Full account system UI added.
+// Updated: March 26, 2026 — Buy Credits + Upgrade Plan always render outside conditionals.
 
 'use client';
 
@@ -252,6 +252,25 @@ function AccountColumn({ user, credits, plan, isAdmin }: {
           </Link>
         </div>
       </Card>
+
+      {/* ── Always-visible action row ────────────────────────────── */}
+      <div className="flex gap-3 mt-4">
+        <button
+          type="button"
+          onClick={handleBuyCredits}
+          disabled={buyLoading}
+          className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white px-4 py-2 rounded-md text-sm font-semibold transition-colors disabled:cursor-wait"
+        >
+          {buyLoading ? 'Redirecting...' : 'Buy Credits'}
+        </button>
+        <button
+          type="button"
+          onClick={() => window.location.href = '/pricing'}
+          className="flex-1 bg-black hover:bg-gray-800 text-white px-4 py-2 rounded-md text-sm font-semibold transition-colors"
+        >
+          Upgrade Plan
+        </button>
+      </div>
 
       {/* ── Billing ──────────────────────────────────────────────── */}
       <Card>
