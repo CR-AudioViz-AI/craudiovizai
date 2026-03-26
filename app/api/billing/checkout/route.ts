@@ -1,30 +1,25 @@
 // app/api/billing/checkout/route.ts
 // Central billing authority — Stripe Checkout session creation.
 // Supports both subscription (plan upgrades) and payment (credit pack one-time) modes.
-// Updated: March 21, 2026 — automatic_payment_methods enables Apple Pay, Google Pay, Link.
+// Updated: March 26, 2026 — vault-first STRIPE_SECRET_KEY via getSecret().
 //
 // POST { priceId, userId, email, mode?, successUrl?, cancelUrl? }
 // mode: "subscription" (default) | "payment"
 // Returns { url } — redirect to Stripe hosted checkout.
-//
-// PAYMENT METHODS:
-//   automatic_payment_methods: { enabled: true } lets Stripe surface the best
-//   options for each customer's browser/device:
-//   - Card (Visa, Mastercard, Amex)
-//   - Apple Pay (Safari on iPhone/Mac)
-//   - Google Pay (Chrome on Android/desktop)
-//   - Link (Stripe's one-click checkout for returning customers)
-//   No code changes required when Stripe adds new methods — automatic.
 import { NextRequest, NextResponse } from 'next/server'
 import Stripe from 'stripe'
 import { createClient } from '@supabase/supabase-js'
+import { getSecret } from '@/lib/vault/getSecret'
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
 
-function stripe() {
-  if (!process.env.STRIPE_SECRET_KEY) throw new Error('STRIPE_SECRET_KEY not set')
-  return new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: '2024-06-20' })
+async function stripe(): Promise<Stripe> {
+  const STRIPE_SECRET_KEY =
+    (await getSecret('STRIPE_SECRET_KEY').catch(() => null)) ||
+    process.env.STRIPE_SECRET_KEY
+  if (!STRIPE_SECRET_KEY) throw new Error('STRIPE_SECRET_KEY not set')
+  return new Stripe(STRIPE_SECRET_KEY, { apiVersion: '2024-06-20' })
 }
 
 function db() {
@@ -68,7 +63,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'priceId, userId, and email are required' }, { status: 400 })
     }
 
-    const s        = stripe()
+    const s        = await stripe()
     const supabase = db()
     const baseUrl  = process.env.NEXT_PUBLIC_APP_URL ?? 'https://craudiovizai.com'
 
