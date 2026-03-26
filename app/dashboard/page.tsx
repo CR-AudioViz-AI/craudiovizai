@@ -224,53 +224,24 @@ function AccountColumn({ user, credits, plan, isAdmin }: {
             />
           </div>
         )}
-        <div className="flex flex-col gap-2">
+        <div className="flex gap-3 mt-4">
           <button
             type="button"
             onClick={handleBuyCredits}
-            disabled={buyLoading}
-            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white rounded-md text-sm font-semibold transition-colors disabled:cursor-wait"
+            className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md transition"
           >
-            {buyLoading ? (
-              <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-              </svg>
-            ) : (
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                  d="M12 4v16m8-8H4" />
-              </svg>
-            )}
-            {buyLoading ? 'Redirecting...' : 'Buy Credits'}
+            Buy Credits
           </button>
-          <Link
-            href="/account/credits"
-            className="w-full flex items-center justify-center gap-2 px-4 py-2 border border-gray-200 hover:border-cyan-300 text-gray-600 hover:text-cyan-700 rounded-xl text-sm font-medium transition-colors"
+          <button
+            type="button"
+            onClick={() => window.location.href='/pricing'}
+            className="flex-1 border border-gray-300 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 px-4 py-2 rounded-md transition"
           >
-            View Usage →
-          </Link>
+            Upgrade Plan
+          </button>
         </div>
       </Card>
 
-      {/* ── Always-visible action row ────────────────────────────── */}
-      <div className="flex gap-3 mt-4">
-        <button
-          type="button"
-          onClick={handleBuyCredits}
-          disabled={buyLoading}
-          className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white px-4 py-2 rounded-md text-sm font-semibold transition-colors disabled:cursor-wait"
-        >
-          {buyLoading ? 'Redirecting...' : 'Buy Credits'}
-        </button>
-        <button
-          type="button"
-          onClick={() => window.location.href = '/pricing'}
-          className="flex-1 bg-black hover:bg-gray-800 text-white px-4 py-2 rounded-md text-sm font-semibold transition-colors"
-        >
-          Upgrade Plan
-        </button>
-      </div>
 
       {/* ── Billing ──────────────────────────────────────────────── */}
       <Card>
