@@ -135,7 +135,7 @@ export async function POST(req: NextRequest) {
   // Vault-first webhook secret with process.env fallback
   const secret =
     (await getSecret('STRIPE_WEBHOOK_SECRET').catch(() => null)) ||
-    process.env.STRIPE_WEBHOOK_SECRET ?? ''
+    (process.env.STRIPE_WEBHOOK_SECRET ?? '')
 
   if (!secret) {
     console.error('[billing/webhook] STRIPE_WEBHOOK_SECRET not configured')
