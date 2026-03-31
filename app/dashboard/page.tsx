@@ -333,7 +333,14 @@ export default function DashboardPage() {
       .finally(() => setAppsLoading(false))
   }, [])
 
-  if (loading) return <DashboardSkeleton />
+  if (loading) return (
+    <>
+      <div style={{background:'red',color:'white',padding:'4px',textAlign:'center',fontWeight:'bold',fontSize:'14px'}}>
+        BRANCH: LOADING
+      </div>
+      <DashboardSkeleton />
+    </>
+  )
 
   return (
     <div className="min-h-screen bg-gray-50 p-4 md:p-8">
@@ -374,6 +381,10 @@ export default function DashboardPage() {
 
         {user ? (
           /* ── Logged-in layout: 3-column grid ─────────────────────── */
+          <>
+          <div style={{background:'green',color:'white',padding:'4px',textAlign:'center',fontWeight:'bold',fontSize:'14px'}}>
+            BRANCH: AUTHENTICATED — user: {user?.email}
+          </div>
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
             {/* Left column: account panel */}
@@ -443,8 +454,13 @@ export default function DashboardPage() {
 
             </div>
           </div>
+          </>
         ) : (
           /* ── Logged-out state ─────────────────────────────────────── */
+          <>
+          <div style={{background:'orange',color:'white',padding:'4px',textAlign:'center',fontWeight:'bold',fontSize:'14px'}}>
+            BRANCH: LOGGED-OUT
+          </div>
           <div className="flex flex-col items-center justify-center py-20 text-center">
             <div className="w-20 h-20 rounded-full bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center text-white text-3xl mb-6 shadow-lg">
               ◈
@@ -468,6 +484,7 @@ export default function DashboardPage() {
               </Link>
             </div>
           </div>
+          </>
         )}
 
       </div>
