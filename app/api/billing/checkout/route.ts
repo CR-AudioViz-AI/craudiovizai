@@ -107,6 +107,13 @@ export async function POST(req: NextRequest) {
         subscription_data: { metadata: { userId } },
         allow_promotion_codes: true,
       })
+      console.log('CHECKOUT SESSION CREATED', {
+        mode:      'subscription',
+        userId,
+        priceId,
+        sessionId: session.id,
+        url:       session.url?.slice(0, 60) + '...',
+      })
       return NextResponse.json({ url: session.url, sessionId: session.id })
     }
 
@@ -139,6 +146,14 @@ export async function POST(req: NextRequest) {
             price_id:        priceId,
           },
         },
+      })
+      console.log('CHECKOUT SESSION CREATED', {
+        mode:           'payment',
+        userId,
+        priceId,
+        creditsGranted: PACK_CREDITS[priceId],
+        sessionId:      session.id,
+        url:            session.url?.slice(0, 60) + '...',
       })
       return NextResponse.json({ url: session.url, sessionId: session.id })
     }

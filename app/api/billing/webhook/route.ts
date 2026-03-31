@@ -152,6 +152,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid signature' }, { status: 400 })
   }
 
+  console.log('WEBHOOK RECEIVED', {
+    type:    event.type,
+    eventId: event.id.slice(0, 20) + '...',
+  })
+
   // ── Idempotency guard ──────────────────────────────────────────────────────
   const { data: existing } = await supabase
     .from('billing_events')
@@ -197,6 +202,13 @@ export async function POST(req: NextRequest) {
           }
 
           await grantCreditsToLedger(supabase, userId, credits, 'stripe_pack', priceId, event.id)
+          console.log('CREDITS UPDATED', {
+            source:  'stripe_pack',
+            userId:  userId.slice(0, 8) + '…',
+            credits,
+            priceId,
+            eventId: event.id.slice(0, 20) + '...',
+          })
           break
         }
 
@@ -212,6 +224,13 @@ export async function POST(req: NextRequest) {
 
         if (credits > 0) {
           await grantCreditsToLedger(supabase, userId, credits, 'stripe_subscription', subPriceId, event.id)
+          console.log('CREDITS UPDATED', {
+            source:    'stripe_subscription',
+            userId:    userId.slice(0, 8) + '…',
+            credits,
+            subPriceId,
+            eventId:   event.id.slice(0, 20) + '...',
+          })
         } else if (session.mode === 'subscription') {
           console.warn('[billing/webhook] subscription checkout — no credit grant for priceId:', subPriceId)
         }
