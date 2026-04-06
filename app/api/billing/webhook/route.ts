@@ -27,10 +27,17 @@ export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
 
 async function stripe(): Promise<Stripe> {
+  const isProd   = process.env.VERCEL_ENV === 'production'
+  const vaultKey = isProd ? 'STRIPE_SECRET_KEY_LIVE' : 'STRIPE_SECRET_KEY_TEST'
+
   const STRIPE_SECRET_KEY =
-    (await getSecret('STRIPE_SECRET_KEY').catch(() => null)) ||
-    process.env.STRIPE_SECRET_KEY
-  if (!STRIPE_SECRET_KEY) throw new Error('STRIPE_SECRET_KEY not set')
+    (await getSecret(vaultKey).catch(() => null)) ||
+    process.env.STRIPE_SECRET_KEY  // safety net if vault unreachable
+
+  if (!STRIPE_SECRET_KEY) throw new Error(`Stripe key not available (vault key: ${vaultKey})`)
+
+  console.log('STRIPE_MODE', { env: process.env.VERCEL_ENV ?? 'local', vaultKey, isProd })
+
   return new Stripe(STRIPE_SECRET_KEY, { apiVersion: '2024-06-20' })
 }
 
