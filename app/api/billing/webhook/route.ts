@@ -30,11 +30,10 @@ async function stripe(): Promise<Stripe> {
   const isProd   = process.env.VERCEL_ENV === 'production'
   const vaultKey = isProd ? 'STRIPE_SECRET_KEY_LIVE' : 'STRIPE_SECRET_KEY_TEST'
 
-  const STRIPE_SECRET_KEY =
-    (await getSecret(vaultKey).catch(() => null)) ||
-    process.env.STRIPE_SECRET_KEY  // safety net if vault unreachable
-
-  if (!STRIPE_SECRET_KEY) throw new Error(`Stripe key not available (vault key: ${vaultKey})`)
+  const STRIPE_SECRET_KEY = await getSecret(vaultKey).catch(() => null)
+  if (!STRIPE_SECRET_KEY) {
+    throw new Error(`Stripe key missing for environment: ${vaultKey}`)
+  }
 
   console.log('STRIPE_MODE', { env: process.env.VERCEL_ENV ?? 'local', vaultKey, isProd })
 
