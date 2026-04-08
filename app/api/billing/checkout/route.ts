@@ -106,6 +106,13 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    console.log('STRIPE DEBUG FULL', {
+      env:     process.env.VERCEL_ENV,
+      nodeEnv: process.env.NODE_ENV,
+      host:    req.headers.get('host'),
+      url:     req.url,
+    })
+
     // ── Subscription mode ──────────────────────────────────────────────────────
     if (mode === 'subscription') {
       const session = await s.checkout.sessions.create({
