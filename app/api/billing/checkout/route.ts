@@ -15,8 +15,13 @@ export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
 
 async function stripe(): Promise<Stripe> {
-  const isProd   = process.env.VERCEL_ENV === 'production'
+  const env      = process.env.VERCEL_ENV || 'development'
+  const isProd   = env === 'production'
+  const isPreview = env === 'preview'
   const vaultKey = isProd ? 'STRIPE_SECRET_KEY_LIVE' : 'STRIPE_SECRET_KEY_TEST'
+
+  console.log('ENV DEBUG', { env, isProd, isPreview })
+  console.log('STRIPE_ENV_CHECK', { env, using: isProd ? 'LIVE' : 'TEST', vaultKey })
 
   const STRIPE_SECRET_KEY = await getSecret(vaultKey).catch(() => null)
   if (!STRIPE_SECRET_KEY) {
