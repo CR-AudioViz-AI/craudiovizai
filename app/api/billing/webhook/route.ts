@@ -26,16 +26,17 @@ import { getSecret } from '@/lib/vault/getSecret'
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
 
-async function stripe(): Promise<Stripe> {
-  const isProd   = process.env.VERCEL_ENV === 'production'
+async function stripe(req: NextRequest): Promise<Stripe> {
+  const host     = req.headers.get('host') || ''
+  const isProd   = host.includes('craudiovizai.com')
   const vaultKey = isProd ? 'STRIPE_SECRET_KEY_LIVE' : 'STRIPE_SECRET_KEY_TEST'
 
   const STRIPE_SECRET_KEY = await getSecret(vaultKey).catch(() => null)
   if (!STRIPE_SECRET_KEY) {
-    throw new Error(`Stripe key missing for environment: ${vaultKey}`)
+    throw new Error(`Stripe key missing for ${vaultKey}`)
   }
 
-  console.log('STRIPE_MODE', { env: process.env.VERCEL_ENV ?? 'local', vaultKey, isProd })
+  console.log('STRIPE HARD LOCK', { host, isProd, vaultKey })
 
   return new Stripe(STRIPE_SECRET_KEY, { apiVersion: '2024-06-20' })
 }
@@ -133,7 +134,7 @@ async function grantCreditsToLedger(
 // ── Webhook POST handler ──────────────────────────────────────────────────────
 export async function POST(req: NextRequest) {
   const supabase = db()
-  const s        = await stripe()
+  const s        = await stripe(req)
 
   const payload   = await req.text()
   const signature = req.headers.get('stripe-signature') ?? ''
