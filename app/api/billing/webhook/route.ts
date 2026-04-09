@@ -139,6 +139,12 @@ async function grantCreditsToLedger(
 
 // ── Webhook POST handler ──────────────────────────────────────────────────────
 export async function POST(req: NextRequest) {
+  console.log('STRIPE ENTRY', {
+    host:    req.headers.get('host'),
+    url:     req.url,
+    origin:  req.headers.get('origin'),
+    referer: req.headers.get('referer'),
+  })
   const supabase = db()
   const s        = await stripe(req)
 
