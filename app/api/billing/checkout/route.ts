@@ -54,6 +54,12 @@ const PACK_CREDITS: Record<string, number> = {
 }
 
 export async function POST(req: NextRequest) {
+  console.log('STRIPE ENTRY', {
+    host:    req.headers.get('host'),
+    url:     req.url,
+    origin:  req.headers.get('origin'),
+    referer: req.headers.get('referer'),
+  })
   try {
     const body = await req.json()
     const {
