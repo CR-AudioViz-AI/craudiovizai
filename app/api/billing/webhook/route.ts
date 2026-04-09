@@ -28,7 +28,7 @@ export const runtime = 'nodejs'
 
 async function stripe(req: NextRequest): Promise<Stripe> {
   const host     = req.headers.get('host') || ''
-  const isProd   = host.includes('craudiovizai.com')
+  const isProd   = host === 'craudiovizai.com' || host === 'www.craudiovizai.com'
   const vaultKey = isProd ? 'STRIPE_SECRET_KEY_LIVE' : 'STRIPE_SECRET_KEY_TEST'
 
   const STRIPE_SECRET_KEY = await getSecret(vaultKey).catch(() => null)
