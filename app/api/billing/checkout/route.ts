@@ -15,8 +15,9 @@ export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
 
 async function stripe(req: NextRequest): Promise<Stripe> {
-  const host     = req.headers.get('host') || ''
-  const isProd   = host === 'craudiovizai.com' || host === 'www.craudiovizai.com'
+  const host      = req.headers.get('host') || ''
+  const cleanHost = host.split(':')[0]
+  const isProd    = cleanHost === 'craudiovizai.com' || cleanHost === 'www.craudiovizai.com'
   const vaultKey = isProd ? 'STRIPE_SECRET_KEY_LIVE' : 'STRIPE_SECRET_KEY_TEST'
 
   const STRIPE_SECRET_KEY = await getSecret(vaultKey).catch(() => null)
