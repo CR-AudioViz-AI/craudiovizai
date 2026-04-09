@@ -14,21 +14,17 @@ import { getSecret } from '@/lib/vault/getSecret'
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
 
-async function stripe(): Promise<Stripe> {
-  const env      = process.env.VERCEL_ENV || 'development'
-  const isProd   = env === 'production'
-  const isPreview = env === 'preview'
+async function stripe(req: NextRequest): Promise<Stripe> {
+  const host     = req.headers.get('host') || ''
+  const isProd   = host.includes('craudiovizai.com')
   const vaultKey = isProd ? 'STRIPE_SECRET_KEY_LIVE' : 'STRIPE_SECRET_KEY_TEST'
-
-  console.log('ENV DEBUG', { env, isProd, isPreview })
-  console.log('STRIPE_ENV_CHECK', { env, using: isProd ? 'LIVE' : 'TEST', vaultKey })
 
   const STRIPE_SECRET_KEY = await getSecret(vaultKey).catch(() => null)
   if (!STRIPE_SECRET_KEY) {
-    throw new Error(`Stripe key missing for environment: ${vaultKey}`)
+    throw new Error(`Stripe key missing for ${vaultKey}`)
   }
 
-  console.log('STRIPE_MODE', { env: process.env.VERCEL_ENV ?? 'local', vaultKey, isProd })
+  console.log('STRIPE HARD LOCK', { host, isProd, vaultKey })
 
   return new Stripe(STRIPE_SECRET_KEY, { apiVersion: '2024-06-20' })
 }
@@ -74,7 +70,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'priceId, userId, and email are required' }, { status: 400 })
     }
 
-    const s        = await stripe()
+    const s        = await stripe(req)
     const supabase = db()
     const baseUrl  = process.env.NEXT_PUBLIC_APP_URL ?? 'https://craudiovizai.com'
 
@@ -105,13 +101,6 @@ export async function POST(req: NextRequest) {
         customerId = customer.id
       }
     }
-
-    console.log('STRIPE DEBUG FULL', {
-      env:     process.env.VERCEL_ENV,
-      nodeEnv: process.env.NODE_ENV,
-      host:    req.headers.get('host'),
-      url:     req.url,
-    })
 
     // ── Subscription mode ──────────────────────────────────────────────────────
     if (mode === 'subscription') {
