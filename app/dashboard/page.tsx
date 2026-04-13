@@ -131,11 +131,27 @@ function AccountColumn({ user, credits, plan, isAdmin }: {
   async function handleBuyCredits() {
     setBuyLoading(true)
     try {
+      // ── Env-safe price ID — test on preview, live on production ──────────
+      const isProduction = process.env.NODE_ENV === 'production'
+      const PRICE_MAP = isProduction
+        ? {
+            credits_50:   process.env.NEXT_PUBLIC_STRIPE_PRICE_LIVE_CREDITS_50,
+            credits_150:  process.env.NEXT_PUBLIC_STRIPE_PRICE_LIVE_CREDITS_150,
+            credits_525:  process.env.NEXT_PUBLIC_STRIPE_PRICE_LIVE_CREDITS_525,
+            credits_1300: process.env.NEXT_PUBLIC_STRIPE_PRICE_LIVE_CREDITS_1300,
+          }
+        : {
+            credits_50:   process.env.NEXT_PUBLIC_STRIPE_PRICE_TEST_CREDITS_50,
+            credits_150:  process.env.NEXT_PUBLIC_STRIPE_PRICE_TEST_CREDITS_150,
+            credits_525:  process.env.NEXT_PUBLIC_STRIPE_PRICE_TEST_CREDITS_525,
+            credits_1300: process.env.NEXT_PUBLIC_STRIPE_PRICE_TEST_CREDITS_1300,
+          }
+
       const res = await fetch('/api/billing/checkout', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          priceId:    'price_1SdaLa7YeQ1dZTUvsjFZWqjB',
+          priceId:    PRICE_MAP.credits_150,
           userId:     user?.id ?? '',
           email:      user?.email ?? '',
           mode:       'payment',
