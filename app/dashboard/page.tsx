@@ -130,6 +130,11 @@ function AccountColumn({ user, credits, plan, isAdmin }: {
 
   async function handleBuyCredits() {
     setBuyLoading(true)
+    if (!user) {
+      alert('User not authenticated')
+      setBuyLoading(false)
+      return
+    }
     try {
       // ── Env-safe price ID — test on preview, live on production ──────────
       const isProduction = process.env.NODE_ENV === 'production'
