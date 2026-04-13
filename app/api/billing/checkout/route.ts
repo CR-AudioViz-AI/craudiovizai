@@ -1,7 +1,7 @@
 // app/api/billing/checkout/route.ts
 // Central billing authority — Stripe Checkout session creation.
 // Supports both subscription (plan upgrades) and payment (credit pack one-time) modes.
-// Updated: March 26, 2026 — vault-first STRIPE_SECRET_KEY via getSecret().
+// Updated: April 13, 2026 — env-split price vars seeded (STRIPE_PRICE_TEST_* / STRIPE_PRICE_LIVE_*).
 //
 // POST { priceId, userId, email, mode?, successUrl?, cancelUrl? }
 // mode: "subscription" (default) | "payment"
@@ -75,6 +75,50 @@ export async function POST(req: NextRequest) {
     if (!priceId || !userId || !email) {
       return NextResponse.json({ error: 'priceId, userId, and email are required' }, { status: 400 })
     }
+
+    const isProduction = process.env.NODE_ENV === 'production'
+    // Build allowed price list from env vars (TEST for preview, LIVE for production)
+    const ALLOWED_PRICE_IDS = isProduction
+      ? [
+          process.env.STRIPE_PRICE_LIVE_STARTER,
+          process.env.STRIPE_PRICE_LIVE_PRO,
+          process.env.STRIPE_PRICE_LIVE_PREMIUM,
+          process.env.STRIPE_PRICE_LIVE_CREDITS_50,
+          process.env.STRIPE_PRICE_LIVE_CREDITS_150,
+          process.env.STRIPE_PRICE_LIVE_CREDITS_525,
+          process.env.STRIPE_PRICE_LIVE_CREDITS_1300,
+        ]
+      : [
+          process.env.STRIPE_PRICE_TEST_STARTER,
+          process.env.STRIPE_PRICE_TEST_PRO,
+          process.env.STRIPE_PRICE_TEST_PREMIUM,
+          process.env.STRIPE_PRICE_TEST_CREDITS_50,
+          process.env.STRIPE_PRICE_TEST_CREDITS_150,
+          process.env.STRIPE_PRICE_TEST_CREDITS_525,
+          process.env.STRIPE_PRICE_TEST_CREDITS_1300,
+        ]
+
+    // Remove undefined values defensively
+    const CLEAN_ALLOWED = ALLOWED_PRICE_IDS.filter(Boolean) as string[]
+
+    // Reject any priceId not in the environment-appropriate allow list
+    if (!CLEAN_ALLOWED.includes(priceId)) {
+      console.error('INVALID PRICE ID:', {
+        env:     isProduction ? 'production' : 'preview',
+        priceId,
+        allowed: CLEAN_ALLOWED,
+      })
+      return NextResponse.json(
+        { error: 'Invalid price configuration' },
+        { status: 400 }
+      )
+    }
+
+    // Temporary debug log
+    console.log('PRICE VALIDATION PASSED:', {
+      env:     isProduction ? 'production' : 'preview',
+      priceId,
+    })
 
     const s        = await stripe(req)
     const supabase = db()
