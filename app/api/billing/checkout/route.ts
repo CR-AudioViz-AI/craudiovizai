@@ -76,7 +76,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'priceId, userId, and email are required' }, { status: 400 })
     }
 
-    const isProduction = process.env.VERCEL_ENV === 'production'
+    const isProduction = process.env.NODE_ENV === 'production'
     // Build allowed price list from env vars (TEST for preview, LIVE for production)
     const ALLOWED_PRICE_IDS = isProduction
       ? [
