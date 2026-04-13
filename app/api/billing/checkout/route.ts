@@ -1,7 +1,7 @@
 // app/api/billing/checkout/route.ts
 // Central billing authority — Stripe Checkout session creation.
 // Supports both subscription (plan upgrades) and payment (credit pack one-time) modes.
-// Updated: April 9, 2026 — process.env.STRIPE_SECRET_KEY direct, no vault routing.
+// Updated: April 9, 2026 — process.env.STRIPE_SECRET_KEY direct, env-split via Vercel.
 //
 // POST { priceId, userId, email, mode?, successUrl?, cancelUrl? }
 // mode: "subscription" (default) | "payment"
