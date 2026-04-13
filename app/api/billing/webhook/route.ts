@@ -26,24 +26,11 @@ import { getSecret } from '@/lib/vault/getSecret'
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
 
-async function stripe(req: NextRequest): Promise<Stripe> {
-  const host      = req.headers.get('host') || ''
-  const cleanHost = host.split(':')[0]
-  const isProd    = cleanHost === 'craudiovizai.com' || cleanHost === 'www.craudiovizai.com'
-  const vaultKey  = isProd ? 'STRIPE_SECRET_KEY_LIVE' : 'STRIPE_SECRET_KEY_TEST'
-
-  // Safety guard — hard crash if non-prod host ever resolves to LIVE key
-  if (!isProd && vaultKey === 'STRIPE_SECRET_KEY_LIVE') {
-    throw new Error('🚨 SAFETY VIOLATION: Preview attempting to use LIVE Stripe key')
-  }
-
-  const STRIPE_SECRET_KEY = await getSecret(vaultKey).catch(() => null)
+async function stripe(): Promise<Stripe> {
+  const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY
   if (!STRIPE_SECRET_KEY) {
-    throw new Error(`Stripe key missing for ${vaultKey}`)
+    throw new Error('Stripe key missing')
   }
-
-  console.log('STRIPE HARD LOCK', { host, cleanHost, isProd, vaultKey })
-
   return new Stripe(STRIPE_SECRET_KEY, { apiVersion: '2024-06-20' })
 }
 
@@ -140,7 +127,7 @@ async function grantCreditsToLedger(
 // ── Webhook POST handler ──────────────────────────────────────────────────────
 export async function POST(req: NextRequest) {
   const supabase = db()
-  const s        = await stripe(req)
+  const s        = await stripe()
 
   const payload   = await req.text()
   const signature = req.headers.get('stripe-signature') ?? ''
