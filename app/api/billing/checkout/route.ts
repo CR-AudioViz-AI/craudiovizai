@@ -76,6 +76,50 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'priceId, userId, and email are required' }, { status: 400 })
     }
 
+    const isProduction = process.env.VERCEL_ENV === 'production'
+    // Build allowed price list from env vars (TEST for preview, LIVE for production)
+    const ALLOWED_PRICE_IDS = isProduction
+      ? [
+          process.env.STRIPE_PRICE_LIVE_STARTER,
+          process.env.STRIPE_PRICE_LIVE_PRO,
+          process.env.STRIPE_PRICE_LIVE_PREMIUM,
+          process.env.STRIPE_PRICE_LIVE_CREDITS_50,
+          process.env.STRIPE_PRICE_LIVE_CREDITS_150,
+          process.env.STRIPE_PRICE_LIVE_CREDITS_525,
+          process.env.STRIPE_PRICE_LIVE_CREDITS_1300,
+        ]
+      : [
+          process.env.STRIPE_PRICE_TEST_STARTER,
+          process.env.STRIPE_PRICE_TEST_PRO,
+          process.env.STRIPE_PRICE_TEST_PREMIUM,
+          process.env.STRIPE_PRICE_TEST_CREDITS_50,
+          process.env.STRIPE_PRICE_TEST_CREDITS_150,
+          process.env.STRIPE_PRICE_TEST_CREDITS_525,
+          process.env.STRIPE_PRICE_TEST_CREDITS_1300,
+        ]
+
+    // Remove undefined values defensively
+    const CLEAN_ALLOWED = ALLOWED_PRICE_IDS.filter(Boolean) as string[]
+
+    // Reject any priceId not in the environment-appropriate allow list
+    if (!CLEAN_ALLOWED.includes(priceId)) {
+      console.error('INVALID PRICE ID:', {
+        env:     isProduction ? 'production' : 'preview',
+        priceId,
+        allowed: CLEAN_ALLOWED,
+      })
+      return NextResponse.json(
+        { error: 'Invalid price configuration' },
+        { status: 400 }
+      )
+    }
+
+    // Temporary debug log
+    console.log('PRICE VALIDATION PASSED:', {
+      env:     isProduction ? 'production' : 'preview',
+      priceId,
+    })
+
     const s        = await stripe(req)
     const supabase = db()
     const baseUrl  = process.env.NEXT_PUBLIC_APP_URL ?? 'https://craudiovizai.com'
