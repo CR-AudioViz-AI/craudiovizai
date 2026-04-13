@@ -78,7 +78,9 @@ export async function POST(req: NextRequest) {
 
     const s        = await stripe(req)
     const supabase = db()
-    const baseUrl  = process.env.NEXT_PUBLIC_APP_URL ?? 'https://craudiovizai.com'
+    const host      = req.headers.get('host') ?? 'craudiovizai.com'
+    const protocol  = process.env.NODE_ENV === 'production' ? 'https' : 'http'
+    const baseUrl   = `${protocol}://${host}`
 
     // ── Resolve or create Stripe customer ─────────────────────────────────────
     const { data: existingSub } = await supabase
