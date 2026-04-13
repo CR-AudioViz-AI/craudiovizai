@@ -1,7 +1,7 @@
 // app/api/billing/checkout/route.ts
 // Central billing authority — Stripe Checkout session creation.
 // Supports both subscription (plan upgrades) and payment (credit pack one-time) modes.
-// Updated: March 26, 2026 — vault-first STRIPE_SECRET_KEY via getSecret().
+// Updated: April 13, 2026 — env-split price IDs; STRIPE_PRICE_TEST/LIVE vars active.
 //
 // POST { priceId, userId, email, mode?, successUrl?, cancelUrl? }
 // mode: "subscription" (default) | "payment"
@@ -54,6 +54,13 @@ const PACK_CREDITS: Record<string, number> = {
 }
 
 export async function POST(req: NextRequest) {
+  console.log('CHECKOUT HIT', {
+    host:     req.headers.get('host'),
+    origin:   req.headers.get('origin'),
+    method:   req.method,
+  })
+  console.log('STRIPE KEY EXISTS:', !!process.env.STRIPE_SECRET_KEY,
+    '| prefix:', process.env.STRIPE_SECRET_KEY?.substring(0, 7) ?? 'MISSING')
   try {
     const body = await req.json()
     const {
@@ -175,7 +182,11 @@ export async function POST(req: NextRequest) {
 
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err)
-    console.error('[billing/checkout] error:', msg)
+    console.error('CHECKOUT ERROR FULL', {
+      message: msg,
+      type:    err instanceof Error ? err.constructor.name : typeof err,
+      stack:   err instanceof Error ? err.stack?.split('\n').slice(0, 5).join(' | ') : undefined,
+    })
     return NextResponse.json({ error: msg }, { status: 500 })
   }
 }
