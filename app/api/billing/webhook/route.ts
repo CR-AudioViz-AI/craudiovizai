@@ -47,6 +47,23 @@ async function stripe(req: NextRequest): Promise<Stripe> {
   return new Stripe(STRIPE_SECRET_KEY, { apiVersion: '2024-06-20' })
 }
 
+
+// ── Dynamic CORS — reflect origin if it's craudiovizai.com or any vercel.app ─
+function getCorsHeaders(req: NextRequest): Record<string, string> {
+  const origin  = req.headers.get('origin') || ''
+  const allowed = origin.includes('craudiovizai.com') || origin.includes('.vercel.app')
+  return {
+    'Access-Control-Allow-Origin':      allowed ? origin : '',
+    'Access-Control-Allow-Credentials': 'true',
+    'Access-Control-Allow-Methods':     'POST, GET, OPTIONS',
+    'Access-Control-Allow-Headers':     'Content-Type, Authorization',
+  }
+}
+
+export async function OPTIONS(req: NextRequest) {
+  return new Response(null, { status: 200, headers: getCorsHeaders(req) })
+}
+
 function db() {
   return createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -139,6 +156,7 @@ async function grantCreditsToLedger(
 
 // ── Webhook POST handler ──────────────────────────────────────────────────────
 export async function POST(req: NextRequest) {
+  const corsHeaders = getCorsHeaders(req)
   const supabase = db()
   const s        = await stripe(req)
 
@@ -152,7 +170,7 @@ export async function POST(req: NextRequest) {
 
   if (!secret) {
     console.error('[billing/webhook] STRIPE_WEBHOOK_SECRET not configured')
-    return NextResponse.json({ error: 'Webhook secret not configured' }, { status: 500 })
+    return NextResponse.json({ error: 'Webhook secret not configured' }, { status: 500, headers: corsHeaders })
   }
 
   // ── Signature verification ─────────────────────────────────────────────────
@@ -162,7 +180,7 @@ export async function POST(req: NextRequest) {
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err)
     console.error('[billing/webhook] signature failed:', msg)
-    return NextResponse.json({ error: 'Invalid signature' }, { status: 400 })
+    return NextResponse.json({ error: 'Invalid signature' }, { status: 400, headers: corsHeaders })
   }
 
   console.log('WEBHOOK RECEIVED', {
@@ -180,7 +198,7 @@ export async function POST(req: NextRequest) {
 
   if (existing) {
     console.log(`[billing/webhook] duplicate skipped: ${event.id}`)
-    return NextResponse.json({ received: true, skipped: 'duplicate' })
+    return NextResponse.json({ received: true, skipped: 'duplicate' }, { headers: corsHeaders })
   }
 
   // ── Log raw event ─────────────────────────────────────────────────────────
@@ -286,11 +304,11 @@ export async function POST(req: NextRequest) {
       .update({ processed: true })
       .eq('stripe_event_id', event.id)
 
-    return NextResponse.json({ received: true, type: event.type })
+    return NextResponse.json({ received: true, type: event.type }, { headers: corsHeaders })
 
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err)
     console.error('[billing/webhook] handler error:', { type: event.type, msg })
-    return NextResponse.json({ error: msg }, { status: 500 })
+    return NextResponse.json({ error: msg }, { status: 500, headers: corsHeaders })
   }
 }
