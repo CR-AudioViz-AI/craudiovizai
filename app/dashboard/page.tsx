@@ -149,6 +149,10 @@ function AccountColumn({ user, credits, plan, isAdmin }: {
       if (!priceId) {
         throw new Error('Missing priceId env variable')
       }
+      console.log('ENV NODE_ENV:', process.env.NODE_ENV)
+      console.log('LIVE PRICE ENV:', process.env.NEXT_PUBLIC_STRIPE_PRICE_LIVE_CREDITS_150)
+      console.log('TEST PRICE ENV:', process.env.NEXT_PUBLIC_STRIPE_PRICE_TEST_CREDITS_150)
+      console.log('FINAL priceId being sent:', priceId)
       const res = await fetch('/api/billing/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
