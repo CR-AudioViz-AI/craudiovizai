@@ -27,6 +27,23 @@ function getStripe() {
   })
 }
 
+
+// ── Dynamic CORS — reflect origin if it's craudiovizai.com or any vercel.app ─
+function getCorsHeaders(req: NextRequest): Record<string, string> {
+  const origin  = req.headers.get('origin') || ''
+  const allowed = origin.includes('craudiovizai.com') || origin.includes('.vercel.app')
+  return {
+    'Access-Control-Allow-Origin':      allowed ? origin : '',
+    'Access-Control-Allow-Credentials': 'true',
+    'Access-Control-Allow-Methods':     'POST, GET, OPTIONS',
+    'Access-Control-Allow-Headers':     'Content-Type, Authorization',
+  }
+}
+
+export async function OPTIONS(req: NextRequest) {
+  return new Response(null, { status: 200, headers: getCorsHeaders(req) })
+}
+
 function db() {
   return createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
 }
@@ -50,6 +67,7 @@ const PACK_CREDITS: Record<string, number> = {
 }
 
 export async function POST(req: NextRequest) {
+  const corsHeaders = getCorsHeaders(req)
   try {
     const body = await req.json()
     const {
@@ -69,7 +87,7 @@ export async function POST(req: NextRequest) {
     }
 
     if (!priceId || !userId || !email) {
-      return NextResponse.json({ error: 'priceId, userId, and email are required' }, { status: 400 })
+      return NextResponse.json({ error: 'priceId, userId, and email are required' }, { status: 400, headers: corsHeaders })
     }
 
     const s        = getStripe()
@@ -123,7 +141,7 @@ export async function POST(req: NextRequest) {
         sessionId: session.id,
         url:       session.url?.slice(0, 60) + '...',
       })
-      return NextResponse.json({ url: session.url, sessionId: session.id })
+      return NextResponse.json({ url: session.url, sessionId: session.id }, { headers: corsHeaders })
     }
 
     // ── Payment mode — one-time credit pack purchase ───────────────────────────────────────
@@ -132,7 +150,7 @@ export async function POST(req: NextRequest) {
       if (!creditsGranted) {
         return NextResponse.json(
           { error: `Unknown credit pack priceId: ${priceId}` },
-          { status: 400 }
+          { status: 400, headers: corsHeaders }
         )
       }
 
@@ -164,14 +182,14 @@ export async function POST(req: NextRequest) {
         sessionId:      session.id,
         url:            session.url?.slice(0, 60) + '...',
       })
-      return NextResponse.json({ url: session.url, sessionId: session.id })
+      return NextResponse.json({ url: session.url, sessionId: session.id }, { headers: corsHeaders })
     }
 
-    return NextResponse.json({ error: `Unknown mode: ${mode}` }, { status: 400 })
+    return NextResponse.json({ error: `Unknown mode: ${mode}` }, { status: 400, headers: corsHeaders })
 
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err)
     console.error('[billing/checkout] error:', msg)
-    return NextResponse.json({ error: msg }, { status: 500 })
+    return NextResponse.json({ error: msg }, { status: 500, headers: corsHeaders })
   }
 }
