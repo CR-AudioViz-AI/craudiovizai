@@ -22,6 +22,9 @@ function getStripe() {
 
   console.log('STRIPE KEY PREFIX:', key.slice(0, 7))
 
+  const isTestMode = key.startsWith('sk_test_')
+  console.log('STRIPE MODE DETECTED:', isTestMode ? 'TEST' : 'LIVE')
+
   return new Stripe(key, {
     apiVersion: '2024-06-20',
   })
