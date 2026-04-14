@@ -129,37 +129,46 @@ function AccountColumn({ user, credits, plan, isAdmin }: {
   const [buyLoading, setBuyLoading] = React.useState(false)
 
   async function handleBuyCredits() {
-    setBuyLoading(true)
     try {
+      setBuyLoading(true)
+      const { createClient } = await import('@supabase/supabase-js')
+      const supabase = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+      )
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) {
+        alert('You must be logged in')
+        setBuyLoading(false)
+        return
+      }
       const isProduction = process.env.NODE_ENV === 'production'
-
       const priceId = isProduction
         ? process.env.NEXT_PUBLIC_STRIPE_PRICE_LIVE_CREDITS_150
         : process.env.NEXT_PUBLIC_STRIPE_PRICE_TEST_CREDITS_150
-
+      if (!priceId) {
+        throw new Error('Missing priceId env variable')
+      }
       const res = await fetch('/api/billing/checkout', {
-        method:  'POST',
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          priceId:    priceId,
-          userId:     user?.id ?? '',
-          email:      user?.email ?? '',
-          mode:       'payment',
-          successUrl: window.location.origin + '/dashboard?success=credits',
-          cancelUrl:  window.location.origin + '/dashboard',
-        }),
+          priceId,
+          userId: user.id,
+          email: user.email,
+          mode: 'payment',
+          successUrl: `${window.location.origin}/dashboard?success=credits`,
+          cancelUrl: `${window.location.origin}/dashboard`
+        })
       })
       const data = await res.json()
-      console.log('CHECKOUT RESPONSE', { status: res.status, data })
-      if (data.url) {
-        window.location.href = data.url
-      } else {
-        console.error('Checkout failed', data)
-        alert('Unable to start checkout. Please try again.')
+      if (!res.ok) {
+        throw new Error(data.error || 'Checkout failed')
       }
+      window.location.href = data.url
     } catch (err) {
-      console.error(err)
-      alert('Error connecting to payment system. Please try again.')
+      console.error('Checkout failed', err)
+      alert('Unable to start checkout. Please try again.')
     } finally {
       setBuyLoading(false)
     }
