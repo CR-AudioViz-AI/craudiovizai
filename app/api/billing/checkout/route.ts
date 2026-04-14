@@ -1,7 +1,7 @@
 // app/api/billing/checkout/route.ts
 // Central billing authority — Stripe Checkout session creation.
 // Supports both subscription (plan upgrades) and payment (credit pack one-time) modes.
-// Updated: March 26, 2026 — vault-first STRIPE_SECRET_KEY via getSecret().
+// Updated: April 14, 2026 — getStripe() via process.env.STRIPE_SECRET_KEY (Vercel env-split).
 //
 // POST { priceId, userId, email, mode?, successUrl?, cancelUrl? }
 // mode: "subscription" (default) | "payment"
@@ -9,30 +9,22 @@
 import { NextRequest, NextResponse } from 'next/server'
 import Stripe from 'stripe'
 import { createClient } from '@supabase/supabase-js'
-import { getSecret } from '@/lib/vault/getSecret'
 
 export const dynamic = 'force-dynamic'
-export const runtime = 'nodejs'
+export const runtime  = 'nodejs'
 
-async function stripe(req: NextRequest): Promise<Stripe> {
-  const host      = req.headers.get('host') || ''
-  const cleanHost = host.split(':')[0]
-  const isProd    = cleanHost === 'craudiovizai.com' || cleanHost === 'www.craudiovizai.com'
-  const vaultKey  = isProd ? 'STRIPE_SECRET_KEY_LIVE' : 'STRIPE_SECRET_KEY_TEST'
+function getStripe() {
+  const key = process.env.STRIPE_SECRET_KEY
 
-  // Safety guard — hard crash if non-prod host ever resolves to LIVE key
-  if (!isProd && vaultKey === 'STRIPE_SECRET_KEY_LIVE') {
-    throw new Error('🚨 SAFETY VIOLATION: Preview attempting to use LIVE Stripe key')
+  if (!key) {
+    throw new Error('Missing STRIPE_SECRET_KEY')
   }
 
-  const STRIPE_SECRET_KEY = await getSecret(vaultKey).catch(() => null)
-  if (!STRIPE_SECRET_KEY) {
-    throw new Error(`Stripe key missing for ${vaultKey}`)
-  }
+  console.log('STRIPE KEY PREFIX:', key.slice(0, 7))
 
-  console.log('STRIPE HARD LOCK', { host, cleanHost, isProd, vaultKey })
-
-  return new Stripe(STRIPE_SECRET_KEY, { apiVersion: '2024-06-20' })
+  return new Stripe(key, {
+    apiVersion: '2024-06-20',
+  })
 }
 
 function db() {
@@ -45,12 +37,16 @@ const PRICE_TIERS: Record<string, string> = {
   [process.env.STRIPE_CREATOR_PRICE_ID ?? process.env.STRIPE_PRICE_PREMIUM ?? '']: 'power',
 }
 
-// Credit pack price → credit amount mapping (for metadata on webhook)
+// Credit pack price → credit amount mapping (live + test)
 const PACK_CREDITS: Record<string, number> = {
-  'price_1SdaLR7YeQ1dZTUvX4qPsy3c':  50,    // Starter Pack  ($4.99)
-  'price_1SdaLa7YeQ1dZTUvsjFZWqjB':  150,   // Creator Pack  ($12.99)
-  'price_1SdaLk7YeQ1dZTUvdcDKtnTI':  525,   // Pro Pack      ($39.99)
-  'price_1SdaLt7YeQ1dZTUvGhjqaNyk':  1300,  // Studio Pack   ($89.99)
+  'price_1SdaLR7YeQ1dZTUvX4qPsy3c':  50,    // Live Starter Pack  ($4.99)
+  'price_1SdaLa7YeQ1dZTUvsjFZWqjB':  150,   // Live Creator Pack  ($12.99)
+  'price_1SdaLk7YeQ1dZTUvdcDKtnTI':  525,   // Live Pro Pack      ($39.99)
+  'price_1SdaLt7YeQ1dZTUvGhjqaNyk':  1300,  // Live Studio Pack   ($89.99)
+  'price_1TLpfE7WStdnOczMrm2AQtU2':  50,    // Test Starter Pack  ($4.99)
+  'price_1TLpfF7WStdnOczMQUAzDaOp':  150,   // Test Creator Pack  ($12.99)
+  'price_1TLpfG7WStdnOczMCKHDxNfh':  525,   // Test Pro Pack      ($39.99)
+  'price_1TLpfH7WStdnOczM2s4wyovQ':  1300,  // Test Studio Pack   ($89.99)
 }
 
 export async function POST(req: NextRequest) {
@@ -76,11 +72,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'priceId, userId, and email are required' }, { status: 400 })
     }
 
-    const s        = await stripe(req)
+    const s        = getStripe()
     const supabase = db()
     const baseUrl  = process.env.NEXT_PUBLIC_APP_URL ?? 'https://craudiovizai.com'
 
-    // ── Resolve or create Stripe customer ─────────────────────────────────────
+    // ── Resolve or create Stripe customer ─────────────────────────────────────────────
     const { data: existingSub } = await supabase
       .from('user_subscriptions')
       .select('id, provider_subscription_id')
@@ -108,7 +104,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // ── Subscription mode ──────────────────────────────────────────────────────
+    // ── Subscription mode ──────────────────────────────────────────────────────────
     if (mode === 'subscription') {
       const session = await s.checkout.sessions.create({
         customer:    customerId,
@@ -130,7 +126,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ url: session.url, sessionId: session.id })
     }
 
-    // ── Payment mode — one-time credit pack purchase ───────────────────────────
+    // ── Payment mode — one-time credit pack purchase ───────────────────────────────────────
     if (mode === 'payment') {
       const creditsGranted = PACK_CREDITS[priceId]
       if (!creditsGranted) {
