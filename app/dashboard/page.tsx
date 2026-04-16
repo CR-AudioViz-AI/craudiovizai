@@ -142,6 +142,11 @@ function AccountColumn({ user, credits, plan, isAdmin }: {
         setBuyLoading(false)
         return
       }
+      if (!user?.id || !user?.email) {
+        alert('Session not ready. Please wait 2 seconds and try again.')
+        setBuyLoading(false)
+        return
+      }
       const isProduction = process.env.NODE_ENV === 'production'
       const priceId = isProduction
         ? process.env.NEXT_PUBLIC_STRIPE_PRICE_LIVE_CREDITS_150
