@@ -178,13 +178,27 @@ export async function POST(req: NextRequest) {
   }
 
   // ── Signature verification (raw body required) ────────────────────────────
+  console.log('WEBHOOK DEBUG', {
+    bodyLength:       payload.length,
+    hasSignature:     !!signature,
+    signaturePrefix:  signature.slice(0, 20) + '...',
+    secretPrefix:     secret.slice(0, 12) + '...',
+    secretValid:      secret.startsWith('whsec_'),
+  })
+
   let event: Stripe.Event
   try {
     event = s.webhooks.constructEvent(payload, signature, secret)
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err)
+    console.error('WEBHOOK ERROR', err)
     console.error('[billing/webhook] signature failed:', msg)
-    return NextResponse.json({ error: 'Invalid signature' }, { status: 400, headers: corsHeaders })
+    console.error('WEBHOOK SIGNATURE DETAILS', {
+      bodyLength:      payload.length,
+      signatureHeader: signature.slice(0, 40) + '...',
+      errorMessage:    msg,
+    })
+    return NextResponse.json({ error: 'Invalid signature', detail: msg }, { status: 400, headers: corsHeaders })
   }
 
   console.log('WEBHOOK RECEIVED', event.type)
