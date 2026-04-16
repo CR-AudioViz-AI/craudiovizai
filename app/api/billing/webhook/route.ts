@@ -3,7 +3,7 @@
 // Handles: checkout.session.completed, customer.subscription.updated/deleted,
 //          invoice.payment_failed
 // Writes to: user_subscriptions, billing_events, usage_ledger (credits)
-// Updated: March 26, 2026 — vault-first STRIPE_SECRET_KEY + STRIPE_WEBHOOK_SECRET.
+// Updated: April 16, 2026 — getStripe() from process.env.STRIPE_SECRET_KEY (env-split).
 //
 // IDEMPOTENCY GUARANTEE:
 //   Every event is logged to billing_events with processed=false on arrival.
@@ -12,8 +12,9 @@
 //   This holds for both subscription grants and credit pack grants.
 //
 // CREDIT GRANT SOURCES:
-//   subscription  → CREDIT_MAP[priceId]          (monthly plan credits)
-//   credit_pack   → metadata.credits_granted     (one-time pack, exact value)
+//   subscription  → SUBSCRIPTION_CREDIT_MAP[priceId]   (monthly plan credits)
+//   credit_pack   → metadata.credits_granted            (one-time pack, exact value)
+//                   fallback → PACK_CREDIT_MAP[priceId]
 //
 // PURCHASE TYPE DETECTION:
 //   session.metadata.purchase_type === "credit_pack" → pack flow
@@ -21,34 +22,29 @@
 import { NextRequest, NextResponse } from 'next/server'
 import Stripe from 'stripe'
 import { createClient } from '@supabase/supabase-js'
-import { getSecret } from '@/lib/vault/getSecret'
 
 export const dynamic = 'force-dynamic'
-export const runtime = 'nodejs'
+export const runtime  = 'nodejs'
 
-async function stripe(req: NextRequest): Promise<Stripe> {
-  const host      = req.headers.get('host') || ''
-  const cleanHost = host.split(':')[0]
-  const isProd    = cleanHost === 'craudiovizai.com' || cleanHost === 'www.craudiovizai.com'
-  const vaultKey  = isProd ? 'STRIPE_SECRET_KEY_LIVE' : 'STRIPE_SECRET_KEY_TEST'
+// ── Stripe factory — reads STRIPE_SECRET_KEY from Vercel env-split ────────────
+function getStripe() {
+  const key = process.env.STRIPE_SECRET_KEY
 
-  // Safety guard — hard crash if non-prod host ever resolves to LIVE key
-  if (!isProd && vaultKey === 'STRIPE_SECRET_KEY_LIVE') {
-    throw new Error('🚨 SAFETY VIOLATION: Preview attempting to use LIVE Stripe key')
+  if (!key) {
+    throw new Error('Missing STRIPE_SECRET_KEY')
   }
 
-  const STRIPE_SECRET_KEY = await getSecret(vaultKey).catch(() => null)
-  if (!STRIPE_SECRET_KEY) {
-    throw new Error(`Stripe key missing for ${vaultKey}`)
-  }
+  console.log('STRIPE KEY PREFIX:', key.slice(0, 7))
 
-  console.log('STRIPE HARD LOCK', { host, cleanHost, isProd, vaultKey })
+  const isTestMode = key.startsWith('sk_test_')
+  console.log('STRIPE MODE DETECTED:', isTestMode ? 'TEST' : 'LIVE')
 
-  return new Stripe(STRIPE_SECRET_KEY, { apiVersion: '2024-06-20' })
+  return new Stripe(key, {
+    apiVersion: '2024-06-20',
+  })
 }
 
-
-// ── Dynamic CORS — reflect origin if it's craudiovizai.com or any vercel.app ─
+// ── Dynamic CORS — reflect origin if it is craudiovizai.com or any vercel.app ─
 function getCorsHeaders(req: NextRequest): Record<string, string> {
   const origin  = req.headers.get('origin') || ''
   const allowed = origin.includes('craudiovizai.com') || origin.includes('.vercel.app')
@@ -77,14 +73,24 @@ const SUBSCRIPTION_CREDIT_MAP: Record<string, number> = {
   'price_1SdaL67YeQ1dZTUv43H6YxGq': 600,   // Pro Plan      ($29.99/mo)
   'price_1SdaLG7YeQ1dZTUvCzgdjaTp': 2500,  // Premium Plan  ($99.99/mo)
   'price_1Sk8AZ7YeQ1dZTUvwpubHpWW': 2000,  // Legacy Pro
+  // Test mode subscription prices
+  'price_1TLpfB7WStdnOczMs3Dju7K5': 150,   // Test Starter Plan  ($9.99/mo)
+  'price_1TLpfC7WStdnOczMi9sINEOz': 600,   // Test Pro Plan      ($29.99/mo)
+  'price_1TLpfD7WStdnOczMFkogOrrb': 2500,  // Test Premium Plan  ($99.99/mo)
 }
 
-// ── Credit pack → exact credit grant ─────────────────────────────────────────
+// ── Credit pack → exact credit grant (live + test) ───────────────────────────
 const PACK_CREDIT_MAP: Record<string, number> = {
+  // Live prices
   'price_1SdaLR7YeQ1dZTUvX4qPsy3c': 50,    // Starter Pack  ($4.99)
   'price_1SdaLa7YeQ1dZTUvsjFZWqjB': 150,   // Creator Pack  ($12.99)
   'price_1SdaLk7YeQ1dZTUvdcDKtnTI': 525,   // Pro Pack      ($39.99)
   'price_1SdaLt7YeQ1dZTUvGhjqaNyk': 1300,  // Studio Pack   ($89.99)
+  // Test prices
+  'price_1TLpfE7WStdnOczMrm2AQtU2': 50,    // Test Starter Pack  ($4.99)
+  'price_1TLpfF7WStdnOczMQUAzDaOp': 150,   // Test Creator Pack  ($12.99)
+  'price_1TLpfG7WStdnOczMCKHDxNfh': 525,   // Test Pro Pack      ($39.99)
+  'price_1TLpfH7WStdnOczM2s4wyovQ': 1300,  // Test Studio Pack   ($89.99)
 }
 
 // ── Subscription tier map ─────────────────────────────────────────────────────
@@ -145,7 +151,7 @@ async function grantCreditsToLedger(
     },
   })
 
-  console.log(`[billing/webhook] CREDIT_GRANT`, {
+  console.log('[billing/webhook] CREDIT_GRANT', {
     userId:         userId.slice(0, 8) + '…',
     credits,
     source,
@@ -157,23 +163,21 @@ async function grantCreditsToLedger(
 // ── Webhook POST handler ──────────────────────────────────────────────────────
 export async function POST(req: NextRequest) {
   const corsHeaders = getCorsHeaders(req)
-  const supabase = db()
-  const s        = await stripe(req)
+  const supabase    = db()
+  const s           = getStripe()
 
   const payload   = await req.text()
   const signature = req.headers.get('stripe-signature') ?? ''
 
-  // Vault-first webhook secret with process.env fallback
-  const secret =
-    (await getSecret('STRIPE_WEBHOOK_SECRET').catch(() => null)) ||
-    (process.env.STRIPE_WEBHOOK_SECRET ?? '')
+  // Read webhook secret from env — must start with whsec_
+  const secret = process.env.STRIPE_WEBHOOK_SECRET ?? ''
 
-  if (!secret) {
-    console.error('[billing/webhook] STRIPE_WEBHOOK_SECRET not configured')
+  if (!secret || !secret.startsWith('whsec_')) {
+    console.error('[billing/webhook] STRIPE_WEBHOOK_SECRET missing or invalid (must start with whsec_)')
     return NextResponse.json({ error: 'Webhook secret not configured' }, { status: 500, headers: corsHeaders })
   }
 
-  // ── Signature verification ─────────────────────────────────────────────────
+  // ── Signature verification (raw body required) ────────────────────────────
   let event: Stripe.Event
   try {
     event = s.webhooks.constructEvent(payload, signature, secret)
@@ -183,10 +187,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid signature' }, { status: 400, headers: corsHeaders })
   }
 
-  console.log('WEBHOOK RECEIVED', {
-    type:    event.type,
-    eventId: event.id.slice(0, 20) + '...',
-  })
+  console.log('WEBHOOK RECEIVED', event.type)
+  console.log('EVENT ID', event.id.slice(0, 24) + '...')
 
   // ── Idempotency guard ──────────────────────────────────────────────────────
   const { data: existing } = await supabase
@@ -198,7 +200,7 @@ export async function POST(req: NextRequest) {
 
   if (existing) {
     console.log(`[billing/webhook] duplicate skipped: ${event.id}`)
-    return NextResponse.json({ received: true, skipped: 'duplicate' }, { headers: corsHeaders })
+    return new Response(JSON.stringify({ received: true, skipped: 'duplicate' }), { status: 200 })
   }
 
   // ── Log raw event ─────────────────────────────────────────────────────────
@@ -217,15 +219,21 @@ export async function POST(req: NextRequest) {
         const userId       = session.metadata?.userId
         const purchaseType = session.metadata?.purchase_type
 
+        console.log('USER ID', userId)
+        console.log('PURCHASE TYPE', purchaseType ?? 'subscription')
+
         if (!userId) {
           console.warn('[billing/webhook] checkout.session.completed — no userId in metadata')
           break
         }
 
         if (purchaseType === 'credit_pack') {
+          // Credit pack — use price_id from metadata or fall back to session line item
           const priceId     = session.metadata?.price_id ?? ''
           const metaCredits = parseInt(session.metadata?.credits_granted ?? '0', 10)
           const credits     = metaCredits > 0 ? metaCredits : (PACK_CREDIT_MAP[priceId] ?? 0)
+
+          console.log('CREDIT PACK', { priceId, metaCredits, credits })
 
           if (credits === 0) {
             console.error('[billing/webhook] credit_pack — credits=0, priceId:', priceId)
@@ -243,6 +251,7 @@ export async function POST(req: NextRequest) {
           break
         }
 
+        // Subscription checkout
         let subPriceId = ''
         let credits    = 0
 
@@ -304,7 +313,7 @@ export async function POST(req: NextRequest) {
       .update({ processed: true })
       .eq('stripe_event_id', event.id)
 
-    return NextResponse.json({ received: true, type: event.type }, { headers: corsHeaders })
+    return new Response(JSON.stringify({ received: true }), { status: 200 })
 
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err)
