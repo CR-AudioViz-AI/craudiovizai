@@ -136,10 +136,7 @@ function AccountColumn({ user, credits, plan, isAdmin }: {
         setBuyLoading(false)
         return
       }
-      const isProduction = process.env.NODE_ENV === 'production'
-      const priceId = isProduction
-        ? process.env.NEXT_PUBLIC_STRIPE_PRICE_LIVE_CREDITS_150
-        : process.env.NEXT_PUBLIC_STRIPE_PRICE_TEST_CREDITS_150
+      const priceId = process.env.NEXT_PUBLIC_STRIPE_PRICE_CREDITS_150
       if (!priceId) {
         throw new Error('Missing priceId env variable')
       }
