@@ -9,6 +9,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/app/providers';
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 
 // =============================================================================
 // LOADING SKELETON
@@ -131,11 +132,7 @@ function AccountColumn({ user, credits, plan, isAdmin }: {
   async function handleBuyCredits() {
     try {
       setBuyLoading(true)
-      const { createClient } = await import('@supabase/supabase-js')
-      const supabase = createClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-      )
+      const supabase = createClientComponentClient()
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) {
         alert('You must be logged in')
