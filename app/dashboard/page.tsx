@@ -9,7 +9,6 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/app/providers';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 
 // =============================================================================
 // LOADING SKELETON
@@ -132,15 +131,8 @@ function AccountColumn({ user, credits, plan, isAdmin }: {
   async function handleBuyCredits() {
     try {
       setBuyLoading(true)
-      const supabase = createClientComponentClient()
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) {
-        alert('You must be logged in')
-        setBuyLoading(false)
-        return
-      }
       if (!user?.id || !user?.email) {
-        alert('Session not ready. Please wait 2 seconds and try again.')
+        alert('You must be logged in')
         setBuyLoading(false)
         return
       }
@@ -151,9 +143,6 @@ function AccountColumn({ user, credits, plan, isAdmin }: {
       if (!priceId) {
         throw new Error('Missing priceId env variable')
       }
-      console.log('ENV NODE_ENV:', process.env.NODE_ENV)
-      console.log('LIVE PRICE ENV:', process.env.NEXT_PUBLIC_STRIPE_PRICE_LIVE_CREDITS_150)
-      console.log('TEST PRICE ENV:', process.env.NEXT_PUBLIC_STRIPE_PRICE_TEST_CREDITS_150)
       console.log('FINAL priceId being sent:', priceId)
       const res = await fetch('/api/billing/checkout', {
         method: 'POST',
