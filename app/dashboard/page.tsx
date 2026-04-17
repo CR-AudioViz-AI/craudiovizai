@@ -154,13 +154,18 @@ function AccountColumn({ user, credits, plan, isAdmin }: {
         })
       })
       const data = await res.json()
+      console.log('CHECKOUT FRONTEND RESPONSE', data)
       if (!res.ok) {
-        throw new Error(data.error || 'Checkout failed')
+        alert(data.error || 'Checkout failed')
+        return
+      }
+      if (!data?.url) {
+        alert('No checkout URL returned')
+        return
       }
       window.location.href = data.url
     } catch (err) {
       console.error('Checkout failed', err)
-      alert('Unable to start checkout. Please try again.')
     } finally {
       setBuyLoading(false)
     }
