@@ -3,7 +3,7 @@
 // Handles: checkout.session.completed, customer.subscription.updated/deleted,
 //          invoice.payment_failed
 // Writes to: user_subscriptions, billing_events, usage_ledger (credits)
-// Updated: April 16, 2026 — getStripe() from process.env.STRIPE_SECRET_KEY. Webhook rebuild 1776355080.
+// Updated: April 16, 2026 — getStripe() from process.env.STRIPE_SECRET_KEY. Live webhook secret bound 1776434316.
 //
 // IDEMPOTENCY GUARANTEE:
 //   Every event is logged to billing_events with processed=false on arrival.
