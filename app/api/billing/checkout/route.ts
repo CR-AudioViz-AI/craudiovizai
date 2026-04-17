@@ -93,6 +93,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'priceId, userId, and email are required' }, { status: 400, headers: corsHeaders })
     }
 
+    console.log('CHECKOUT REQUEST BODY', body)
+    console.log('STRIPE KEY PREFIX', process.env.STRIPE_SECRET_KEY?.slice(0, 10))
+    console.log('PRICE ID', priceId)
+
     const s        = getStripe()
     const supabase = db()
     const host      = req.headers.get('host') ?? 'craudiovizai.com'
@@ -194,7 +198,11 @@ export async function POST(req: NextRequest) {
 
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err)
+    console.error('CHECKOUT ERROR', err)
     console.error('[billing/checkout] error:', msg)
-    return NextResponse.json({ error: msg }, { status: 500, headers: corsHeaders })
+    return NextResponse.json(
+      { error: err instanceof Error ? err.message : String(err) },
+      { status: 500, headers: corsHeaders }
+    )
   }
 }
