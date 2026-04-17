@@ -150,6 +150,10 @@ export async function POST(req: NextRequest) {
         sessionId: session.id,
         url:       session.url?.slice(0, 60) + '...',
       })
+      console.log('CHECKOUT RESPONSE', {
+        url:       session.url,
+        sessionId: session.id,
+      })
       return NextResponse.json({ url: session.url, sessionId: session.id }, { headers: corsHeaders })
     }
 
@@ -191,17 +195,25 @@ export async function POST(req: NextRequest) {
         sessionId:      session.id,
         url:            session.url?.slice(0, 60) + '...',
       })
+      console.log('CHECKOUT RESPONSE', {
+        url:       session.url,
+        sessionId: session.id,
+      })
       return NextResponse.json({ url: session.url, sessionId: session.id }, { headers: corsHeaders })
     }
 
     return NextResponse.json({ error: `Unknown mode: ${mode}` }, { status: 400, headers: corsHeaders })
 
   } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : String(err)
-    console.error('CHECKOUT ERROR', err)
+    const msg   = err instanceof Error ? err.message : String(err)
+    const stack = err instanceof Error ? err.stack   : undefined
+    console.error('CHECKOUT ERROR FULL', {
+      message: msg,
+      stack,
+    })
     console.error('[billing/checkout] error:', msg)
     return NextResponse.json(
-      { error: err instanceof Error ? err.message : String(err) },
+      { error: msg },
       { status: 500, headers: corsHeaders }
     )
   }
