@@ -131,6 +131,12 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    console.log('PROD STRIPE DEBUG', {
+      keyPrefix: process.env.STRIPE_SECRET_KEY?.slice(0, 10),
+      hasKey:    !!process.env.STRIPE_SECRET_KEY,
+      priceId,
+    })
+
     // ── Subscription mode ──────────────────────────────────────────────────────────
     if (mode === 'subscription') {
       const session = await s.checkout.sessions.create({
