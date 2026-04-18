@@ -59,14 +59,8 @@ const PRICE_TIERS: Record<string, string> = {
 
 // Credit pack price → credit amount mapping (live + test)
 const PACK_CREDITS: Record<string, number> = {
-  'price_1SdaLR7YeQ1dZTUvX4qPsy3c':  50,    // Live Starter Pack  ($4.99)
-  'price_1SdaLa7YeQ1dZTUvsjFZWqjB':  150,   // Live Creator Pack  ($12.99)
-  'price_1SdaLk7YeQ1dZTUvdcDKtnTI':  525,   // Live Pro Pack      ($39.99)
-  'price_1SdaLt7YeQ1dZTUvGhjqaNyk':  1300,  // Live Studio Pack   ($89.99)
-  'price_1TLpfE7WStdnOczMrm2AQtU2':  50,    // Test Starter Pack  ($4.99)
-  'price_1TLpfF7WStdnOczMQUAzDaOp':  150,   // Test Creator Pack  ($12.99)
-  'price_1TLpfG7WStdnOczMCKHDxNfh':  525,   // Test Pro Pack      ($39.99)
-  'price_1TLpfH7WStdnOczM2s4wyovQ':  1300,  // Test Studio Pack   ($89.99)
+  'price_1SdaLa7YeQ1dZTUvsjFZWqjB':  150,   // Live 150 Credit Pack  ($12.99)
+  'price_1TLpfF7WStdnOczMQUAzDaOp':  150,   // Test 150 Credit Pack  ($12.99)
 }
 
 export async function POST(req: NextRequest) {
