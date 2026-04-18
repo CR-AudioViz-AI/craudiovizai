@@ -188,25 +188,27 @@ export async function POST(req: NextRequest) {
   }
 
   console.log('WEBHOOK RECEIVED', event.type)
-  console.log('EVENT ID', event.id.slice(0, 24) + '...')
+  const eventId = event.id
+  console.log('WEBHOOK EVENT ID', eventId)
 
   // ── Idempotency guard ──────────────────────────────────────────────────────
   const { data: existing } = await supabase
     .from('billing_events')
     .select('id')
-    .eq('stripe_event_id', event.id)
+    .eq('stripe_event_id', eventId)
     .eq('processed', true)
     .maybeSingle()
 
   if (existing) {
-    console.log(`[billing/webhook] duplicate skipped: ${event.id}`)
+    console.log('DUPLICATE WEBHOOK IGNORED', eventId)
     return new Response(JSON.stringify({ received: true, skipped: 'duplicate' }), { status: 200 })
   }
 
   // ── Log raw event ─────────────────────────────────────────────────────────
   await supabase.from('billing_events').upsert({
-    stripe_event_id: event.id,
+    stripe_event_id: eventId,
     event_type:      event.type,
+    created_at:      new Date(event.created * 1000).toISOString(),
     payload:         event.data as Record<string, unknown>,
     processed:       false,
   }, { onConflict: 'stripe_event_id' })
@@ -311,8 +313,9 @@ export async function POST(req: NextRequest) {
 
     await supabase.from('billing_events')
       .update({ processed: true })
-      .eq('stripe_event_id', event.id)
+      .eq('stripe_event_id', eventId)
 
+    console.log('WEBHOOK PROCESSED ONCE', eventId)
     return new Response(JSON.stringify({ received: true }), { status: 200 })
 
   } catch (err: unknown) {
