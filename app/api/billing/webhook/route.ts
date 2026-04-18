@@ -339,10 +339,11 @@ export async function POST(req: NextRequest) {
         )
 
         // Prevent duplicate refund credit reversals
+        // stripe_event_id duplicated at top-level for fast indexed lookup
         const existingRefund = await supabase
           .from('usage_ledger')
           .select('id')
-          .eq('metadata->>stripe_event_id', eventId)
+          .eq('stripe_event_id', eventId)
           .limit(1)
 
         if ((existingRefund.data?.length ?? 0) > 0) {
@@ -351,13 +352,14 @@ export async function POST(req: NextRequest) {
         }
 
         await supabase.from('usage_ledger').insert({
-          user_id:     userId,
-          feature:     'credits',
-          usage_count: credits_removed,
+          user_id:          userId,
+          feature:          'credits',
+          usage_count:      credits_removed,
+          stripe_event_id:  eventId,         // top-level for indexed lookup
           metadata: {
             type:            'refund',
             source:          'stripe_refund',
-            stripe_event_id: eventId,
+            stripe_event_id: eventId,         // kept in metadata for audit trail
             amount_refunded: amountRefunded,
             amount_total:    amountTotal,
             credits_granted: creditsGranted,
