@@ -63,6 +63,12 @@ const PACK_CREDITS: Record<string, number> = {
   'price_1TLpfF7WStdnOczMQUAzDaOp':  150,   // Test 150 Credit Pack  ($12.99)
 }
 
+// DO NOT ADD NEW PRICE IDS WITHOUT STRIPE + CODE SYNC
+const VALID_PRICE_IDS = [
+  'price_1SdaLa7YeQ1dZTUvsjFZWqjB',  // live 150 Credit Pack  ($12.99)
+  'price_1TLpfF7WStdnOczMQUAzDaOp',  // test 150 Credit Pack  ($12.99)
+]
+
 export async function POST(req: NextRequest) {
   const corsHeaders = getCorsHeaders(req)
   try {
@@ -130,6 +136,15 @@ export async function POST(req: NextRequest) {
       hasKey:    !!process.env.STRIPE_SECRET_KEY,
       priceId,
     })
+
+    // ── Price ID validation ────────────────────────────────────────────────────────
+    if (!VALID_PRICE_IDS.includes(priceId)) {
+      console.error('INVALID PRICE ID ATTEMPT', priceId)
+      return NextResponse.json(
+        { error: 'Invalid price configuration' },
+        { status: 400, headers: corsHeaders }
+      )
+    }
 
     // ── Subscription mode ──────────────────────────────────────────────────────────
     if (mode === 'subscription') {
