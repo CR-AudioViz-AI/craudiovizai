@@ -1,347 +1,387 @@
 // app/admin/page.tsx
-// Admin Dashboard - 18 Card System
-// Timestamp: Dec 11, 2025 10:10 PM EST
+// CR AudioViz AI — Billing Command Center.
+// Client component: useAuth() guard + ADMIN_EMAILS allowlist.
+// Fetches /api/admin/payments, /api/admin/credits, /api/admin/webhooks.
+// Auto-refreshes every 10 seconds.
+// Updated: April 18, 2026
 
-import { redirect } from 'next/navigation';
-import { createServerComponentClient } from '@supabase/auth-helpers-nextjs';
-import { cookies } from 'next/headers';
-import Link from 'next/link';
-import { 
-  Activity, Users, CreditCard, Coins, MessageSquare, Shield,
-  Gamepad2, Globe, TrendingUp, Bot, FileText, Settings,
-  BarChart3, Database, Clock, AlertTriangle, Zap, Heart
-} from 'lucide-react';
+'use client'
 
-async function getAdminStats() {
-  const supabase = createServerComponentClient({ cookies });
-  
-  // User stats
-  const { count: totalUsers } = await supabase
-    .from('users')
-    .select('*', { count: 'exact', head: true });
+import React, { useState, useEffect, useCallback } from 'react'
+import { useRouter } from 'next/navigation'
+import { useAuth } from '@/app/providers'
 
-  const { count: activeUsers } = await supabase
-    .from('users')
-    .select('*', { count: 'exact', head: true })
-    .gte('last_seen', new Date(Date.now() - 24*60*60*1000).toISOString());
+// ── Admin allowlist — must match API routes ───────────────────────────────────
+const ADMIN_EMAILS = [
+  'royhenderson@craudiovizai.com',
+  'roy@craudiovizai.com',
+  'admin@craudiovizai.com',
+]
 
-  // Revenue stats
-  const { data: revenueData } = await supabase
-    .from('transactions')
-    .select('amount')
-    .eq('status', 'completed')
-    .gte('created_at', new Date(new Date().setDate(1)).toISOString());
-
-  const monthlyRevenue = revenueData?.reduce((sum, t) => sum + (t.amount || 0), 0) || 0;
-
-  // Ticket stats
-  const { count: openTickets } = await supabase
-    .from('support_tickets')
-    .select('*', { count: 'exact', head: true })
-    .in('status', ['open', 'in_progress']);
-
-  // Credit stats
-  const { data: creditStats } = await supabase
-    .from('credit_transactions')
-    .select('credits')
-    .gte('created_at', new Date(Date.now() - 24*60*60*1000).toISOString());
-
-  const creditsUsedToday = creditStats?.reduce((sum, t) => sum + Math.abs(t.credits || 0), 0) || 0;
-
-  return {
-    totalUsers: totalUsers || 0,
-    activeUsers: activeUsers || 0,
-    monthlyRevenue,
-    openTickets: openTickets || 0,
-    creditsUsedToday,
-  };
+// ── Types ─────────────────────────────────────────────────────────────────────
+interface PaymentRow {
+  id:             string
+  mode:           string
+  status:         string | null
+  payment_status: string | null
+  amount_total:   number | null
+  currency:       string | null
+  customer_email: string | null
+  created:        string
+  livemode:       boolean
 }
 
-const ADMIN_CARDS = [
-  {
-    id: 'system-health',
-    title: 'System Health',
-    icon: Activity,
-    href: '/admin/system',
-    color: 'green',
-    description: 'Monitor platform status and performance',
-  },
-  {
-    id: 'bot-activity',
-    title: 'Bot Activity',
-    icon: Bot,
-    href: '/admin/bots',
-    color: 'purple',
-    description: '9 autonomous bots running 24/7',
-  },
-  {
-    id: 'user-management',
-    title: 'User Management',
-    icon: Users,
-    href: '/admin/users',
-    color: 'blue',
-    description: 'Manage users, roles, and permissions',
-  },
-  {
-    id: 'revenue',
-    title: 'Revenue Dashboard',
-    icon: TrendingUp,
-    href: '/admin/revenue',
-    color: 'green',
-    description: 'Track revenue across all streams',
-  },
-  {
-    id: 'credits',
-    title: 'Credit System',
-    icon: Coins,
-    href: '/admin/credits',
-    color: 'yellow',
-    description: 'Monitor credit usage and purchases',
-  },
-  {
-    id: 'subscriptions',
-    title: 'Subscriptions',
-    icon: CreditCard,
-    href: '/admin/subscriptions',
-    color: 'purple',
-    description: 'Manage subscription plans and billing',
-  },
-  {
-    id: 'support',
-    title: 'Support Tickets',
-    icon: MessageSquare,
-    href: '/admin/support',
-    color: 'orange',
-    description: 'Handle customer support requests',
-  },
-  {
-    id: 'moderation',
-    title: 'Content Moderation',
-    icon: Shield,
-    href: '/admin/moderation',
-    color: 'red',
-    description: 'Review and moderate user content',
-  },
-  {
-    id: 'apps',
-    title: 'App Performance',
-    icon: Zap,
-    href: '/admin/apps',
-    color: 'blue',
-    description: 'Monitor 60+ app usage and health',
-  },
-  {
-    id: 'games',
-    title: 'Games Analytics',
-    icon: Gamepad2,
-    href: '/admin/games',
-    color: 'pink',
-    description: 'Track 1,200+ games engagement',
-  },
-  {
-    id: 'craiverse',
-    title: 'CRAIverse Analytics',
-    icon: Globe,
-    href: '/admin/craiverse',
-    color: 'teal',
-    description: '20 social impact modules',
-  },
-  {
-    id: 'marketing',
-    title: 'Marketing Dashboard',
-    icon: BarChart3,
-    href: '/admin/marketing',
-    color: 'indigo',
-    description: 'Campaigns, newsletters, conversions',
-  },
-  {
-    id: 'grants',
-    title: 'Grant Tracking',
-    icon: Heart,
-    href: '/admin/grants',
-    color: 'rose',
-    description: 'Track $600M+ grant opportunities',
-  },
-  {
-    id: 'competitor-intel',
-    title: 'Competitor Intel',
-    icon: FileText,
-    href: '/admin/competitors',
-    color: 'slate',
-    description: 'News apps and market intelligence',
-  },
-  {
-    id: 'ai-training',
-    title: 'AI/Avatar Training',
-    icon: Bot,
-    href: '/admin/training',
-    color: 'violet',
-    description: 'Javari AI learning and improvement',
-  },
-  {
-    id: 'cost-tracking',
-    title: 'Cost Tracking',
-    icon: CreditCard,
-    href: '/admin/costs',
-    color: 'amber',
-    description: 'Supabase, Vercel, API costs',
-  },
-  {
-    id: 'database',
-    title: 'Database Management',
-    icon: Database,
-    href: '/admin/database',
-    color: 'cyan',
-    description: 'Tables, migrations, backups',
-  },
-  {
-    id: 'audit-logs',
-    title: 'Audit Logs',
-    icon: Clock,
-    href: '/admin/audit',
-    color: 'gray',
-    description: 'Track all system activity',
-  },
-];
+interface CreditSummary {
+  user_id:       string
+  total_credits: number
+  grants:        number
+  usages:        number
+  refunds:       number
+  last_activity: string
+}
 
-function AdminCard({ card, stats }: { card: typeof ADMIN_CARDS[0]; stats?: any }) {
-  const Icon = card.icon;
-  const colorClasses: Record<string, string> = {
-    green: 'from-cyan-500 to-cyan-500',
-    purple: 'from-cyan-500 to-cyan-500',
-    blue: 'from-blue-500 to-blue-600',
-    yellow: 'from-cyan-400 to-cyan-400',
-    orange: 'from-cyan-500 to-cyan-500',
-    red: 'from-red-500 to-red-600',
-    pink: 'from-cyan-500 to-cyan-500',
-    teal: 'from-teal-500 to-teal-600',
-    indigo: 'from-cyan-500 to-cyan-500',
-    rose: 'from-rose-500 to-rose-600',
-    slate: 'from-slate-500 to-slate-600',
-    violet: 'from-violet-500 to-violet-600',
-    amber: 'from-cyan-500 to-cyan-500',
-    cyan: 'from-cyan-500 to-cyan-600',
-    gray: 'from-gray-500 to-gray-600',
-  };
+interface WebhookRow {
+  id:              string
+  stripe_event_id: string
+  event_type:      string
+  processed:       boolean
+  created_at:      string
+}
 
+interface AdminData {
+  payments: PaymentRow[]
+  credits:  CreditSummary[]
+  webhooks: WebhookRow[]
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function fmt(iso: string) {
+  try {
+    return new Date(iso).toLocaleString('en-US', {
+      month:  'short',
+      day:    'numeric',
+      hour:   '2-digit',
+      minute: '2-digit',
+    })
+  } catch { return iso }
+}
+
+function fmtAmount(cents: number | null, currency: string | null) {
+  if (cents == null) return '—'
+  return `$${(cents / 100).toFixed(2)} ${(currency ?? 'usd').toUpperCase()}`
+}
+
+function truncate(s: string, n: number) {
+  return s.length > n ? s.slice(0, n) + '…' : s
+}
+
+// ── Sub-components ────────────────────────────────────────────────────────────
+function SectionHeader({ title, count, loading, error }: {
+  title:   string
+  count:   number
+  loading: boolean
+  error:   string | null
+}) {
   return (
-    <Link href={card.href}>
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-lg hover:border-blue-200 transition-all cursor-pointer h-full">
-        <div className="flex items-start justify-between mb-4">
-          <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${colorClasses[card.color]} flex items-center justify-center`}>
-            <Icon className="w-6 h-6 text-white" />
-          </div>
-          {stats && (
-            <span className="text-2xl font-bold text-gray-900">{stats}</span>
-          )}
-        </div>
-        <h3 className="font-bold text-gray-900 mb-1">{card.title}</h3>
-        <p className="text-sm text-gray-500">{card.description}</p>
+    <div className="flex items-center justify-between mb-3">
+      <div className="flex items-center gap-3">
+        <h2 className="text-sm font-semibold text-gray-300 uppercase tracking-widest">
+          {title}
+        </h2>
+        {!loading && !error && (
+          <span className="text-xs bg-gray-700 text-gray-400 px-2 py-0.5 rounded-full">
+            {count}
+          </span>
+        )}
       </div>
-    </Link>
-  );
+      {loading && (
+        <span className="text-xs text-gray-500 animate-pulse">loading…</span>
+      )}
+      {error && !loading && (
+        <span className="text-xs text-red-400">Failed to load</span>
+      )}
+    </div>
+  )
 }
 
-export default async function AdminDashboardPage() {
-  const supabase = createServerComponentClient({ cookies });
-  const { data: { session } } = await supabase.auth.getSession();
-  
-  if (!session) redirect('/login');
+function Table({ headers, rows }: {
+  headers: string[]
+  rows:    (string | React.ReactNode)[][]
+}) {
+  if (rows.length === 0) {
+    return (
+      <div className="text-center py-6 text-gray-600 text-sm">No data</div>
+    )
+  }
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="border-b border-gray-700">
+            {headers.map(h => (
+              <th key={h} className="text-left py-2 pr-4 text-xs font-medium text-gray-500 uppercase tracking-wider">
+                {h}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row, ri) => (
+            <tr key={ri} className="border-b border-gray-800 hover:bg-gray-800/40 transition-colors">
+              {row.map((cell, ci) => (
+                <td key={ci} className="py-2.5 pr-4 text-gray-300 align-top">
+                  {cell}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
+}
 
-  // Check if user is admin
-  const { data: user } = await supabase
-    .from('users')
-    .select('role')
-    .eq('id', session.user.id)
-    .single();
+function StatusBadge({ value, positive, negative }: {
+  value:    string | null | boolean
+  positive?: string[]
+  negative?: string[]
+}) {
+  const s = String(value ?? '')
+  const isGood = positive?.includes(s)
+  const isBad  = negative?.includes(s)
+  const color  = isGood ? 'text-emerald-400 bg-emerald-900/30'
+               : isBad  ? 'text-red-400 bg-red-900/30'
+               : 'text-gray-400 bg-gray-800'
+  return (
+    <span className={`inline-flex px-1.5 py-0.5 rounded text-xs font-medium ${color}`}>
+      {s || '—'}
+    </span>
+  )
+}
 
-  if (user?.role !== 'admin' && user?.role !== 'super_admin') {
-    redirect('/dashboard');
+// ── Main page ─────────────────────────────────────────────────────────────────
+export default function AdminCommandCenter() {
+  const router = useRouter()
+  const { user, loading: authLoading, session } = useAuth()
+
+  const [data, setData]       = useState<AdminData>({ payments: [], credits: [], webhooks: [] })
+  const [errors, setErrors]   = useState<Record<string, string | null>>({
+    payments: null, credits: null, webhooks: null,
+  })
+  const [loading, setLoading] = useState<Record<string, boolean>>({
+    payments: true, credits: true, webhooks: true,
+  })
+  const [lastRefresh, setLastRefresh] = useState<Date | null>(null)
+  const [refreshing, setRefreshing]   = useState(false)
+
+  // ── Auth guard ──────────────────────────────────────────────────────────────
+  useEffect(() => {
+    if (authLoading) return
+    if (!user) { router.replace('/login'); return }
+    if (!ADMIN_EMAILS.includes(user.email ?? '')) {
+      router.replace('/dashboard')
+    }
+  }, [user, authLoading, router])
+
+  // ── Fetch all three endpoints ───────────────────────────────────────────────
+  const fetchAll = useCallback(async (token: string) => {
+    setRefreshing(true)
+
+    const headers = { Authorization: `Bearer ${token}` }
+
+    const fetcher = async (
+      key: keyof AdminData,
+      path: string,
+      extractor: (json: Record<string, unknown>) => unknown[],
+    ) => {
+      try {
+        setLoading(prev => ({ ...prev, [key]: true }))
+        const res  = await fetch(path, { headers })
+        const json = await res.json() as Record<string, unknown>
+        if (!res.ok) throw new Error((json.error as string) ?? `HTTP ${res.status}`)
+        setData(prev => ({ ...prev, [key]: extractor(json) }))
+        setErrors(prev => ({ ...prev, [key]: null }))
+      } catch (e) {
+        setErrors(prev => ({ ...prev, [key]: (e as Error).message }))
+      } finally {
+        setLoading(prev => ({ ...prev, [key]: false }))
+      }
+    }
+
+    await Promise.all([
+      fetcher('payments', '/api/admin/payments?limit=25&status=complete',
+        j => (j.sessions as PaymentRow[]) ?? []),
+      fetcher('credits',  '/api/admin/credits?limit=50',
+        j => (j.summary as CreditSummary[]) ?? []),
+      fetcher('webhooks', '/api/admin/webhooks?limit=50',
+        j => (j.events as WebhookRow[]) ?? []),
+    ])
+
+    setLastRefresh(new Date())
+    setRefreshing(false)
+  }, [])
+
+  // ── Initial load + 10-second auto-refresh ──────────────────────────────────
+  useEffect(() => {
+    if (!session?.access_token || authLoading) return
+    if (!user || !ADMIN_EMAILS.includes(user.email ?? '')) return
+
+    fetchAll(session.access_token)
+    const interval = setInterval(() => fetchAll(session.access_token), 10_000)
+    return () => clearInterval(interval)
+  }, [session, user, authLoading, fetchAll])
+
+  // ── Render guards ───────────────────────────────────────────────────────────
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-gray-950 flex items-center justify-center">
+        <div className="w-8 h-8 border-2 border-cyan-500 border-t-transparent rounded-full animate-spin" />
+      </div>
+    )
   }
 
-  const stats = await getAdminStats();
+  if (!user || !ADMIN_EMAILS.includes(user.email ?? '')) {
+    return null
+  }
 
+  // ── Table rows ──────────────────────────────────────────────────────────────
+  const paymentRows = data.payments.map(p => [
+    <span key="id" className="font-mono text-xs text-gray-500">{truncate(p.id, 24)}</span>,
+    <span key="em">{p.customer_email ?? '—'}</span>,
+    <span key="am">{fmtAmount(p.amount_total, p.currency)}</span>,
+    <StatusBadge key="st" value={p.payment_status}
+      positive={['paid']} negative={['unpaid', 'no_payment_required']} />,
+    <span key="lv" className={`text-xs ${p.livemode ? 'text-emerald-400' : 'text-amber-400'}`}>
+      {p.livemode ? 'live' : 'test'}
+    </span>,
+    <span key="dt" className="text-xs text-gray-500">{fmt(p.created)}</span>,
+  ])
+
+  const creditRows = data.credits.map(c => [
+    <span key="id" className="font-mono text-xs text-gray-500">{truncate(c.user_id, 20)}</span>,
+    <span key="tc" className={`font-semibold ${c.total_credits >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+      {c.total_credits.toLocaleString()}
+    </span>,
+    <span key="gr" className="text-emerald-400">{c.grants}</span>,
+    <span key="us" className="text-gray-400">{c.usages}</span>,
+    <span key="rf" className="text-red-400">{c.refunds}</span>,
+    <span key="la" className="text-xs text-gray-500">{fmt(c.last_activity)}</span>,
+  ])
+
+  const webhookRows = data.webhooks.map(w => [
+    <span key="et" className="font-mono text-xs">{w.event_type}</span>,
+    <StatusBadge key="pr" value={String(w.processed)}
+      positive={['true']} negative={['false']} />,
+    <span key="ei" className="font-mono text-xs text-gray-600">{truncate(w.stripe_event_id, 20)}</span>,
+    <span key="ca" className="text-xs text-gray-500">{fmt(w.created_at)}</span>,
+  ])
+
+  // ── Render ──────────────────────────────────────────────────────────────────
   return (
-    <div className="min-h-screen bg-gray-100">
-      {/* Header */}
-      <div className="bg-gradient-to-r from-gray-900 to-gray-800 text-white py-8">
-        <div className="container mx-auto px-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold">Admin Dashboard</h1>
-              <p className="text-gray-300">CR AudioViz AI Control Center</p>
-            </div>
-            <div className="flex items-center gap-4">
-              <div className="px-4 py-2 bg-cyan-500/20 border border-cyan-500/50 rounded-lg flex items-center gap-2">
-                <div className="w-2 h-2 bg-cyan-500 rounded-full animate-pulse" />
-                <span className="text-cyan-500 text-sm font-semibold">All Systems Operational</span>
-              </div>
+    <div className="min-h-screen bg-gray-950 text-white">
+
+      {/* ── Header ─────────────────────────────────────────────────────────── */}
+      <div className="bg-gradient-to-r from-gray-900 to-gray-800 border-b border-gray-700">
+        <div className="max-w-7xl mx-auto px-4 py-5 flex items-center justify-between">
+          <div>
+            <h1 className="text-xl font-bold text-white">Billing Command Center</h1>
+            <p className="text-xs text-gray-400 mt-0.5">
+              Payments · Credits · Webhooks — {user.email}
+            </p>
+          </div>
+          <div className="flex items-center gap-4">
+            {lastRefresh && (
+              <span className="text-xs text-gray-500">
+                Updated {fmt(lastRefresh.toISOString())}
+              </span>
+            )}
+            {refreshing && (
+              <div className="w-4 h-4 border-2 border-cyan-500 border-t-transparent rounded-full animate-spin" />
+            )}
+            <div className="flex items-center gap-1.5 px-3 py-1.5 bg-cyan-500/10 border border-cyan-500/30 rounded-lg">
+              <div className="w-1.5 h-1.5 bg-cyan-500 rounded-full animate-pulse" />
+              <span className="text-xs text-cyan-400 font-medium">Live · 10s</span>
             </div>
           </div>
         </div>
       </div>
 
-      <div className="container mx-auto px-4 py-8">
-        {/* Quick Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
-          <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-200">
-            <p className="text-sm text-gray-500">Total Users</p>
-            <p className="text-2xl font-bold text-gray-900">{stats.totalUsers.toLocaleString()}</p>
-          </div>
-          <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-200">
-            <p className="text-sm text-gray-500">Active Today</p>
-            <p className="text-2xl font-bold text-cyan-500">{stats.activeUsers.toLocaleString()}</p>
-          </div>
-          <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-200">
-            <p className="text-sm text-gray-500">Monthly Revenue</p>
-            <p className="text-2xl font-bold text-blue-600">${stats.monthlyRevenue.toLocaleString()}</p>
-          </div>
-          <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-200">
-            <p className="text-sm text-gray-500">Open Tickets</p>
-            <p className="text-2xl font-bold text-cyan-500">{stats.openTickets}</p>
-          </div>
-          <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-200">
-            <p className="text-sm text-gray-500">Credits Used Today</p>
-            <p className="text-2xl font-bold text-cyan-500">{stats.creditsUsedToday.toLocaleString()}</p>
-          </div>
-        </div>
+      {/* ── Body ───────────────────────────────────────────────────────────── */}
+      <div className="max-w-7xl mx-auto px-4 py-8 space-y-8">
 
-        {/* 18 Card Grid */}
-        <h2 className="text-xl font-bold text-gray-900 mb-4">Management Areas</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {ADMIN_CARDS.map((card) => (
-            <AdminCard key={card.id} card={card} />
-          ))}
-        </div>
+        {/* ── Section A: Payments ────────────────────────────────────────── */}
+        <section className="bg-gray-900 rounded-xl border border-gray-800 p-6">
+          <SectionHeader
+            title="Payments"
+            count={data.payments.length}
+            loading={loading.payments}
+            error={errors.payments}
+          />
+          {loading.payments ? (
+            <div className="space-y-2">
+              {[1,2,3].map(i => (
+                <div key={i} className="h-9 bg-gray-800 rounded animate-pulse" />
+              ))}
+            </div>
+          ) : errors.payments ? (
+            <div className="py-4 text-sm text-red-400">{errors.payments}</div>
+          ) : (
+            <Table
+              headers={['Session ID', 'Email', 'Amount', 'Status', 'Mode', 'Date']}
+              rows={paymentRows}
+            />
+          )}
+        </section>
 
-        {/* Recent Activity */}
-        <div className="mt-8 bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-          <h2 className="text-xl font-bold text-gray-900 mb-4">Recent Activity</h2>
-          <div className="space-y-3">
-            <div className="flex items-center gap-4 p-3 bg-gray-50 rounded-lg">
-              <Clock className="w-5 h-5 text-gray-400" />
-              <div className="flex-1">
-                <p className="text-sm text-gray-900">System backup completed</p>
-                <p className="text-xs text-gray-500">2 minutes ago</p>
-              </div>
+        {/* ── Section B: Credits ─────────────────────────────────────────── */}
+        <section className="bg-gray-900 rounded-xl border border-gray-800 p-6">
+          <SectionHeader
+            title="Credits"
+            count={data.credits.length}
+            loading={loading.credits}
+            error={errors.credits}
+          />
+          {loading.credits ? (
+            <div className="space-y-2">
+              {[1,2,3].map(i => (
+                <div key={i} className="h-9 bg-gray-800 rounded animate-pulse" />
+              ))}
             </div>
-            <div className="flex items-center gap-4 p-3 bg-gray-50 rounded-lg">
-              <Users className="w-5 h-5 text-blue-500" />
-              <div className="flex-1">
-                <p className="text-sm text-gray-900">5 new users registered</p>
-                <p className="text-xs text-gray-500">15 minutes ago</p>
-              </div>
+          ) : errors.credits ? (
+            <div className="py-4 text-sm text-red-400">{errors.credits}</div>
+          ) : (
+            <Table
+              headers={['User ID', 'Total Credits', 'Grants', 'Usages', 'Refunds', 'Last Activity']}
+              rows={creditRows}
+            />
+          )}
+        </section>
+
+        {/* ── Section C: Webhooks ────────────────────────────────────────── */}
+        <section className="bg-gray-900 rounded-xl border border-gray-800 p-6">
+          <SectionHeader
+            title="Webhooks"
+            count={data.webhooks.length}
+            loading={loading.webhooks}
+            error={errors.webhooks}
+          />
+          {loading.webhooks ? (
+            <div className="space-y-2">
+              {[1,2,3].map(i => (
+                <div key={i} className="h-9 bg-gray-800 rounded animate-pulse" />
+              ))}
             </div>
-            <div className="flex items-center gap-4 p-3 bg-gray-50 rounded-lg">
-              <CreditCard className="w-5 h-5 text-cyan-500" />
-              <div className="flex-1">
-                <p className="text-sm text-gray-900">$89.99 subscription payment received</p>
-                <p className="text-xs text-gray-500">32 minutes ago</p>
-              </div>
-            </div>
-          </div>
-        </div>
+          ) : errors.webhooks ? (
+            <div className="py-4 text-sm text-red-400">{errors.webhooks}</div>
+          ) : (
+            <Table
+              headers={['Event Type', 'Processed', 'Event ID', 'Created At']}
+              rows={webhookRows}
+            />
+          )}
+        </section>
+
       </div>
     </div>
-  );
+  )
 }
