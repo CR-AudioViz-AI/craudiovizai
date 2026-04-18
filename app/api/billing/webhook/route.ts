@@ -1,7 +1,7 @@
 // app/api/billing/webhook/route.ts
 // Central billing authority — Stripe webhook handler.
 // Handles: checkout.session.completed, customer.subscription.updated/deleted,
-//          invoice.payment_failed
+//          invoice.payment_failed, charge.refunded, charge.refund.updated
 // Writes to: user_subscriptions, billing_events, usage_ledger (credits)
 // Updated: April 16, 2026 — getStripe() from process.env.STRIPE_SECRET_KEY. Live webhook secret bound 1776434316.
 //
@@ -307,6 +307,58 @@ export async function POST(req: NextRequest) {
           .update({ status: 'past_due', updated_at: new Date().toISOString() })
           .eq('user_id', userId)
           .eq('provider', 'stripe')
+        break
+      }
+
+      case 'charge.refunded':
+      case 'charge.refund.updated': {
+        const charge          = event.data.object as Stripe.Charge
+        const userId          = charge.metadata?.userId as string | undefined
+
+        if (!userId) {
+          console.warn('[billing/webhook] refund — no userId in charge metadata')
+          break
+        }
+
+        const amountRefunded  = charge.amount_refunded        // cents
+        const amountTotal     = charge.amount                 // cents
+        const creditsGranted  = charge.metadata?.credits_granted
+          ? parseInt(charge.metadata.credits_granted, 10)
+          : 0
+
+        if (amountTotal <= 0 || creditsGranted <= 0) {
+          console.warn('[billing/webhook] refund — cannot calculate reversal', {
+            amountTotal,
+            creditsGranted,
+          })
+          break
+        }
+
+        const credits_removed = -Math.round(
+          (amountRefunded / amountTotal) * creditsGranted
+        )
+
+        await supabase.from('usage_ledger').insert({
+          user_id:     userId,
+          feature:     'credits',
+          usage_count: credits_removed,
+          metadata: {
+            type:            'refund',
+            source:          'stripe_refund',
+            stripe_event_id: eventId,
+            amount_refunded: amountRefunded,
+            amount_total:    amountTotal,
+            credits_granted: creditsGranted,
+          },
+        })
+
+        console.log('REFUND PROCESSED', {
+          userId:         userId.slice(0, 8) + '…',
+          credits_removed,
+          amountRefunded,
+          amountTotal,
+          eventId:        eventId.slice(0, 20) + '...',
+        })
         break
       }
     }
