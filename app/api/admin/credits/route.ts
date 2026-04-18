@@ -1,314 +1,139 @@
-// CR AUDIOVIZ AI - Admin Credits API Route
-// Session: 2025-10-25 - Phase 3 API Routes
-// Purpose: Manage user credits, purchases, and credit history
+// app/api/admin/credits/route.ts
+// Admin observability — usage_ledger grouped by user_id with total credits.
+// Auth: Bearer token from Authorization header, admin email allowlist.
+// Updated: April 18, 2026
 
-import { createClient } from '@/lib/supabase/server';
-import { cookies } from 'next/headers';
-import { NextResponse } from 'next/server';
-import Stripe from 'stripe';
+import { NextRequest, NextResponse } from 'next/server'
+import { createClient } from '@supabase/supabase-js'
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2023-10-16',
-});
+export const dynamic = 'force-dynamic'
+export const runtime  = 'nodejs'
 
-export const dynamic = 'force-dynamic';
+// ── Admin auth ────────────────────────────────────────────────────────────────
+const ADMIN_EMAILS = [
+  'royhenderson@craudiovizai.com',
+  'roy@craudiovizai.com',
+  'admin@craudiovizai.com',
+]
 
-// GET: Fetch credit balance and transaction history
-export async function GET(request: Request) {
-  try {
-    const supabase = createClient();
-    
-    const { data: { session: authSession }, error: authError } = await supabase.auth.getSession();
-    
-    if (authError || !authSession) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
-
-    const userId = authSession.user.id;
-    const { searchParams } = new URL(request.url);
-    const includeHistory = searchParams.get('history') === 'true';
-
-    // Get user profile with credit balance
-    const { data: profile, error: profileError } = await supabase
-      .from('profiles')
-      .select('credits_balance, subscription_tier, subscription_status')
-      .eq('id', userId)
-      .single();
-
-    if (profileError || !profile) {
-      return NextResponse.json(
-        { error: 'Failed to fetch profile', details: profileError?.message },
-        { status: 500 }
-      );
-    }
-
-    const response: any = {
-      success: true,
-      creditsBalance: profile.credits_balance || 0,
-      subscriptionTier: profile.subscription_tier || 'free',
-      subscriptionStatus: profile.subscription_status || 'inactive'
-    };
-
-    // Include transaction history if requested
-    if (includeHistory) {
-      const { data: transactions, error: transError } = await supabase
-        .from('credit_transactions')
-        .select('*')
-        .eq('user_id', userId)
-        .order('created_at', { ascending: false })
-        .limit(100);
-
-      if (transError) {
-        console.error('Failed to fetch transactions:', transError);
-      } else {
-        response.transactions = transactions || [];
-        response.totalTransactions = transactions?.length || 0;
-        
-        // Calculate statistics
-        const purchases = transactions?.filter(t => t.transaction_type === 'purchase') || [];
-        const usage = transactions?.filter(t => t.transaction_type === 'usage') || [];
-        
-        response.statistics = {
-          totalPurchased: purchases.reduce((sum: number, t) => sum + (t.credits || 0), 0),
-          totalUsed: Math.abs(usage.reduce((sum: number, t) => sum + (t.credits || 0), 0)),
-          totalSpent: purchases.reduce((sum: number, t) => sum + (t.amount || 0), 0) / 100 // Convert cents to dollars
-        };
-      }
-    }
-
-    return NextResponse.json(response);
-
-  } catch (error: any) {
-    console.error('Admin Credits API GET Error:', error);
-    return NextResponse.json(
-      { error: 'Internal server error', details: error.message },
-      { status: 500 }
-    );
-  }
+function db() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  )
 }
 
-// POST: Purchase credits or add credits
-export async function POST(request: Request) {
+async function verifyAdmin(
+  req: NextRequest,
+): Promise<{ error?: NextResponse }> {
+  const authHeader = req.headers.get('authorization')
+  if (!authHeader?.startsWith('Bearer ')) {
+    return { error: NextResponse.json({ error: 'Unauthorized' }, { status: 401 }) }
+  }
+
+  const token    = authHeader.slice(7)
+  const supabase = db()
+  const { data: { user }, error } = await supabase.auth.getUser(token)
+
+  if (error || !user) {
+    return { error: NextResponse.json({ error: 'Invalid token' }, { status: 401 }) }
+  }
+
+  if (!ADMIN_EMAILS.includes(user.email ?? '')) {
+    return { error: NextResponse.json({ error: 'Forbidden — admin only' }, { status: 403 }) }
+  }
+
+  return {}
+}
+
+// ── GET /api/admin/credits ────────────────────────────────────────────────────
+// Query params:
+//   user_id — filter to a specific user
+//   type    — 'grant' | 'usage' | 'refund' (default all)
+//   limit   — rows per page (default 50, max 500)
+//   since   — ISO timestamp lower bound on created_at
+export async function GET(req: NextRequest) {
+  const { error } = await verifyAdmin(req)
+  if (error) return error
+
+  const { searchParams } = new URL(req.url)
+  const userId = searchParams.get('user_id') ?? undefined
+  const type   = searchParams.get('type')    ?? undefined
+  const limit  = Math.min(parseInt(searchParams.get('limit') ?? '50', 10), 500)
+  const since  = searchParams.get('since')   ?? undefined
+
+  const supabase = db()
+
   try {
-    const supabase = createClient();
-    
-    const { data: { session: authSession }, error: authError } = await supabase.auth.getSession();
-    
-    if (authError || !authSession) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
+    // ── Raw ledger rows ───────────────────────────────────────────────────────
+    let query = supabase
+      .from('usage_ledger')
+      .select('id, user_id, feature, usage_count, stripe_event_id, metadata, created_at')
+      .eq('feature', 'credits')
+      .order('created_at', { ascending: false })
+      .limit(limit)
 
-    const userId = authSession.user.id;
-    const body = await request.json();
-    const { action, amount, credits, paymentMethodId } = body;
+    if (userId) query = query.eq('user_id', userId)
+    if (type)   query = query.eq('metadata->>type', type)
+    if (since)  query = query.gte('created_at', since)
 
-    if (action === 'create_checkout') {
-      // Create Stripe checkout session for credit purchase
-      if (!credits || !amount) {
-        return NextResponse.json(
-          { error: 'Missing required fields: credits, amount' },
-          { status: 400 }
-        );
-      }
+    const { data: rows, error: ledgerErr } = await query
+    if (ledgerErr) throw new Error(ledgerErr.message)
 
-      // Get user email
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('email')
-        .eq('id', userId)
-        .single();
+    // ── Group by user_id → total credits ─────────────────────────────────────
+    const totals: Record<string, {
+      user_id:        string
+      total_credits:  number
+      grants:         number
+      usages:         number
+      refunds:        number
+      last_activity:  string
+    }> = {}
 
-      const stripeSession = await stripe.checkout.sessions.create({
-        customer_email: profile?.email || authSession.user.email,
-        payment_method_types: ['card'],
-        line_items: [
-          {
-            price_data: {
-              currency: 'usd',
-              product_data: {
-                name: `${credits} CR AudioViz AI Credits`,
-                description: `Purchase ${credits} credits for use across all creative tools`
-              },
-              unit_amount: amount // Amount in cents
-            },
-            quantity: 1
-          }
-        ],
-        mode: 'payment',
-        success_url: `${process.env.NEXT_PUBLIC_SITE_URL}/admin/credits?success=true&credits=${credits}`,
-        cancel_url: `${process.env.NEXT_PUBLIC_SITE_URL}/admin/credits?canceled=true`,
-        metadata: {
-          userId,
-          credits: credits.toString(),
-          type: 'credit_purchase'
+    for (const row of rows ?? []) {
+      const uid = row.user_id
+      if (!totals[uid]) {
+        totals[uid] = {
+          user_id:       uid,
+          total_credits: 0,
+          grants:        0,
+          usages:        0,
+          refunds:       0,
+          last_activity: row.created_at,
         }
-      });
+      }
+      const entry = totals[uid]
+      entry.total_credits += row.usage_count ?? 0
 
-      return NextResponse.json({
-        success: true,
-        checkoutUrl: stripeSession.url,
-        sessionId: stripeSession.id
-      });
+      const rowType = row.metadata?.type as string | undefined
+      if (rowType === 'grant')  entry.grants++
+      if (rowType === 'usage')  entry.usages++
+      if (rowType === 'refund') entry.refunds++
+
+      if (row.created_at > entry.last_activity) {
+        entry.last_activity = row.created_at
+      }
     }
 
-    if (action === 'direct_charge') {
-      // Direct charge with payment method (for saved cards)
-      if (!credits || !amount || !paymentMethodId) {
-        return NextResponse.json(
-          { error: 'Missing required fields: credits, amount, paymentMethodId' },
-          { status: 400 }
-        );
-      }
+    const summary = Object.values(totals).sort(
+      (a, b) => new Date(b.last_activity).getTime() - new Date(a.last_activity).getTime()
+    )
 
-      // Get user's Stripe customer ID
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('stripe_customer_id, credits_balance')
-        .eq('id', userId)
-        .single();
-
-      if (!profile?.stripe_customer_id) {
-        return NextResponse.json(
-          { error: 'No Stripe customer found' },
-          { status: 400 }
-        );
-      }
-
-      // Create payment intent
-      const paymentIntent = await stripe.paymentIntents.create({
-        amount,
-        currency: 'usd',
-        customer: profile.stripe_customer_id,
-        payment_method: paymentMethodId,
-        confirm: true,
-        description: `${credits} CR AudioViz AI Credits`,
-        metadata: {
-          userId,
-          credits: credits.toString(),
-          type: 'credit_purchase'
-        }
-      });
-
-      if (paymentIntent.status === 'succeeded') {
-        // Add credits
-        const { data: updatedProfile, error: updateError } = await supabase
-          .from('profiles')
-          .update({ 
-            credits_balance: (profile?.credits_balance || 0) + credits,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', userId)
-          .select('credits_balance')
-          .single();
-
-        if (updateError) {
-          console.error('Failed to update credits:', updateError);
-          return NextResponse.json(
-            { error: 'Payment succeeded but failed to add credits' },
-            { status: 500 }
-          );
-        }
-
-        // Record transaction
-        await supabase
-          .from('credit_transactions')
-          .insert({
-            user_id: userId,
-            transaction_type: 'purchase',
-            credits,
-            amount,
-            payment_method: 'stripe',
-            stripe_payment_intent_id: paymentIntent.id,
-            status: 'completed',
-            created_at: new Date().toISOString()
-          });
-
-        return NextResponse.json({
-          success: true,
-          credits: updatedProfile?.credits_balance || 0,
-          paymentIntentId: paymentIntent.id
-        });
-      }
-
-      return NextResponse.json({
-        success: false,
-        status: paymentIntent.status,
-        message: 'Payment requires additional action'
-      });
-    }
-
-    if (action === 'add_bonus') {
-      // Admin function to add bonus credits (would need admin role check)
-      const { bonusCredits, reason } = body;
-
-      if (!bonusCredits) {
-        return NextResponse.json(
-          { error: 'Missing bonusCredits' },
-          { status: 400 }
-        );
-      }
-
-      // TODO: Add admin role verification here
-      
-      // Fetch current balance first
-      const { data: existingProfile } = await supabase
-        .from('profiles')
-        .select('credits_balance')
-        .eq('id', userId)
-        .single();
-      
-      const { data: updatedProfile, error: updateError } = await supabase
-        .from('profiles')
-        .update({ 
-          credits_balance: (existingProfile?.credits_balance || 0) + bonusCredits,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', userId)
-        .select('credits_balance')
-        .single();
-
-      if (updateError) {
-        return NextResponse.json(
-          { error: 'Failed to add bonus credits', details: updateError.message },
-          { status: 500 }
-        );
-      }
-
-      // Record bonus transaction
-      await supabase
-        .from('credit_transactions')
-        .insert({
-          user_id: userId,
-          transaction_type: 'bonus',
-          credits: bonusCredits,
-          amount: 0,
-          description: reason || 'Bonus credits',
-          status: 'completed',
-          created_at: new Date().toISOString()
-        });
-
-      return NextResponse.json({
-        success: true,
-        newBalance: updatedProfile?.credits_balance || 0
-      });
-    }
-
-    return NextResponse.json(
-      { error: 'Invalid action' },
-      { status: 400 }
-    );
-
-  } catch (error: any) {
-    console.error('Admin Credits API POST Error:', error);
-    return NextResponse.json(
-      { error: 'Internal server error', details: error.message },
-      { status: 500 }
-    );
+    return NextResponse.json({
+      ok:           true,
+      row_count:    rows?.length ?? 0,
+      user_count:   summary.length,
+      filters: {
+        user_id: userId ?? null,
+        type:    type   ?? 'all',
+        since:   since  ?? null,
+      },
+      summary,
+      rows,
+    })
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err)
+    console.error('[admin/credits] error:', msg)
+    return NextResponse.json({ error: msg }, { status: 500 })
   }
 }
