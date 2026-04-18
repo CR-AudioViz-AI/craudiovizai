@@ -338,6 +338,18 @@ export async function POST(req: NextRequest) {
           (amountRefunded / amountTotal) * creditsGranted
         )
 
+        // Prevent duplicate refund credit reversals
+        const existingRefund = await supabase
+          .from('usage_ledger')
+          .select('id')
+          .eq('metadata->>stripe_event_id', eventId)
+          .limit(1)
+
+        if ((existingRefund.data?.length ?? 0) > 0) {
+          console.log('DUPLICATE REFUND IGNORED', eventId)
+          break
+        }
+
         await supabase.from('usage_ledger').insert({
           user_id:     userId,
           feature:     'credits',
@@ -352,6 +364,7 @@ export async function POST(req: NextRequest) {
           },
         })
 
+        console.log('REFUND APPLIED ONCE', eventId)
         console.log('REFUND PROCESSED', {
           userId:         userId.slice(0, 8) + '…',
           credits_removed,
