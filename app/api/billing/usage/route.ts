@@ -2,7 +2,7 @@
 // Central billing authority — usage recording and summary.
 // POST { userId, feature, count? } — record usage
 // GET  ?userId=&feature= — get today + month summary
-// Updated: April 18, 2026 — credit floor protection (no negative balances)
+// Updated: April 18, 2026 — credit floor + negative usage_count for credits
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
@@ -18,7 +18,10 @@ function db() {
 
 // ── Credit floor helper ────────────────────────────────────────────────────────
 // Returns the current net credit balance for a user.
-// Positive = credits available. Negative = already over-debited (should not occur).
+//   Grants  → positive usage_count rows (e.g. +150)
+//   Usage   → negative usage_count rows (e.g. -10)
+//   Refunds → negative usage_count rows (e.g. -50)
+// Net = SUM of all rows. Positive = available balance.
 async function getNetCreditBalance(
   supabase: ReturnType<typeof db>,
   userId:   string,
@@ -47,24 +50,21 @@ export async function POST(req: NextRequest) {
 
     const supabase = db()
 
-    // ── Credit floor protection ─────────────────────────────────────────────
-    // For credit-feature deductions, verify the user has sufficient balance
-    // before recording. Grants (positive inserts) bypass this check.
-    // This endpoint records usage as POSITIVE counts (AI consumption deducts
-    // from balance by adding positive usage against negative-balance accounting).
-    // The balance check: currentBalance - count >= 0
+    // ── Credit direction + floor protection ─────────────────────────────────
+    // Credits follow signed accounting:
+    //   Grants  (webhook)  → positive rows (+N)
+    //   Usage   (this fn)  → negative rows (-N)   ← this is the fix
+    //   Refunds (webhook)  → negative rows (-N)
+    // The floor guard: currentBalance + usage_count >= 0
     if (feature === 'credits') {
+      const usage_count    = -Math.abs(count)    // always negative for deductions
       const currentBalance = await getNetCreditBalance(supabase, userId)
-      // usage_count in this route is always positive (consumption)
-      // balance decreases as grants are positive and usage is also positive,
-      // but net is computed as: grants (positive rows with type:grant) minus
-      // usage rows. If this route inserts positive rows as usage, we need to
-      // check if the current ledger SUM (which accounts for both grants and
-      // deductions already written) minus this new deduction stays >= 0.
-      if (currentBalance - count < 0) {
+
+      // ── Floor check ────────────────────────────────────────────────────────
+      if (currentBalance + usage_count < 0) {
         console.warn('CREDIT FLOOR BLOCKED', {
           userId:           userId.slice(0, 8) + '…',
-          attempted_change: -count,
+          attempted_change: usage_count,
           current_total:    currentBalance,
         })
         return NextResponse.json(
@@ -72,12 +72,30 @@ export async function POST(req: NextRequest) {
           { status: 402 }
         )
       }
+
+      // ── Insert negative row ────────────────────────────────────────────────
+      console.log('CREDIT USAGE', {
+        userId:         userId.slice(0, 8) + '…',
+        deducted:       usage_count,
+        balance_before: currentBalance,
+      })
+
+      const { error } = await supabase.from('usage_ledger').insert({
+        user_id:     userId,
+        feature:     'credits',
+        usage_count,             // negative value
+        metadata,
+      })
+
+      if (error) throw new Error(error.message)
+      return NextResponse.json({ ok: true, deducted: Math.abs(usage_count) })
     }
 
+    // ── Non-credit features — insert as-is (positive count) ─────────────────
     const { error } = await supabase.from('usage_ledger').insert({
       user_id:     userId,
       feature,
-      usage_count: count,
+      usage_count: count,        // positive for non-credit features
       metadata,
     })
 
