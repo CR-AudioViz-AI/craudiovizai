@@ -67,6 +67,21 @@ function db() {
   )
 }
 
+// ── Credit floor helper ────────────────────────────────────────────────────
+// Returns the current net credit balance for a user (grants + deductions).
+async function getNetCreditBalance(
+  supabase: ReturnType<typeof db>,
+  userId:   string,
+): Promise<number> {
+  const { data: rows, error } = await supabase
+    .from('usage_ledger')
+    .select('usage_count')
+    .eq('user_id', userId)
+    .eq('feature', 'credits')
+  if (error) throw new Error(`credit balance query failed: ${error.message}`)
+  return (rows ?? []).reduce((sum, r) => sum + (r.usage_count ?? 0), 0)
+}
+
 // ── Subscription plan → monthly credit grant ──────────────────────────────────
 const SUBSCRIPTION_CREDIT_MAP: Record<string, number> = {
   'price_1SdaKx7YeQ1dZTUvCeaYqKXh': 150,   // Starter Plan  ($9.99/mo)
@@ -351,10 +366,29 @@ export async function POST(req: NextRequest) {
           break
         }
 
+        // ── Credit floor protection ───────────────────────────────────────
+        const currentBalance  = await getNetCreditBalance(supabase, userId)
+        let finalRemoval      = credits_removed   // already negative
+
+        if (currentBalance + credits_removed < 0) {
+          // Clamp: only remove credits the user actually has
+          finalRemoval = -Math.min(Math.abs(credits_removed), Math.max(0, currentBalance))
+          console.warn('CREDIT FLOOR BLOCKED', {
+            userId:           userId.slice(0, 8) + '…',
+            attempted_change: credits_removed,
+            current_total:    currentBalance,
+            clamped_to:       finalRemoval,
+          })
+          if (finalRemoval === 0) {
+            console.warn('[billing/webhook] refund — user already at zero balance, skipping reversal')
+            break
+          }
+        }
+
         await supabase.from('usage_ledger').insert({
           user_id:          userId,
           feature:          'credits',
-          usage_count:      credits_removed,
+          usage_count:      finalRemoval,
           stripe_event_id:  eventId,         // top-level for indexed lookup
           metadata: {
             type:            'refund',
@@ -363,13 +397,15 @@ export async function POST(req: NextRequest) {
             amount_refunded: amountRefunded,
             amount_total:    amountTotal,
             credits_granted: creditsGranted,
+            original_removal: credits_removed,
+            floor_clamped:   finalRemoval !== credits_removed,
           },
         })
 
         console.log('REFUND APPLIED ONCE', eventId)
         console.log('REFUND PROCESSED', {
           userId:         userId.slice(0, 8) + '…',
-          credits_removed,
+          credits_removed: finalRemoval,
           amountRefunded,
           amountTotal,
           eventId:        eventId.slice(0, 20) + '...',
