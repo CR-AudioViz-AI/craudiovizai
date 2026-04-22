@@ -1,8 +1,10 @@
 // app/api/admin/credits/grant/route.ts
 // Admin credit grant — insert positive usage_ledger row for a given user.
-// Auth: Bearer token from Authorization header, ADMIN_EMAILS allowlist.
+// Auth: TWO valid paths:
+//   1. Bearer <supabase-jwt> for ADMIN_EMAILS user (browser/manual)
+//   2. X-Internal-Secret <INTERNAL_API_SECRET> (server-to-server / Claude automation)
 // POST { userId: string, credits: number }
-// Updated: April 18, 2026
+// Updated: April 18, 2026 — added internal secret auth path
 
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
@@ -10,7 +12,7 @@ import { createClient } from '@supabase/supabase-js'
 export const dynamic = 'force-dynamic'
 export const runtime  = 'nodejs'
 
-// ── Admin auth ────────────────────────────────────────────────────────────────
+// ── Admin allowlist ───────────────────────────────────────────────────────────
 const ADMIN_EMAILS = [
   'royhenderson@craudiovizai.com',
   'roy@craudiovizai.com',
@@ -24,12 +26,34 @@ function db() {
   )
 }
 
-async function verifyAdmin(
+// ── Auth: accepts either admin JWT or internal secret ─────────────────────────
+async function verifyAuth(
   req: NextRequest,
-): Promise<{ error?: NextResponse }> {
+): Promise<{ ok: boolean; source: string; error?: NextResponse }> {
+  // Path 1: Internal server-to-server secret (Claude, cron, multi-AI)
+  const internalSecret = req.headers.get('x-internal-secret')
+  if (internalSecret) {
+    if (internalSecret === process.env.INTERNAL_API_SECRET) {
+      return { ok: true, source: 'internal_secret' }
+    }
+    return {
+      ok: false,
+      source: 'internal_secret',
+      error: NextResponse.json({ error: 'Invalid internal secret' }, { status: 401 }),
+    }
+  }
+
+  // Path 2: Admin user JWT
   const authHeader = req.headers.get('authorization')
   if (!authHeader?.startsWith('Bearer ')) {
-    return { error: NextResponse.json({ error: 'Unauthorized' }, { status: 401 }) }
+    return {
+      ok: false,
+      source: 'none',
+      error: NextResponse.json(
+        { error: 'Unauthorized — provide Bearer token or X-Internal-Secret header' },
+        { status: 401 }
+      ),
+    }
   }
 
   const token    = authHeader.slice(7)
@@ -37,28 +61,31 @@ async function verifyAdmin(
   const { data: { user }, error } = await supabase.auth.getUser(token)
 
   if (error || !user) {
-    return { error: NextResponse.json({ error: 'Invalid token' }, { status: 401 }) }
+    return {
+      ok: false,
+      source: 'jwt',
+      error: NextResponse.json({ error: 'Invalid token' }, { status: 401 }),
+    }
   }
 
   if (!ADMIN_EMAILS.includes(user.email ?? '')) {
-    return { error: NextResponse.json({ error: 'Forbidden — admin only' }, { status: 403 }) }
+    return {
+      ok: false,
+      source: 'jwt',
+      error: NextResponse.json({ error: 'Forbidden — admin only' }, { status: 403 }),
+    }
   }
 
-  return {}
+  return { ok: true, source: 'admin_jwt' }
 }
 
 // ── POST /api/admin/credits/grant ─────────────────────────────────────────────
-// Body: { userId: string, credits: number }
-// Inserts a positive usage_ledger row — same as a Stripe grant but manual.
-// Does NOT touch profiles.credits_balance — balance is computed from ledger SUM.
 export async function POST(req: NextRequest) {
-  const { error: authError } = await verifyAdmin(req)
-  if (authError) return authError
+  const auth = await verifyAuth(req)
+  if (!auth.ok) return auth.error!
 
   try {
     const body = await req.json() as { userId?: unknown; credits?: unknown }
-
-    // ── Input validation ────────────────────────────────────────────────────
     const { userId, credits } = body
 
     if (!userId || typeof userId !== 'string' || userId.trim() === '') {
@@ -104,14 +131,14 @@ export async function POST(req: NextRequest) {
     }
 
     // ── Insert grant row ────────────────────────────────────────────────────
-    // Positive usage_count — matches grant direction from webhook handler.
     const { error: insertErr } = await supabase.from('usage_ledger').insert({
       user_id:     userId,
       feature:     'credits',
-      usage_count: credits,           // positive: increases balance
+      usage_count: credits,
       metadata: {
-        type:    'grant',
-        source:  'admin_grant',
+        type:        'grant',
+        source:      'admin_grant',
+        auth_source: auth.source,
       },
     })
 
@@ -120,9 +147,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: insertErr.message }, { status: 500 })
     }
 
-    console.log('ADMIN CREDIT GRANT', { userId, credits })
+    console.log('ADMIN CREDIT GRANT', { userId, credits, auth_source: auth.source })
 
-    return NextResponse.json({ ok: true, granted: credits })
+    return NextResponse.json({ ok: true, granted: credits, auth_source: auth.source })
 
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err)
