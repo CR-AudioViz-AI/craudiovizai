@@ -1,24 +1,11 @@
 // app/api/billing/webhook/route.ts
-// Central billing authority — Stripe webhook handler.
-// Handles: checkout.session.completed, customer.subscription.updated/deleted,
-//          invoice.payment_failed, charge.refunded, charge.refund.updated
-// Writes to: user_subscriptions, billing_events, usage_ledger (credits)
-// Updated: April 16, 2026 — getStripe() from process.env.STRIPE_SECRET_KEY. Live webhook secret bound 1776434316.
-//
-// IDEMPOTENCY GUARANTEE:
-//   Every event is logged to billing_events with processed=false on arrival.
-//   Processing only runs when processed=false. After success, set processed=true.
-//   Stripe retries the same event.id → skip guard fires → no double grant.
-//   This holds for both subscription grants and credit pack grants.
-//
-// CREDIT GRANT SOURCES:
-//   subscription  → SUBSCRIPTION_CREDIT_MAP[priceId]   (monthly plan credits)
-//   credit_pack   → metadata.credits_granted            (one-time pack, exact value)
-//                   fallback → PACK_CREDIT_MAP[priceId]
-//
-// PURCHASE TYPE DETECTION:
-//   session.metadata.purchase_type === "credit_pack" → pack flow
-//   session.metadata.purchase_type === undefined      → subscription flow (default)
+// ─────────────────────────────────────────────────────────────────────────────
+// CANONICAL ROLE: Stripe webhook receiver — MUST remain directly accessible.
+// CALLED BY: Stripe (live + test), /api/internal/exec replay_webhook action.
+// AUTOMATION: Use /api/internal/exec?action=replay_webhook to replay events.
+// WARNING: DO NOT block direct POSTs to this route — Stripe cannot be
+//          rerouted through /api/internal/exec. Blocking = broken payments.
+// ─────────────────────────────────────────────────────────────────────────────
 import { NextRequest, NextResponse } from 'next/server'
 import Stripe from 'stripe'
 import { createClient } from '@supabase/supabase-js'
@@ -178,6 +165,17 @@ async function grantCreditsToLedger(
 // ── Webhook POST handler ──────────────────────────────────────────────────────
 export async function POST(req: NextRequest) {
   const corsHeaders = getCorsHeaders(req)
+
+  // ── Exec-layer observability ──────────────────────────────────────────────
+  // Stripe must call this directly — do NOT block.
+  // Logs allow tracking of direct vs replayed webhook delivery.
+  console.warn('DIRECT BILLING ROUTE ACCESS', {
+    path:      '/api/billing/webhook',
+    method:    'POST',
+    exec_mode: process.env.BILLING_EXEC_MODE ?? 'standard',
+    note:      'Stripe webhook — direct access required, never block',
+  })
+
   const supabase    = db()
   const s           = getStripe()
 
