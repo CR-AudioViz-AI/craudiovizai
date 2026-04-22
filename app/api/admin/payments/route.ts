@@ -1,7 +1,13 @@
 // app/api/admin/payments/route.ts
-// Admin observability — recent Stripe checkout sessions + metadata.
-// Auth: Bearer token from Authorization header, admin email allowlist.
-// Updated: April 18, 2026
+// ─────────────────────────────────────────────────────────────────────────────
+// CANONICAL ROLE: Admin UI observability — read-only Stripe session data.
+// CALLED BY: /admin dashboard page (browser, admin users only).
+// AUTOMATION: Use /api/internal/exec for server-side admin operations.
+// NOTE: Admin UI routes stay open to authenticated admin browsers.
+//       BILLING_EXEC_MODE=internal_only logs a warning but does not block.
+// ─────────────────────────────────────────────────────────────────────────────
+// Auth: Bearer token from Authorization header, ADMIN_EMAILS allowlist.
+// Updated: April 22, 2026 — exec layer observability
 
 import { NextRequest, NextResponse } from 'next/server'
 import Stripe from 'stripe'
@@ -9,6 +15,8 @@ import { createClient } from '@supabase/supabase-js'
 
 export const dynamic = 'force-dynamic'
 export const runtime  = 'nodejs'
+
+const ROUTE_PATH = '/api/admin/payments'
 
 // ── Admin auth ────────────────────────────────────────────────────────────────
 const ADMIN_EMAILS = [
@@ -53,6 +61,17 @@ function getStripe() {
   return new Stripe(key, { apiVersion: '2024-06-20' })
 }
 
+// ── Exec-layer observability ──────────────────────────────────────────────────
+function logDirectAccess(method: string) {
+  const execMode = process.env.BILLING_EXEC_MODE ?? 'standard'
+  console.warn('DIRECT BILLING ROUTE ACCESS', {
+    path:     ROUTE_PATH,
+    method,
+    exec_mode: execMode,
+    note:     'Admin UI route — browser access expected. Automation: /api/internal/exec',
+  })
+}
+
 // ── GET /api/admin/payments ───────────────────────────────────────────────────
 // Query params:
 //   limit   — number of sessions to return (default 20, max 100)
@@ -61,6 +80,8 @@ function getStripe() {
 export async function GET(req: NextRequest) {
   const { error } = await verifyAdmin(req)
   if (error) return error
+
+  logDirectAccess('GET')
 
   const { searchParams } = new URL(req.url)
   const limit  = Math.min(parseInt(searchParams.get('limit')  ?? '20', 10), 100)
