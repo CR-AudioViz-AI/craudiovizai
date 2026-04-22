@@ -1,19 +1,44 @@
 // app/api/billing/usage/route.ts
-// Central billing authority — usage recording and summary.
+// ─────────────────────────────────────────────────────────────────────────────
+// CANONICAL ROLE: AI/feature credit consumption recording.
+// CALLED BY: Javari modules, app feature gates, internal platform services.
+// AUTOMATION: Use /api/internal/exec?action=credit_deduct for server-side ops.
+// NOTE: This route stays open to Javari modules — do NOT gate with 403.
+//       BILLING_EXEC_MODE=internal_only logs a warning but does not block,
+//       because Javari apps legitimately call this directly.
+// ─────────────────────────────────────────────────────────────────────────────
 // POST { userId, feature, count? } — record usage
 // GET  ?userId=&feature= — get today + month summary
-// Updated: April 18, 2026 — credit floor + negative usage_count for credits
+// Updated: April 22, 2026 — exec layer observability
+
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
 
+const ROUTE_PATH = '/api/billing/usage'
+
 function db() {
   return createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
   )
+}
+
+// ── Exec-layer observability ──────────────────────────────────────────────────
+// Logs when this route is called directly so we can track automation coverage.
+// In internal_only mode: warns but does NOT block (Javari apps call this legitimately).
+function logDirectAccess(method: string) {
+  const execMode = process.env.BILLING_EXEC_MODE ?? 'standard'
+  console.warn('DIRECT BILLING ROUTE ACCESS', {
+    path:     ROUTE_PATH,
+    method,
+    exec_mode: execMode,
+    note:     execMode === 'internal_only'
+      ? 'Consider routing credit ops through /api/internal/exec'
+      : 'standard',
+  })
 }
 
 // ── Credit floor helper ────────────────────────────────────────────────────────
@@ -37,6 +62,8 @@ async function getNetCreditBalance(
 }
 
 export async function POST(req: NextRequest) {
+  logDirectAccess('POST')
+
   try {
     const { userId, feature, count = 1, metadata = {} } =
       await req.json() as { userId: string; feature: string; count?: number; metadata?: Record<string, unknown> }
@@ -53,7 +80,7 @@ export async function POST(req: NextRequest) {
     // ── Credit direction + floor protection ─────────────────────────────────
     // Credits follow signed accounting:
     //   Grants  (webhook)  → positive rows (+N)
-    //   Usage   (this fn)  → negative rows (-N)   ← this is the fix
+    //   Usage   (this fn)  → negative rows (-N)
     //   Refunds (webhook)  → negative rows (-N)
     // The floor guard: currentBalance + usage_count >= 0
     if (feature === 'credits') {
@@ -108,6 +135,8 @@ export async function POST(req: NextRequest) {
 }
 
 export async function GET(req: NextRequest) {
+  logDirectAccess('GET')
+
   try {
     const userId  = req.nextUrl.searchParams.get('userId')
     const feature = req.nextUrl.searchParams.get('feature')

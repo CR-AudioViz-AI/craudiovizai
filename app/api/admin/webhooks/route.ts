@@ -1,13 +1,21 @@
 // app/api/admin/webhooks/route.ts
-// Admin observability — billing_events table with processing status.
-// Auth: Bearer token from Authorization header, admin email allowlist.
-// Updated: April 18, 2026
+// ─────────────────────────────────────────────────────────────────────────────
+// CANONICAL ROLE: Admin UI observability — read-only billing_events data.
+// CALLED BY: /admin dashboard page (browser, admin users only).
+// AUTOMATION: Use /api/internal/exec?action=replay_webhook for server-side ops.
+// NOTE: Admin UI routes stay open to authenticated admin browsers.
+//       BILLING_EXEC_MODE=internal_only logs a warning but does not block.
+// ─────────────────────────────────────────────────────────────────────────────
+// Auth: Bearer token from Authorization header, ADMIN_EMAILS allowlist.
+// Updated: April 22, 2026 — exec layer observability
 
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
 export const dynamic = 'force-dynamic'
 export const runtime  = 'nodejs'
+
+const ROUTE_PATH = '/api/admin/webhooks'
 
 // ── Admin auth ────────────────────────────────────────────────────────────────
 const ADMIN_EMAILS = [
@@ -46,6 +54,17 @@ async function verifyAdmin(
   return {}
 }
 
+// ── Exec-layer observability ──────────────────────────────────────────────────
+function logDirectAccess(method: string) {
+  const execMode = process.env.BILLING_EXEC_MODE ?? 'standard'
+  console.warn('DIRECT BILLING ROUTE ACCESS', {
+    path:     ROUTE_PATH,
+    method,
+    exec_mode: execMode,
+    note:     'Admin UI route — browser access expected. Automation: /api/internal/exec',
+  })
+}
+
 // ── GET /api/admin/webhooks ───────────────────────────────────────────────────
 // Query params:
 //   event_type  — filter by Stripe event type (e.g. 'checkout.session.completed')
@@ -56,6 +75,8 @@ async function verifyAdmin(
 export async function GET(req: NextRequest) {
   const { error } = await verifyAdmin(req)
   if (error) return error
+
+  logDirectAccess('GET')
 
   const { searchParams } = new URL(req.url)
   const eventType = searchParams.get('event_type') ?? undefined
