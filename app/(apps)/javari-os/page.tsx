@@ -37,6 +37,7 @@ interface Msg {
     cost_breakdown: string
     role_count:     number
     providers:      Record<string, { provider: string; tier: string; cost: number }>
+    executing?:     boolean   // true while handleApprove() is in-flight
   }
 }
 
@@ -209,6 +210,7 @@ export default function JavariOSPage() {
   const [execRows,    setExecRows]    = useState<ExecRow[]>([])
   const [sysStatus,   setSysStatus]   = useState<SysStatus | null>(null)
   const [execPulse,   setExecPulse]   = useState(false)
+  const [approvingId, setApprovingId] = useState<string | null>(null)  // team plan execution in-flight
 
   // ── Auth from global Providers context ────────────────────────────────────
   const { user: authUser, session: authSession, plan: userTier } = useAuth()
@@ -481,6 +483,94 @@ export default function JavariOSPage() {
     setMessages([{ id: Date.now().toString(), role: 'system', content: 'Session cleared.', ts: Date.now() }])
     setEnsemble([])
   }, [])
+
+  // ── Approve and execute a team plan ───────────────────────────────────────
+  // Dispatches the original input back to /api/javari/execute in auto mode
+  // so the router classifies + executes immediately (no second plan cycle).
+  const handleApprove = useCallback(async (originalInput: string, msgId: string) => {
+    if (approvingId) return                          // prevent double-tap
+    setApprovingId(msgId)
+    setAvState('executing')
+
+    // Optimistic: replace Approve button with "Executing..." label via state
+    setMessages(m => m.map(msg =>
+      msg.id === msgId
+        ? { ...msg, teamPlan: msg.teamPlan ? { ...msg.teamPlan, executing: true } : msg.teamPlan }
+        : msg
+    ))
+
+    try {
+      const execHeaders: Record<string, string> = { 'Content-Type': 'application/json' }
+      if (authToken) execHeaders['Authorization'] = `Bearer ${authToken}`
+
+      const res = await fetch('/api/javari/execute', {
+        method:  'POST',
+        headers: execHeaders,
+        body:    JSON.stringify({
+          input:   originalInput,
+          mode:    'auto',              // force execution — no second plan cycle
+          context: { userId: userId ?? undefined },
+        }),
+      })
+      const data = await res.json()
+      console.log('TEAM EXECUTION RESULT', data)
+
+      // ── Billing result ──────────────────────────────────────────────────
+      if (data.type === 'billing') {
+        setAvState('responding')
+        const r = data.result ?? {}
+        const summary =
+          r.balance !== undefined
+            ? `◈ Balance: ${r.balance} credits`
+            : r.granted !== undefined
+            ? `✓ Granted ${r.granted} credits — balance ${r.balance_after ?? '?'}`
+            : r.deducted !== undefined
+            ? `— Deducted ${r.deducted} credits — balance ${r.balance_after ?? '?'}`
+            : `✓ ${data.intent} — ${JSON.stringify(r).slice(0, 120)}`
+        setMessages(m => [...m, {
+          id: Date.now().toString(), role: 'assistant',
+          content: `[TEAM EXEC] ${summary}`, model: 'internal-exec', ts: Date.now(),
+        }])
+        return
+      }
+
+      // ── AI result — pipe to chat ────────────────────────────────────────
+      if (data.type === 'ai') {
+        setAvState('thinking')
+        const chatHeaders: Record<string, string> = { 'Content-Type': 'application/json' }
+        if (authToken) chatHeaders['Authorization'] = `Bearer ${authToken}`
+        const chatRes = await fetch('https://javari-ai.vercel.app/api/javari/chat', {
+          method: 'POST', headers: chatHeaders,
+          body: JSON.stringify({ message: originalInput, userId: userId ?? undefined, userTier }),
+        })
+        const chatData = await chatRes.json()
+        if (chatData.error || chatData.blocked) throw new Error(chatData.error ?? 'Blocked')
+        setAvState('responding')
+        setMessages(m => [...m, {
+          id: Date.now().toString(), role: 'assistant',
+          content: chatData.content, model: chatData.model, tier: chatData.tier, ts: Date.now(),
+        }])
+        return
+      }
+
+      // ── Fallback ────────────────────────────────────────────────────────
+      setMessages(m => [...m, {
+        id: Date.now().toString(), role: 'system',
+        content: `⚡ Team execution result: ${JSON.stringify(data).slice(0, 200)}`,
+        ts: Date.now(),
+      }])
+
+    } catch (err: unknown) {
+      setMessages(m => [...m, {
+        id: Date.now().toString(), role: 'assistant', error: true,
+        content: `[TEAM EXEC ERROR] ${err instanceof Error ? err.message : String(err)}`,
+        ts: Date.now(),
+      }])
+    } finally {
+      setApprovingId(null)
+      setTimeout(() => setAvState('idle'), 2000)
+    }
+  }, [approvingId, authToken, userId, userTier])
 
   const PROMPTS = ['Write a business plan', 'Create brand content', 'Analyze my strategy', 'Build a campaign', 'Draft an email', 'Explain this concept']
 
@@ -778,19 +868,14 @@ export default function JavariOSPage() {
                             </div>
                           )}
                           <button
-                            onClick={() => {
-                              setMessages(m => [...m, {
-                                id:      Date.now().toString(),
-                                role:    'system' as const,
-                                content: `⚡ Team execution approved — wiring in progress`,
-                                ts:      Date.now(),
-                              }])
-                            }}
+                            onClick={() => handleApprove(msg.content, msg.id)}
+                            disabled={approvingId === msg.id}
                             className="w-full mt-2 py-1.5 font-mono text-[9px] tracking-[0.2em] uppercase
                               rounded border border-purple-800/50 bg-purple-950/30 text-purple-400
-                              hover:border-purple-700/60 hover:bg-purple-950/50 transition-all"
+                              hover:border-purple-700/60 hover:bg-purple-950/50 transition-all
+                              disabled:opacity-50 disabled:cursor-wait"
                           >
-                            ▶ APPROVE EXECUTION
+                            {plan.executing ? '⚡ EXECUTING TEAM PLAN…' : '▶ APPROVE EXECUTION'}
                           </button>
                         </div>
                       </div>
