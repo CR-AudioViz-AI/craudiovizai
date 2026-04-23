@@ -3,7 +3,7 @@
 // TRUE 2×2 QUADRANT: grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr
 // Each quadrant = exactly 50% width × 50% height. No dominant panel.
 // Design: SCIF terminal / NORAD ops floor — deep black, glowing separators, phosphor status
-// Updated: March 22, 2026 — Auth from useAuth() Providers context. Local getSession() removed.
+// Updated: April 23, 2026 — execMode toggle (auto | team), wired to /api/javari/execute
 'use client'
 
 import {
@@ -17,18 +17,27 @@ import { useAuth } from '@/app/providers'
 // Types
 // ─────────────────────────────────────────────────────────────────────────────
 type Mode       = 'single' | 'council'
+type ExecMode   = 'auto' | 'team'           // NEW: /api/javari/execute routing
 type AvState    = 'idle' | 'thinking' | 'responding' | 'executing'
-type MsgRole    = 'user' | 'assistant' | 'system' | 'agent'
+type MsgRole    = 'user' | 'assistant' | 'system' | 'agent' | 'team-plan'
 
 interface Msg {
-  id:      string
-  role:    MsgRole
-  content: string
-  agent?:  'planner' | 'builder' | 'validator'
-  model?:  string
-  tier?:   string
-  ts:      number
-  error?:  boolean
+  id:        string
+  role:      MsgRole
+  content:   string
+  agent?:    'planner' | 'builder' | 'validator'
+  model?:    string
+  tier?:     string
+  ts:        number
+  error?:    boolean
+  // NEW: team-plan payload (only present when role === 'team-plan')
+  teamPlan?: {
+    intent:         string
+    estimated_cost: number
+    cost_breakdown: string
+    role_count:     number
+    providers:      Record<string, { provider: string; tier: string; cost: number }>
+  }
 }
 
 interface EnsembleStep {
@@ -76,7 +85,6 @@ const AGENT_CFG = {
 // Avatar: pure CSS animated, state-driven
 // ─────────────────────────────────────────────────────────────────────────────
 function Avatar({ state }: { state: AvState }) {
-  // State-driven ring color + glow around the portrait
   const ringStyle: Record<AvState, string> = {
     idle:       'ring-zinc-800/60',
     thinking:   'ring-violet-500/60 av-blink',
@@ -92,7 +100,6 @@ function Avatar({ state }: { state: AvState }) {
 
   return (
     <div className="flex flex-col items-center gap-3 select-none" style={{ width: '100%' }}>
-      {/* Portrait — aspect-ratio 3/4, scales with container width */}
       <div
         className={`transition-all duration-500 ${ringStyle[state]} ${glowStyle[state]}`}
         style={{
@@ -119,7 +126,6 @@ function Avatar({ state }: { state: AvState }) {
           }}
           draggable={false}
         />
-        {/* State dot — bottom-right */}
         <div
           className={`absolute bottom-1.5 right-1.5 w-2.5 h-2.5 rounded-full border border-black/40 transition-all duration-300 ${
             state === 'idle'       ? 'bg-zinc-600'           :
@@ -130,7 +136,6 @@ function Avatar({ state }: { state: AvState }) {
         />
       </div>
 
-      {/* State label */}
       <div className="text-center">
         <p className={`font-mono text-[10px] tracking-[0.25em] transition-colors duration-300 ${
           state === 'idle'       ? 'text-zinc-700'            :
@@ -144,7 +149,7 @@ function Avatar({ state }: { state: AvState }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Quadrant wrapper — enforces equal sizing via CSS, adds glow
+// Quadrant wrapper
 // ─────────────────────────────────────────────────────────────────────────────
 function Q({
   id, label, tag, glow = 'zinc', children,
@@ -172,13 +177,11 @@ function Q({
       id={id}
       className={`relative flex flex-col border bg-black/40 overflow-hidden ${glowMap[glow]}`}
     >
-      {/* Corner label */}
       <div className="flex-shrink-0 flex items-center gap-2 px-4 py-2 border-b border-zinc-800/40">
         <span className={`font-mono text-[9px] tracking-[0.3em] uppercase ${labelMap[glow]}`}>{label}</span>
         {tag && <span className="font-mono text-[9px] text-zinc-700 ml-auto">{tag}</span>}
       </div>
 
-      {/* Content */}
       <div className="flex-1 min-h-0 overflow-hidden">
         {children}
       </div>
@@ -192,8 +195,9 @@ function Q({
 export const dynamic = 'force-dynamic'
 
 export default function JavariOSPage() {
-  // State
+  // ── State ──────────────────────────────────────────────────────────────────
   const [mode,        setMode]        = useState<Mode>('single')
+  const [execMode,    setExecMode]    = useState<ExecMode>('auto')   // NEW
   const [avState,     setAvState]     = useState<AvState>('idle')
   const [messages,    setMessages]    = useState<Msg[]>([
     { id: '0', role: 'system', content: 'JAVARI OS — online', ts: Date.now() }
@@ -206,11 +210,10 @@ export default function JavariOSPage() {
   const [sysStatus,   setSysStatus]   = useState<SysStatus | null>(null)
   const [execPulse,   setExecPulse]   = useState(false)
 
-  // ── Auth from global Providers context ───────────────────────────────────
+  // ── Auth from global Providers context ────────────────────────────────────
   const { user: authUser, session: authSession, plan: userTier } = useAuth()
   const userId    = authUser?.id ?? null
   const authToken = authSession?.access_token ?? null
-  // Keep local state aliases for backward compat with existing fetch logic
   const [_userId,    setUserId]    = useState<string | null>(null)
   const [_authToken, setAuthToken] = useState<string | null>(null)
   const [balance,   setBalance]   = useState<number | null>(null)
@@ -250,7 +253,6 @@ export default function JavariOSPage() {
         budgetSpent: data.system?.budget_spent ?? 0,
         budgetTotal: data.system?.budget_daily ?? 1.00,
       })
-      // Recent executions
       const recent: Array<Record<string,unknown>> = data.recent_executions ?? []
       if (recent.length) {
         setExecRows(recent.slice(0, 8).map((e, i) => ({
@@ -273,7 +275,6 @@ export default function JavariOSPage() {
     return () => clearInterval(t)
   }, [loadStatus])
 
-  // Session loaded by global Providers — log for validation
   useEffect(() => {
     if (userId) {
       console.log('JAVARI_SESSION_LOADED', { userId: userId.slice(0,8) })
@@ -311,6 +312,76 @@ export default function JavariOSPage() {
     }).catch(() => {})
 
     try {
+      // ── NEW: Route through /api/javari/execute ──────────────────────────
+      console.log('JAVARI UI MODE', execMode, { content: content.slice(0, 60), userId: userId?.slice(0, 8) })
+
+      const executeHeaders: Record<string, string> = { 'Content-Type': 'application/json' }
+      if (authToken) executeHeaders['Authorization'] = `Bearer ${authToken}`
+
+      const executeBody: Record<string, unknown> = {
+        input: content,
+        mode:  execMode,
+        context: {
+          userId: userId ?? undefined,
+          ...(execMode === 'team' && {
+            teamConfig: {
+              architect: 'claude-sonnet',
+              builder:   'openai',
+              tester:    'llama',
+            },
+          }),
+        },
+      }
+
+      const execRes  = await fetch('/api/javari/execute', {
+        method:  'POST',
+        headers: executeHeaders,
+        body:    JSON.stringify(executeBody),
+      })
+      const execData = await execRes.json()
+
+      console.log('JAVARI UI MODE', execMode, execData)
+
+      // ── Billing response — render result ──────────────────────────────
+      if (execData.type === 'billing') {
+        setAvState('responding')
+        const r = execData.result ?? {}
+        const summary =
+          r.balance !== undefined
+            ? `◈ Balance: ${r.balance} credits`
+            : r.granted !== undefined
+            ? `✓ Granted ${r.granted} credits — balance ${r.balance_after ?? '?'}`
+            : r.deducted !== undefined
+            ? `— Deducted ${r.deducted} credits — balance ${r.balance_after ?? '?'}`
+            : `✓ ${execData.intent} — ${JSON.stringify(r).slice(0, 120)}`
+        setMessages(m => [...m, {
+          id: Date.now().toString(), role: 'assistant',
+          content: summary, model: 'internal-exec', ts: Date.now(),
+        }])
+        return
+      }
+
+      // ── Team plan — render cost + breakdown + Approve button ──────────
+      if (execData.type === 'team') {
+        setAvState('responding')
+        const plan = execData.plan ?? {}
+        setMessages(m => [...m, {
+          id:       Date.now().toString(),
+          role:     'team-plan' as const,
+          content:  content,
+          ts:       Date.now(),
+          teamPlan: {
+            intent:         execData.intent   ?? 'unknown',
+            estimated_cost: plan.estimated_cost ?? 0,
+            cost_breakdown: plan.cost_breakdown ?? '',
+            role_count:     plan.role_count     ?? 0,
+            providers:      plan.providers      ?? {},
+          },
+        }])
+        return
+      }
+
+      // ── AI intent — continue to existing chat/council flow ────────────
       if (mode === 'council') {
         console.log('JAVARI_REQUEST_SENT', { route: '/api/javari/team', userId: userId?.slice(0,8) })
         const teamHeaders: Record<string, string> = { 'Content-Type': 'application/json' }
@@ -322,10 +393,8 @@ export default function JavariOSPage() {
         const data = await res.json()
         if (data.error) throw new Error(data.error)
 
-        // Populate agent panel
         if (data.ensemble?.length) setEnsemble(data.ensemble)
 
-        // Show each ensemble step as labeled agent message
         if (data.ensemble?.length) {
           const agentMsgs: Msg[] = data.ensemble.map((step: EnsembleStep) => ({
             id:      Date.now().toString() + Math.random(),
@@ -339,7 +408,6 @@ export default function JavariOSPage() {
           setMessages(m => [...m, ...agentMsgs])
         }
 
-        // Final content from validator
         if (data.content) {
           setAvState('responding')
           setMessages(m => [...m, {
@@ -364,6 +432,7 @@ export default function JavariOSPage() {
           content: data.content, model: data.model, tier: data.tier, ts: Date.now(),
         }])
       }
+
     } catch (err: unknown) {
       setMessages(m => [...m, {
         id: Date.now().toString(), role: 'assistant', error: true,
@@ -373,7 +442,7 @@ export default function JavariOSPage() {
       setLoading(false)
       setTimeout(() => setAvState('idle'), 2000)
     }
-  }, [input, loading, mode, userId, authToken, userTier])
+  }, [input, loading, mode, execMode, userId, authToken, userTier])
 
   // ── Run Loop ───────────────────────────────────────────────────────────────
   const runLoop = useCallback(async () => {
@@ -414,7 +483,6 @@ export default function JavariOSPage() {
   }, [])
 
   const PROMPTS = ['Write a business plan', 'Create brand content', 'Analyze my strategy', 'Build a campaign', 'Draft an email', 'Explain this concept']
-  const hasChat = (messages ?? []).filter(m => m.role !== 'system').length > 0
 
   return (
     <>
@@ -440,7 +508,6 @@ export default function JavariOSPage() {
 
         {/* ── HEADER ───────────────────────────────────────────────────── */}
         <header className="flex-shrink-0 relative z-20 flex items-center px-5 border-b border-zinc-800/60 bg-black/60 backdrop-blur-sm gap-4" style={{ height: '56px', minHeight: '56px', maxHeight: '56px' }}>
-          {/* Javari AI logo in header — white pill container, responsive size */}
           <div className="flex-shrink-0 flex items-center" style={{ height: '40px' }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
@@ -454,7 +521,7 @@ export default function JavariOSPage() {
 
           <div className="w-px h-5 bg-zinc-800" />
 
-          {/* Mode indicator */}
+          {/* Mode indicator (single / council) — UNCHANGED */}
           <div className="relative flex-shrink-0" onClick={e => e.stopPropagation()}>
             <button
               onClick={() => setModeOpen(v => !v)}
@@ -494,7 +561,6 @@ export default function JavariOSPage() {
             </div>
           )}
 
-          {/* Status pill */}
           {sysStatus && (
             <div className="hidden md:flex items-center gap-3 font-mono text-[10px] text-zinc-600">
               <span className={sysStatus.mode === 'BUILD' ? 'text-blue-600' : 'text-amber-600'}>{sysStatus.mode}</span>
@@ -512,10 +578,6 @@ export default function JavariOSPage() {
         </header>
 
         {/* ── QUADRANT GRID ─────────────────────────────────────────────── */}
-        {/*
-          Desktop: strict 2×2 — each cell exactly 1fr × 1fr
-          Mobile:  single column, order: chat, agents, exec, avatar
-        */}
         <main className="flex-1 min-h-0 relative z-10
           grid gap-px bg-zinc-800/40
           grid-cols-1 grid-rows-[auto_1fr_auto_auto]
@@ -527,10 +589,8 @@ export default function JavariOSPage() {
             className="order-4 md:order-1">
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', padding: '1rem', gap: '1rem', overflow: 'hidden' }}>
 
-              {/* Avatar */}
               <Avatar state={avState} />
 
-              {/* Status grid */}
               <div className="w-full space-y-2 font-mono">
                 {sysStatus ? (
                   <>
@@ -540,14 +600,13 @@ export default function JavariOSPage() {
                       { k: 'VERIFIED', v: `${sysStatus.pct}%`,                     c: 'text-emerald-500' },
                       { k: 'PENDING',  v: `${sysStatus.pending}`,                  c: 'text-amber-600' },
                       { k: 'SPENT',    v: `$${(sysStatus.budgetSpent ?? 0).toFixed(4)}`, c: 'text-amber-600' },
-                      { k: 'REMAINING', v: `$${(sysStatus.budget ?? 0).toFixed(4)}`,        c: 'text-emerald-600' },
+                      { k: 'REMAINING', v: `$${(sysStatus.budget ?? 0).toFixed(4)}`,     c: 'text-emerald-600' },
                     ].map(row => (
                       <div key={row.k} className="flex items-center justify-between px-1">
                         <span className="text-[9px] tracking-[0.2em] text-zinc-700">{row.k}</span>
                         <span className={`text-xs font-bold tabular-nums ${row.c}`}>{row.v}</span>
                       </div>
                     ))}
-                    {/* Progress bar */}
                     <div className="h-px w-full bg-zinc-800 rounded overflow-hidden mt-1">
                       <div className="h-full bg-gradient-to-r from-violet-700 via-indigo-600 to-emerald-600 transition-all duration-1000"
                         style={{ width: `${sysStatus.pct}%` }} />
@@ -558,7 +617,6 @@ export default function JavariOSPage() {
                 )}
               </div>
 
-              {/* Run loop button */}
               <button
                 onClick={runLoop}
                 disabled={avState === 'executing'}
@@ -573,12 +631,41 @@ export default function JavariOSPage() {
           </Q>
 
           {/* ── Q2: CHAT ────────────────────────────────────── top-right ── */}
-          <Q id="q2" label="Q2 · LIVE FEED" tag={`/${mode.toUpperCase()}`} glow="blue"
+          <Q id="q2" label="Q2 · LIVE FEED" tag={`/${mode.toUpperCase()} · ${execMode.toUpperCase()}`} glow="blue"
             className="order-1 md:order-2 min-h-[50vh] md:min-h-0">
             <div className="h-full flex flex-col">
 
               {/* ── INPUT — FIXED AT TOP ───────────────────────────────── */}
               <div className="flex-shrink-0 border-b border-zinc-800/40 px-3 py-2.5">
+
+                {/* ── EXECUTION MODE TOGGLE — NEW ───────────────────────
+                    Two compact buttons, inline. Matches terminal aesthetic.
+                    auto  → cyan  (cost-optimised, single dispatch)
+                    team  → purple (multi-AI plan, requires approval)
+                ──────────────────────────────────────────────────────── */}
+                <div className="flex items-center gap-1 mb-2">
+                  <button
+                    onClick={() => setExecMode('auto')}
+                    className={`px-2.5 py-1 font-mono text-[9px] tracking-[0.2em] uppercase rounded border transition-all ${
+                      execMode === 'auto'
+                        ? 'border-cyan-700/60 bg-cyan-950/40 text-cyan-400'
+                        : 'border-zinc-800/50 bg-transparent text-zinc-700 hover:text-zinc-500 hover:border-zinc-700'
+                    }`}
+                  >
+                    ◉ JAVARI AUTO
+                  </button>
+                  <button
+                    onClick={() => setExecMode('team')}
+                    className={`px-2.5 py-1 font-mono text-[9px] tracking-[0.2em] uppercase rounded border transition-all ${
+                      execMode === 'team'
+                        ? 'border-purple-700/60 bg-purple-950/40 text-purple-400'
+                        : 'border-zinc-800/50 bg-transparent text-zinc-700 hover:text-zinc-500 hover:border-zinc-700'
+                    }`}
+                  >
+                    ◈ MULTI-AI TEAM
+                  </button>
+                </div>
+
                 <div className="flex items-center gap-2 bg-zinc-900/50 border border-zinc-800/60
                   hover:border-blue-800/40 focus-within:border-blue-700/50 rounded-md px-3 py-2 transition-all">
                   <span className="font-mono text-[10px] text-zinc-700 flex-shrink-0 select-none">›</span>
@@ -588,7 +675,7 @@ export default function JavariOSPage() {
                     value={input}
                     onChange={e => setInput(e.target.value)}
                     onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() } }}
-                    placeholder={mode === 'council' ? 'QUERY COUNCIL…' : 'QUERY JAVARI…'}
+                    placeholder={execMode === 'team' ? 'PLAN WITH MULTI-AI TEAM…' : mode === 'council' ? 'QUERY COUNCIL…' : 'QUERY JAVARI…'}
                     className="flex-1 bg-transparent resize-none text-xs text-zinc-200 placeholder-zinc-700
                       outline-none font-mono min-h-[16px] max-h-[80px] leading-relaxed tracking-wide"
                   />
@@ -625,10 +712,9 @@ export default function JavariOSPage() {
                 </p>
               </div>
 
-              {/* ── LIVE FEED — newest entry at top, older below ──────── */}
+              {/* ── LIVE FEED ────────────────────────────────────────────── */}
               <div className="flex-1 overflow-y-auto min-h-0" ref={feedRef}>
 
-                {/* In-flight row: always at very top while loading */}
                 {loading && (
                   <div className="border-b border-zinc-800/30 px-3 py-2 bg-blue-950/10">
                     <div className="flex items-center gap-2 mb-1">
@@ -636,7 +722,7 @@ export default function JavariOSPage() {
                         {new Date().toISOString().replace('T', ' ').slice(0, 19)}
                       </span>
                       <span className="font-mono text-[9px] text-blue-500 tracking-widest">
-                        — {mode === 'council' ? 'COUNCIL' : 'JAVARI'}
+                        — {execMode === 'team' ? 'PLANNING' : mode === 'council' ? 'COUNCIL' : 'JAVARI'}
                       </span>
                       <span className="flex gap-0.5 ml-1">
                         {[0,1,2].map(i => (
@@ -653,9 +739,65 @@ export default function JavariOSPage() {
                   </div>
                 )}
 
-                {/* Messages: reversed so newest is at top */}
                 {[...messages].reverse().map(msg => {
                   const ts = new Date(msg.ts).toISOString().replace('T', ' ').slice(0, 19)
+
+                  // ── NEW: Team plan card ──────────────────────────────
+                  if (msg.role === 'team-plan' && msg.teamPlan) {
+                    const plan = msg.teamPlan
+                    return (
+                      <div key={msg.id} className="border-b border-zinc-800/20 px-3 py-3 bg-purple-950/10">
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className="font-mono text-[9px] text-zinc-700 tabular-nums">{ts}</span>
+                          <span className="font-mono text-[9px] text-purple-400 tracking-widest">— MULTI-AI PLAN</span>
+                        </div>
+                        <div className="border border-purple-900/40 rounded-lg p-3 space-y-2 bg-purple-950/20">
+                          <div className="flex items-center justify-between">
+                            <span className="font-mono text-[10px] text-purple-300 tracking-wider uppercase">
+                              {plan.intent} · {plan.role_count} agent{plan.role_count !== 1 ? 's' : ''}
+                            </span>
+                            <span className="font-mono text-[10px] text-purple-400 tabular-nums">
+                              {plan.estimated_cost}u est.
+                            </span>
+                          </div>
+                          <p className="font-mono text-[9px] text-zinc-600 tracking-wider break-all">
+                            {plan.cost_breakdown}
+                          </p>
+                          {Object.entries(plan.providers).length > 0 && (
+                            <div className="flex flex-wrap gap-1 pt-1">
+                              {Object.entries(plan.providers).map(([role, p]) => (
+                                <span key={role}
+                                  className={`font-mono text-[9px] px-1.5 py-0.5 rounded border ${
+                                    p.tier === 'free'     ? 'border-emerald-900/40 text-emerald-700 bg-emerald-950/30' :
+                                    p.tier === 'low'      ? 'border-blue-900/40    text-blue-700    bg-blue-950/30'    :
+                                                            'border-amber-900/40   text-amber-700   bg-amber-950/30'
+                                  }`}>
+                                  {role}:{p.provider}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                          <button
+                            onClick={() => {
+                              setMessages(m => [...m, {
+                                id:      Date.now().toString(),
+                                role:    'system' as const,
+                                content: `⚡ Team execution approved — wiring in progress`,
+                                ts:      Date.now(),
+                              }])
+                            }}
+                            className="w-full mt-2 py-1.5 font-mono text-[9px] tracking-[0.2em] uppercase
+                              rounded border border-purple-800/50 bg-purple-950/30 text-purple-400
+                              hover:border-purple-700/60 hover:bg-purple-950/50 transition-all"
+                          >
+                            ▶ APPROVE EXECUTION
+                          </button>
+                        </div>
+                      </div>
+                    )
+                  }
+
+                  // ── Existing message rendering — UNCHANGED ───────────
                   const roleLabel =
                     msg.role === 'user'           ? 'YOU'       :
                     msg.role === 'system'          ? 'SYS'       :
@@ -685,7 +827,6 @@ export default function JavariOSPage() {
                         msg.role === 'user' ? 'bg-zinc-900/30' : ''
                       }`}
                     >
-                      {/* Header: timestamp — ROLE  [model] */}
                       <div className="flex items-center gap-2 mb-1.5 flex-wrap">
                         <span className="font-mono text-[9px] text-zinc-700 tabular-nums flex-shrink-0 select-none">
                           {ts}
@@ -699,7 +840,6 @@ export default function JavariOSPage() {
                           </span>
                         )}
                       </div>
-                      {/* Content */}
                       <p className={`font-mono text-xs leading-relaxed whitespace-pre-wrap break-words ${textColor}`}>
                         {msg.content}
                       </p>
@@ -707,7 +847,6 @@ export default function JavariOSPage() {
                   )
                 })}
 
-                {/* Empty-state prompt chips */}
                 {(messages ?? []).filter(m => m.role !== 'system').length === 0 && !loading && (
                   <div className="flex flex-col items-center justify-center h-full gap-3 py-8 select-none">
                     <p className="font-mono text-[9px] text-zinc-800 tracking-[0.3em] uppercase">
@@ -747,7 +886,6 @@ export default function JavariOSPage() {
                       waiting ? 'bg-zinc-900/20 av-blink border-dashed' :
                                 'border-zinc-800/30 bg-transparent'
                     }`}>
-                    {/* Agent header */}
                     <div className="flex items-center gap-2 mb-2">
                       <span className="font-mono text-base leading-none" style={{ color: cfg.hue }}>{cfg.glyph}</span>
                       <span className="font-mono text-[10px] tracking-[0.25em] uppercase" style={{ color: step ? cfg.hue : '#52525b' }}>{cfg.label}</span>
@@ -759,11 +897,9 @@ export default function JavariOSPage() {
                       {waiting && !step && (
                         <span className="font-mono text-[9px] ml-auto" style={{ color: cfg.hue + '80' }}>WAITING…</span>
                       )}
-                      {/* Active status dot */}
                       <div className={`w-1.5 h-1.5 rounded-full ml-1 ${step ? 'bg-emerald-500' : waiting ? 'av-blink' : 'bg-zinc-800'}`}
                         style={waiting && !step ? { backgroundColor: cfg.hue, opacity: 0.5 } : undefined} />
                     </div>
-                    {/* Content */}
                     {step ? (
                       <p className="text-xs text-zinc-400 leading-relaxed line-clamp-4 font-mono">{step.content}</p>
                     ) : (
@@ -773,7 +909,6 @@ export default function JavariOSPage() {
                                               'Reviews and validates output'}
                       </p>
                     )}
-                    {/* Tier badge */}
                     {step?.tier && (
                       <div className="mt-2">
                         <span className={`font-mono text-[9px] px-1.5 py-0.5 rounded ${
@@ -814,7 +949,6 @@ export default function JavariOSPage() {
                         : 'border-zinc-800/25 bg-zinc-900/20'
                     }`}>
                     <div className="flex items-start gap-2">
-                      {/* Status glyph */}
                       <span className={`font-mono text-xs flex-shrink-0 mt-px ${
                         row.verified                   ? 'text-emerald-500' :
                         row.status === 'completed'     ? 'text-blue-500'    :
@@ -845,4 +979,3 @@ export default function JavariOSPage() {
     </>
   )
 }
-
