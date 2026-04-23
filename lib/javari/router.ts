@@ -11,12 +11,12 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 // ── Execution mode ────────────────────────────────────────────────────────────
-// 'auto'  — default. classifyIntent + selectModel. Executes immediately.
+// 'auto'  — default. classifyIntent + selectModel. Executes billing immediately.
 // 'team'  — user-configured Multi-AI team. Returns plan + cost. Requires approval.
 export type ExecutionMode = 'auto' | 'team'
 
 // ── Team configuration ────────────────────────────────────────────────────────
-// User assigns providers to roles. Any role can be omitted — unfilled roles are skipped.
+// User assigns providers to roles. Any role can be omitted — unfilled roles skipped.
 export interface TeamConfig {
   architect?:  TeamProvider   // High-level planning, decomposition
   builder?:    TeamProvider   // Implementation, code generation
@@ -26,17 +26,17 @@ export interface TeamConfig {
 }
 
 export type TeamProvider =
-  | 'openai'         // gpt-4o-mini (cheapest tier)
-  | 'openai-gpt4'    // gpt-4o (moderate)
-  | 'claude'         // claude-haiku (low)
-  | 'claude-sonnet'  // claude-sonnet-4 (moderate)
-  | 'xai'            // Grok (low-moderate)
-  | 'gemini'         // Gemini Flash (free tier)
-  | 'llama'          // Llama via Groq (free)
+  | 'openai'         // gpt-4o-mini — low cost
+  | 'openai-gpt4'    // gpt-4o — moderate cost
+  | 'claude'         // claude-haiku — low cost
+  | 'claude-sonnet'  // claude-sonnet — moderate cost
+  | 'xai'            // Grok — low-moderate cost
+  | 'gemini'         // Gemini Flash — free tier
+  | 'llama'          // Llama via Groq — free tier
 
-// ── Provider cost table (relative units) ─────────────────────────────────────
-// Calibrated to COST LAW: free=0, low=1, moderate=2, high=5.
-// Update base/tier here when real API pricing is available.
+// ── Provider cost table ───────────────────────────────────────────────────────
+// base units × tier multiplier = role cost.
+// Multipliers: free=0, low=1, moderate=2, high=5 (per COST LAW)
 const PROVIDER_COST: Record<TeamProvider, { tier: 'free' | 'low' | 'moderate' | 'high'; base: number }> = {
   'openai':        { tier: 'low',      base: 1 },
   'openai-gpt4':   { tier: 'moderate', base: 2 },
@@ -54,8 +54,7 @@ const TIER_MULTIPLIER: Record<'free' | 'low' | 'moderate' | 'high', number> = {
   high:     5,
 }
 
-// ── Multi-AI plan result ──────────────────────────────────────────────────────
-// Returned by route() when mode === 'team'. Never executes. Requires approval.
+// ── Multi-AI plan ─────────────────────────────────────────────────────────────
 export interface MultiAIPlan {
   type:              'multi_ai_plan'
   roles:             TeamConfig
@@ -67,8 +66,8 @@ export interface MultiAIPlan {
 }
 
 // ── calculateCost ─────────────────────────────────────────────────────────────
-// Returns total relative cost + per-role breakdown for a TeamConfig.
-// cost = SUM of (base * TIER_MULTIPLIER) for each filled role.
+// Returns total relative cost + per-role breakdown for a team configuration.
+// cost = SUM(base × tier_multiplier) for each filled role.
 export function calculateCost(teamConfig: TeamConfig): {
   total:     number
   breakdown: Partial<Record<keyof TeamConfig, number>>
@@ -108,16 +107,15 @@ export type AIIntent =
 
 export type RouterIntent = BillingIntent | AIIntent | 'unknown'
 
-// ── Extracted params from natural language ────────────────────────────────────
+// ── Extracted params ──────────────────────────────────────────────────────────
 export interface ExtractedParams {
-  credits?:  number   // parsed from "give 50 credits", "add 100 credits", etc.
-  eventId?:  string   // parsed from "replay evt_xxx"
-  email?:    string   // parsed from "check balance for roy@..."
-  userId?:   string   // parsed from UUID in input
-  limit?:    number   // parsed from "show last 20"
+  credits?:  number
+  eventId?:  string
+  email?:    string
+  userId?:   string
+  limit?:    number
 }
 
-// ── Classification result ─────────────────────────────────────────────────────
 export interface ClassifyResult {
   intent: RouterIntent
   params: ExtractedParams
@@ -137,7 +135,7 @@ const BILLING_KEYWORDS: Record<BillingIntent, string[]> = {
   ],
   get_balance:    [
     'balance', 'how many credits', 'credit count', 'check credits',
-    'check balance', 'what is my balance', "what's my balance",
+    'check balance', 'what is my balance', "what\'s my balance",
     'show balance', 'view balance', 'credits left', 'remaining credits',
     'how much credit',
   ],
@@ -161,7 +159,6 @@ const BILLING_KEYWORDS: Record<BillingIntent, string[]> = {
 }
 
 // ── Param extractors ──────────────────────────────────────────────────────────
-
 function extractNumber(input: string): number | undefined {
   const match = input.match(/\b(\d{1,7})\b/)
   if (!match) return undefined
@@ -182,19 +179,18 @@ function extractUserId(input: string): string | undefined {
 }
 
 // ── classifyIntent ────────────────────────────────────────────────────────────
-// Phase 1: keyword scan  Phase 2: regex NLP  Phase 3: param extraction
-// Phase 4: AI keyword scan
+// Phase 1: keyword scan | Phase 2: regex NLP | Phase 3: param extraction | Phase 4: AI scan
 export function classifyIntent(input: string): ClassifyResult {
   const lower  = input.toLowerCase()
   const params: ExtractedParams = {}
 
-  // Phase 1: keyword scan
+  // Phase 1
   let matched: BillingIntent | null = null
   for (const [intent, keywords] of Object.entries(BILLING_KEYWORDS) as [BillingIntent, string[]][]) {
     if (keywords.some(kw => lower.includes(kw))) { matched = intent; break }
   }
 
-  // Phase 2: regex NLP patterns
+  // Phase 2
   if (!matched) {
     if (/\b(give|add|grant|send|issue|load)\b.{0,40}\b\d+\b/.test(lower)) {
       matched = 'grant_credits'
@@ -208,7 +204,7 @@ export function classifyIntent(input: string): ClassifyResult {
     }
   }
 
-  // Phase 3: param extraction
+  // Phase 3
   const num = extractNumber(input)
   if (num !== undefined) {
     if (matched === 'grant_credits' || matched === 'deduct_credits') params.credits = num
@@ -223,7 +219,7 @@ export function classifyIntent(input: string): ClassifyResult {
     return { intent: matched, params }
   }
 
-  // Phase 4: AI intent scan
+  // Phase 4
   const AI_KEYWORDS: Record<AIIntent, string[]> = {
     chat:  ['chat', 'talk', 'ask', 'question', 'tell me', 'explain', 'what is', 'how does'],
     forge: ['forge', 'create', 'build', 'generate', 'make', 'design', 'produce'],
@@ -239,7 +235,7 @@ export function classifyIntent(input: string): ClassifyResult {
   return { intent: 'unknown', params }
 }
 
-// ── Exec layer client ─────────────────────────────────────────────────────────
+// ── Exec layer ────────────────────────────────────────────────────────────────
 export interface ExecParams {
   action:   string
   userId?:  string
@@ -278,7 +274,6 @@ export async function callExec(
   return json
 }
 
-// ── Billing intent dispatch ───────────────────────────────────────────────────
 export async function dispatchBillingIntent(
   intent:  BillingIntent,
   params:  Omit<ExecParams, 'action'>,
@@ -294,11 +289,7 @@ export async function dispatchBillingIntent(
     health_check:   'health',
   }
   const action = actionMap[intent]
-  console.log('JAVARI_ROUTER dispatch_billing', {
-    intent, action,
-    userId:  params.userId?.slice(0, 8),
-    credits: params.credits,
-  })
+  console.log('JAVARI_ROUTER dispatch_billing', { intent, action, userId: params.userId?.slice(0, 8), credits: params.credits })
   return callExec({ action, ...params }, baseUrl)
 }
 
@@ -318,54 +309,34 @@ export function selectModel(intent: AIIntent): ModelTier {
   return AI_INTENT_TIERS[intent] ?? 'gpt-4o-mini'
 }
 
-// ── Route context ─────────────────────────────────────────────────────────────
+// ── route() ───────────────────────────────────────────────────────────────────
+// Entry point for all Javari requests.
+//
+// mode = 'auto' (default) — backward compatible with all existing callers:
+//   Billing intent → executes immediately via /api/internal/exec
+//   AI intent      → returns cheapest viable model (cost_estimate: low|moderate)
+//
+// mode = 'team' — new:
+//   Requires context.teamConfig
+//   Does NOT execute — returns MultiAIPlan for user approval
+//
+// RouteResult is a discriminated union on { type, mode }.
+
 export interface RouteContext {
   userId?:     string
   baseUrl?:    string
   teamConfig?: TeamConfig   // required when mode === 'team'
 }
 
-// ── Route result union ────────────────────────────────────────────────────────
 export type RouteResult =
-  | {
-      type:          'billing'
-      intent:        BillingIntent
-      result:        ExecResult
-      mode:          'auto'
-      cost_estimate: 'zero'
-    }
-  | {
-      type:          'ai'
-      intent:        AIIntent | 'unknown'
-      model:         ModelTier
-      mode:          'auto'
-      cost_estimate: 'low' | 'moderate'
-      executed:      false
-    }
-  | {
-      type:   'multi_ai_plan'
-      intent: AIIntent | 'unknown'
-      plan:   MultiAIPlan
-      mode:   'team'
-    }
+  | { type: 'billing';       intent: BillingIntent;        result: ExecResult; mode: 'auto'; cost_estimate: 'zero' }
+  | { type: 'ai';            intent: AIIntent | 'unknown'; model: ModelTier;   mode: 'auto'; cost_estimate: 'low' | 'moderate'; executed: false }
+  | { type: 'multi_ai_plan'; intent: AIIntent | 'unknown'; plan: MultiAIPlan;  mode: 'team' }
 
-// ── route() ───────────────────────────────────────────────────────────────────
-// Entry point for all Javari requests.
-//
-// mode = 'auto' (default — backward compatible):
-//   Billing intent → executes immediately via /api/internal/exec
-//   AI intent      → returns cheapest viable model, does not execute
-//
-// mode = 'team':
-//   Requires context.teamConfig
-//   Does NOT execute — returns MultiAIPlan { requires_approval: true }
-//   Caller must display plan + get explicit user approval before firing agents
-//
-// All existing callers omitting mode default to 'auto' — zero breaking changes.
 export async function route(
-  input:   string,
+  input:    string,
   context?: RouteContext,
-  mode:     ExecutionMode = 'auto',
+  mode:     ExecutionMode = 'auto',   // default preserves backward compat
 ): Promise<RouteResult> {
 
   const { intent, params: extracted } = classifyIntent(input)
@@ -374,23 +345,21 @@ export async function route(
 
   // ── TEAM mode — build plan, do NOT execute ────────────────────────────────
   if (mode === 'team') {
-    const teamConfig              = context?.teamConfig ?? {}
-    const { total, breakdown }    = calculateCost(teamConfig)
-    const roleCount               = Object.values(teamConfig).filter(Boolean).length
+    const teamConfig = context?.teamConfig ?? {}
+    const { total, breakdown } = calculateCost(teamConfig)
+    const roleCount = Object.values(teamConfig).filter(Boolean).length
 
-    // Build per-role detail
     const providers: MultiAIPlan['providers'] = {}
     for (const [role, provider] of Object.entries(teamConfig) as [keyof TeamConfig, TeamProvider | undefined][]) {
       if (!provider) continue
       const entry = PROVIDER_COST[provider]
       providers[role] = {
         provider,
-        tier: entry?.tier ?? 'unknown',
-        cost: (entry?.base ?? 0) * TIER_MULTIPLIER[entry?.tier ?? 'free'],
+        tier:  entry?.tier ?? 'unknown',
+        cost:  (entry?.base ?? 0) * TIER_MULTIPLIER[entry?.tier ?? 'free'],
       }
     }
 
-    // Human-readable breakdown string
     const breakdownParts = Object.entries(breakdown).map(
       ([role, cost]) => `${role}:${teamConfig[role as keyof TeamConfig]}(${cost}u)`
     )
