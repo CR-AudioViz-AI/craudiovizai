@@ -589,7 +589,7 @@ export default function JavariOSPage() {
       `}</style>
 
       <div
-        className="w-screen h-screen bg-[#050507] text-zinc-200 overflow-hidden flex flex-col"
+        className="fixed inset-0 bg-[#050507] text-zinc-200 overflow-hidden flex flex-col z-50"
         onClick={() => setModeOpen(false)}
       >
         {/* Scanlines */}
