@@ -4,7 +4,7 @@
 // Sidebar: Avatar identity + status + agents stacked vertically
 // Main: Full-height dominant chat feed + execution log strip at bottom
 // Design: Fortune 50 dark ops — deep black, cyan/purple pill toggles, slide-in animations
-// Updated: April 24, 2026 — v4: TEAM execution wiring added (runTeamExecution, isExecuting, executionResult)
+// Updated: April 24, 2026 — v5: WCAG AA readability pass — min 14px fonts, min #71717a secondary text
 'use client'
 
 import {
@@ -162,9 +162,9 @@ function Avatar({ state }: { state: AvState }) {
       {/* State badge */}
       <div style={{
         fontFamily:      'monospace',
-        fontSize:        '9px',
-        letterSpacing:   '0.25em',
-        color:           state === 'idle' ? '#52525b' : state === 'thinking' ? '#a855f7' : state === 'responding' ? '#a855f7' : '#f59e0b',
+        fontSize:        '11px',
+        letterSpacing:   '0.2em',
+        color:           state === 'idle' ? '#71717a' : state === 'thinking' ? '#a855f7' : state === 'responding' ? '#a855f7' : '#f59e0b',
         animation:       (state === 'thinking' || state === 'executing') ? 'av-blink 1.4s ease-in-out infinite' : 'none',
         transition:      'color 0.3s ease',
       }}>
@@ -212,11 +212,11 @@ function SideSection({
         }}
       >
         {icon && <span style={{ color: accentColor, display: 'flex', alignItems: 'center' }}>{icon}</span>}
-        <span style={{ fontFamily: 'monospace', fontSize: '9px', letterSpacing: '0.3em', color: accentColor, textTransform: 'uppercase', flex: 1, textAlign: 'left' }}>
+        <span style={{ fontFamily: 'monospace', fontSize: '11px', letterSpacing: '0.2em', color: accentColor, textTransform: 'uppercase', flex: 1, textAlign: 'left' }}>
           {label}
         </span>
         {collapsible && (
-          <span style={{ color: '#3f3f46', fontSize: '10px', transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>▾</span>
+          <span style={{ color: '#71717a', fontSize: '11px', transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>▾</span>
         )}
       </button>
       {(!collapsible || open) && (
@@ -534,8 +534,8 @@ export default function JavariOSPage() {
         /* Sidebar nav pill active */
         .jv-pill-active-cyan  { background: rgba(6,182,212,0.15); border-color: rgba(6,182,212,0.5); color: #06b6d4 }
         .jv-pill-active-purple { background: rgba(168,85,247,0.15); border-color: rgba(168,85,247,0.5); color: #a855f7 }
-        .jv-pill-inactive { background: rgba(24,24,27,0.6); border-color: #27272a; color: #52525b }
-        .jv-pill-inactive:hover { border-color: #3f3f46; color: #71717a }
+        .jv-pill-inactive { background: rgba(24,24,27,0.6); border-color: #3f3f46; color: #71717a }
+        .jv-pill-inactive:hover { border-color: #52525b; color: #a1a1aa }
 
         /* Exec row hover */
         .jv-exec-row:hover { background: rgba(245,158,11,0.05) }
@@ -633,10 +633,10 @@ export default function JavariOSPage() {
 
           {/* Status strip — desktop only */}
           {sysStatus && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '16px', fontFamily: 'monospace', fontSize: '9px' }}>
-              <span style={{ color: sysStatus.mode === 'BUILD' ? '#1d4ed8' : '#92400e', letterSpacing: '0.2em' }}>{sysStatus.mode}</span>
-              <span style={{ color: '#3f3f46' }}>P{sysStatus.phase}</span>
-              <span style={{ color: '#065f46', letterSpacing: '0.15em' }}>{sysStatus.pct}% VERIFIED</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '16px', fontFamily: 'monospace', fontSize: '12px' }}>
+              <span style={{ color: sysStatus.mode === 'BUILD' ? '#60a5fa' : '#f59e0b', letterSpacing: '0.2em' }}>{sysStatus.mode}</span>
+              <span style={{ color: '#71717a' }}>P{sysStatus.phase}</span>
+              <span style={{ color: '#34d399', letterSpacing: '0.15em' }}>{sysStatus.pct}% VERIFIED</span>
               {/* Mini progress bar */}
               <div style={{ width: '60px', height: '2px', background: '#18181b', borderRadius: '1px', overflow: 'hidden' }}>
                 <div style={{ height: '100%', width: `${sysStatus.pct}%`, background: 'linear-gradient(90deg,#7c3aed,#065f46)', transition: 'width 1s ease' }} />
@@ -650,17 +650,17 @@ export default function JavariOSPage() {
             href="/command-center"
             style={{
               fontFamily:    'monospace',
-              fontSize:      '9px',
+              fontSize:      '11px',
               letterSpacing: '0.2em',
-              color:         '#3f3f46',
+              color:         '#71717a',
               textDecoration:'none',
               padding:       '4px 10px',
               border:        '1px solid #27272a',
               borderRadius:  '6px',
               transition:    'all 0.2s',
             }}
-            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = '#71717a'; (e.currentTarget as HTMLElement).style.borderColor = '#3f3f46' }}
-            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = '#3f3f46'; (e.currentTarget as HTMLElement).style.borderColor = '#27272a' }}
+            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = '#e4e4e7'; (e.currentTarget as HTMLElement).style.borderColor = '#71717a' }}
+            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = '#71717a'; (e.currentTarget as HTMLElement).style.borderColor = '#3f3f46' }}
           >
             ⚙ ADMIN
           </a>
@@ -702,7 +702,7 @@ export default function JavariOSPage() {
                       { k: 'REMAINING', v: `$${(sysStatus.budget ?? 0).toFixed(4)}`,      c: '#10b981' },
                     ].map(row => (
                       <div key={row.k} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span style={{ fontFamily: 'monospace', fontSize: '9px', letterSpacing: '0.2em', color: '#3f3f46' }}>{row.k}</span>
+                        <span style={{ fontFamily: 'monospace', fontSize: '11px', letterSpacing: '0.15em', color: '#71717a' }}>{row.k}</span>
                         <span style={{ fontFamily: 'monospace', fontSize: '11px', fontWeight: 700, color: row.c, tabularNums: true } as React.CSSProperties}>{row.v}</span>
                       </div>
                     ))}
@@ -712,7 +712,7 @@ export default function JavariOSPage() {
                     </div>
                   </div>
                 ) : (
-                  <p className="av-blink" style={{ fontFamily: 'monospace', fontSize: '9px', color: '#3f3f46', letterSpacing: '0.3em', textAlign: 'center' }}>CONNECTING…</p>
+                  <p className="av-blink" style={{ fontFamily: 'monospace', fontSize: '12px', color: '#71717a', letterSpacing: '0.2em', textAlign: 'center' }}>CONNECTING…</p>
                 )}
 
                 {/* Run loop button */}
@@ -721,33 +721,33 @@ export default function JavariOSPage() {
                   disabled={avState === 'executing'}
                   style={{
                     width:         '100%',
-                    padding:       '8px',
+                    padding:       '10px',
                     fontFamily:    'monospace',
-                    fontSize:      '10px',
-                    letterSpacing: '0.25em',
+                    fontSize:      '13px',
+                    letterSpacing: '0.2em',
                     textTransform: 'uppercase',
                     borderRadius:  '8px',
                     border:        '1px solid',
-                    borderColor:   avState === 'executing' ? 'rgba(245,158,11,0.3)' : '#27272a',
-                    background:    avState === 'executing' ? 'rgba(245,158,11,0.06)' : 'rgba(24,24,27,0.4)',
-                    color:         avState === 'executing' ? '#92400e' : '#52525b',
+                    borderColor:   avState === 'executing' ? 'rgba(245,158,11,0.5)' : '#3f3f46',
+                    background:    avState === 'executing' ? 'rgba(245,158,11,0.08)' : 'rgba(24,24,27,0.5)',
+                    color:         avState === 'executing' ? '#f59e0b' : '#a1a1aa',
                     cursor:        avState === 'executing' ? 'wait' : 'pointer',
                     transition:    'all 0.2s ease',
                   }}
                   onMouseEnter={e => {
                     if (avState !== 'executing') {
                       const el = e.currentTarget as HTMLElement
-                      el.style.borderColor = 'rgba(139,92,246,0.4)'
-                      el.style.color       = '#a855f7'
-                      el.style.background  = 'rgba(139,92,246,0.06)'
+                      el.style.borderColor = 'rgba(139,92,246,0.6)'
+                      el.style.color       = '#c084fc'
+                      el.style.background  = 'rgba(139,92,246,0.10)'
                     }
                   }}
                   onMouseLeave={e => {
                     if (avState !== 'executing') {
                       const el = e.currentTarget as HTMLElement
-                      el.style.borderColor = '#27272a'
-                      el.style.color       = '#52525b'
-                      el.style.background  = 'rgba(24,24,27,0.4)'
+                      el.style.borderColor = '#3f3f46'
+                      el.style.color       = '#a1a1aa'
+                      el.style.background  = 'rgba(24,24,27,0.5)'
                     }
                   }}
                 >
@@ -778,7 +778,7 @@ export default function JavariOSPage() {
                       {/* Agent header */}
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: step ? '8px' : 0 }}>
                         <span style={{ color: cfg.hue, fontSize: '14px', lineHeight: 1 }}>{cfg.glyph}</span>
-                        <span style={{ fontFamily: 'monospace', fontSize: '9px', letterSpacing: '0.25em', color: step ? cfg.hue : '#3f3f46', flex: 1 }}>
+                        <span style={{ fontFamily: 'monospace', fontSize: '11px', letterSpacing: '0.2em', color: step ? cfg.hue : '#71717a', flex: 1 }}>
                           {cfg.label}
                         </span>
                         {/* Status dot */}
@@ -796,11 +796,11 @@ export default function JavariOSPage() {
 
                       {/* Content or description */}
                       {step ? (
-                        <p style={{ fontFamily: 'monospace', fontSize: '10px', color: '#a1a1aa', lineHeight: 1.5, display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                        <p style={{ fontFamily: 'monospace', fontSize: '12px', color: '#d4d4d8', lineHeight: 1.6, display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
                           {step.content}
                         </p>
                       ) : (
-                        <p style={{ fontFamily: 'monospace', fontSize: '9px', color: '#3f3f46', letterSpacing: '0.1em' }}>
+                        <p style={{ fontFamily: 'monospace', fontSize: '11px', color: '#71717a', letterSpacing: '0.08em' }}>
                           {key === 'planner'   ? 'Breaks down tasks into steps' :
                            key === 'builder'   ? 'Implements the plan fully'    :
                                                  'Reviews and validates output'}
@@ -810,10 +810,10 @@ export default function JavariOSPage() {
                       {/* Meta: model + cost + tier */}
                       {step && (
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '6px', flexWrap: 'wrap' }}>
-                          <span style={{ fontFamily: 'monospace', fontSize: '9px', color: '#3f3f46' }}>
+                          <span style={{ fontFamily: 'monospace', fontSize: '11px', color: '#71717a' }}>
                             {step.model.split('-').slice(-2).join('-')}
                           </span>
-                          <span style={{ fontFamily: 'monospace', fontSize: '9px', color: '#27272a' }}>
+                          <span style={{ fontFamily: 'monospace', fontSize: '11px', color: '#52525b' }}>
                             ${step.cost.toFixed(5)}
                           </span>
                           {step.tier && (
@@ -832,7 +832,7 @@ export default function JavariOSPage() {
                       )}
 
                       {waiting && !step && (
-                        <p style={{ fontFamily: 'monospace', fontSize: '9px', color: cfg.hue, opacity: 0.5, marginTop: '4px', letterSpacing: '0.2em' }}>
+                        <p style={{ fontFamily: 'monospace', fontSize: '11px', color: cfg.hue, opacity: 0.7, marginTop: '4px', letterSpacing: '0.15em' }}>
                           WAITING…
                         </p>
                       )}
@@ -840,7 +840,7 @@ export default function JavariOSPage() {
                   )
                 })}
                 {mode === 'single' && (
-                  <p style={{ fontFamily: 'monospace', fontSize: '9px', color: '#27272a', letterSpacing: '0.2em', textAlign: 'center', paddingTop: '4px' }}>
+                  <p style={{ fontFamily: 'monospace', fontSize: '11px', color: '#52525b', letterSpacing: '0.15em', textAlign: 'center', paddingTop: '4px' }}>
                     SWITCH TO COUNCIL TO ACTIVATE
                   </p>
                 )}
@@ -901,33 +901,34 @@ export default function JavariOSPage() {
                   disabled={isExecuting}
                   style={{
                     width:         '100%',
-                    padding:       '9px',
+                    padding:       '12px',
                     fontFamily:    'monospace',
-                    fontSize:      '10px',
-                    letterSpacing: '0.2em',
+                    fontSize:      '13px',
+                    fontWeight:    600,
+                    letterSpacing: '0.15em',
                     textTransform: 'uppercase',
                     borderRadius:  '8px',
                     border:        '1px solid',
-                    borderColor:   isExecuting ? 'rgba(245,158,11,0.4)' : 'rgba(245,158,11,0.25)',
-                    background:    isExecuting ? 'rgba(245,158,11,0.08)' : 'rgba(245,158,11,0.04)',
-                    color:         isExecuting ? '#f59e0b' : '#78350f',
+                    borderColor:   isExecuting ? 'rgba(245,158,11,0.6)' : 'rgba(245,158,11,0.4)',
+                    background:    isExecuting ? 'rgba(245,158,11,0.12)' : 'rgba(245,158,11,0.06)',
+                    color:         isExecuting ? '#fbbf24' : '#d97706',
                     cursor:        isExecuting ? 'wait' : 'pointer',
                     transition:    'all 0.2s ease',
                   }}
                   onMouseEnter={e => {
                     if (!isExecuting) {
                       const el = e.currentTarget as HTMLElement
-                      el.style.borderColor = 'rgba(245,158,11,0.5)'
-                      el.style.color       = '#f59e0b'
-                      el.style.background  = 'rgba(245,158,11,0.08)'
+                      el.style.borderColor = 'rgba(245,158,11,0.7)'
+                      el.style.color       = '#fbbf24'
+                      el.style.background  = 'rgba(245,158,11,0.12)'
                     }
                   }}
                   onMouseLeave={e => {
                     if (!isExecuting) {
                       const el = e.currentTarget as HTMLElement
-                      el.style.borderColor = 'rgba(245,158,11,0.25)'
-                      el.style.color       = '#78350f'
-                      el.style.background  = 'rgba(245,158,11,0.04)'
+                      el.style.borderColor = 'rgba(245,158,11,0.4)'
+                      el.style.color       = '#d97706'
+                      el.style.background  = 'rgba(245,158,11,0.06)'
                     }
                   }}
                 >
@@ -942,7 +943,7 @@ export default function JavariOSPage() {
                         <div key={i} className="animate-bounce" style={{ width: '3px', height: '3px', borderRadius: '50%', background: '#f59e0b', animationDelay: `${i * 0.15}s` }} />
                       ))}
                     </div>
-                    <span style={{ fontFamily: 'monospace', fontSize: '9px', color: '#92400e', letterSpacing: '0.15em' }}>
+                    <span style={{ fontFamily: 'monospace', fontSize: '12px', color: '#d97706', letterSpacing: '0.1em' }}>
                       Executing multi-agent workflow…
                     </span>
                   </div>
@@ -951,31 +952,31 @@ export default function JavariOSPage() {
                 {/* Execution result panel */}
                 {executionResult && !isExecuting && (
                   <div style={{
-                    borderRadius: '8px',
+                    borderRadius: '10px',
                     border:       `1px solid ${
-                      executionResult.status === 'complete' ? 'rgba(16,185,129,0.25)' :
-                      executionResult.status === 'partial'  ? 'rgba(245,158,11,0.25)' :
-                                                              'rgba(239,68,68,0.25)'
+                      executionResult.status === 'complete' ? 'rgba(52,211,153,0.3)' :
+                      executionResult.status === 'partial'  ? 'rgba(251,191,36,0.3)' :
+                                                              'rgba(248,113,113,0.3)'
                     }`,
-                    background:   executionResult.status === 'complete' ? 'rgba(16,185,129,0.04)' :
-                                  executionResult.status === 'partial'  ? 'rgba(245,158,11,0.04)' :
-                                                                          'rgba(239,68,68,0.04)',
+                    background:   executionResult.status === 'complete' ? 'rgba(16,185,129,0.06)' :
+                                  executionResult.status === 'partial'  ? 'rgba(245,158,11,0.06)' :
+                                                                          'rgba(239,68,68,0.06)',
                     overflow:     'hidden',
                   }}>
                     {/* Result header */}
                     <div style={{ padding: '8px 10px', borderBottom: '1px solid #18181b', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                       <span style={{
                         fontFamily:    'monospace',
-                        fontSize:      '9px',
-                        letterSpacing: '0.2em',
-                        color:         executionResult.status === 'complete' ? '#10b981' :
-                                       executionResult.status === 'partial'  ? '#f59e0b' : '#ef4444',
+                        fontSize:      '12px',
+                        letterSpacing: '0.15em',
+                        color:         executionResult.status === 'complete' ? '#34d399' :
+                                       executionResult.status === 'partial'  ? '#fbbf24' : '#f87171',
                         fontWeight:    700,
                       }}>
                         {executionResult.status.toUpperCase()}
                       </span>
                       {executionResult.plan_id && (
-                        <span style={{ fontFamily: 'monospace', fontSize: '8px', color: '#27272a', marginLeft: 'auto' }}>
+                        <span style={{ fontFamily: 'monospace', fontSize: '11px', color: '#52525b', marginLeft: 'auto' }}>
                           {executionResult.plan_id.slice(0, 20)}
                         </span>
                       )}
@@ -983,8 +984,8 @@ export default function JavariOSPage() {
 
                     {/* Cost */}
                     <div style={{ padding: '6px 10px', display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #0f0f10' }}>
-                      <span style={{ fontFamily: 'monospace', fontSize: '9px', color: '#3f3f46', letterSpacing: '0.15em' }}>TOTAL COST</span>
-                      <span style={{ fontFamily: 'monospace', fontSize: '9px', color: '#f59e0b', fontWeight: 700 }}>
+                      <span style={{ fontFamily: 'monospace', fontSize: '12px', color: '#71717a', letterSpacing: '0.1em' }}>TOTAL COST</span>
+                      <span style={{ fontFamily: 'monospace', fontSize: '12px', color: '#fbbf24', fontWeight: 700 }}>
                         ${(executionResult.total_cost ?? 0).toFixed(6)}
                       </span>
                     </div>
@@ -992,7 +993,7 @@ export default function JavariOSPage() {
                     {/* Error state */}
                     {executionResult.error && (
                       <div style={{ padding: '6px 10px' }}>
-                        <p style={{ fontFamily: 'monospace', fontSize: '9px', color: '#f87171', lineHeight: 1.5 }}>
+                        <p style={{ fontFamily: 'monospace', fontSize: '12px', color: '#f87171', lineHeight: 1.6 }}>
                           {executionResult.error}
                         </p>
                       </div>
@@ -1020,37 +1021,37 @@ export default function JavariOSPage() {
                           }}>
                             {task.status === 'complete' ? '✓' : '✗'}
                           </span>
-                          <strong style={{ fontFamily: 'monospace', fontSize: '9px', color: '#a1a1aa', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          <strong style={{ fontFamily: 'monospace', fontSize: '12px', color: '#d4d4d8', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                             {task.task_id}
                           </strong>
                           <span style={{
                             fontFamily:    'monospace',
-                            fontSize:      '8px',
-                            padding:       '1px 5px',
-                            borderRadius:  '3px',
-                            background:    task.status === 'complete' ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.1)',
-                            color:         task.status === 'complete' ? '#065f46' : '#b91c1c',
+                            fontSize:      '11px',
+                            padding:       '2px 6px',
+                            borderRadius:  '4px',
+                            background:    task.status === 'complete' ? 'rgba(52,211,153,0.12)' : 'rgba(248,113,113,0.12)',
+                            color:         task.status === 'complete' ? '#34d399' : '#f87171',
                             flexShrink:    0,
                           }}>
                             {task.status.toUpperCase()}
                           </span>
                         </div>
                         {/* Cost */}
-                        <div style={{ fontFamily: 'monospace', fontSize: '8px', color: '#27272a' }}>
+                        <div style={{ fontFamily: 'monospace', fontSize: '11px', color: '#71717a' }}>
                           ${(task.cost_used ?? 0).toFixed(6)}
                         </div>
                         {/* Output or error */}
                         {(task.output || task.error) && (
                           <pre style={{
                             fontFamily:   'monospace',
-                            fontSize:     '8px',
-                            color:        task.error ? '#f87171' : '#52525b',
+                            fontSize:     '11px',
+                            color:        task.error ? '#f87171' : '#a1a1aa',
                             whiteSpace:   'pre-wrap',
                             wordBreak:    'break-word',
                             margin:       0,
-                            maxHeight:    '60px',
+                            maxHeight:    '80px',
                             overflow:     'hidden',
-                            lineHeight:   1.4,
+                            lineHeight:   1.5,
                           }}>
                             {task.error ?? (task.output ? task.output.slice(0, 120) + (task.output.length > 120 ? '…' : '') : '')}
                           </pre>
@@ -1081,20 +1082,20 @@ export default function JavariOSPage() {
                 background:   'rgba(0,0,0,0.2)',
               }}>
                 <Terminal size={10} style={{ color: '#3b82f6' }} />
-                <span style={{ fontFamily: 'monospace', fontSize: '9px', letterSpacing: '0.3em', color: '#3b82f6' }}>
+                <span style={{ fontFamily: 'monospace', fontSize: '12px', letterSpacing: '0.2em', color: '#60a5fa' }}>
                   LIVE FEED
                 </span>
-                <span style={{ fontFamily: 'monospace', fontSize: '9px', color: '#27272a' }}>
+                <span style={{ fontFamily: 'monospace', fontSize: '11px', color: '#71717a' }}>
                   /{mode.toUpperCase()}
                 </span>
                 <div style={{ flex: 1 }} />
                 {messages.filter(m => m.role !== 'system').length > 0 && (
                   <button
                     onClick={clearChat}
-                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#3f3f46', display: 'flex', alignItems: 'center', padding: '4px' }}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#71717a', display: 'flex', alignItems: 'center', padding: '4px' }}
                     title="Clear chat"
-                    onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = '#71717a' }}
-                    onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = '#3f3f46' }}
+                    onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = '#e4e4e7' }}
+                    onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = '#71717a' }}
                   >
                     <RotateCcw size={12} />
                   </button>
@@ -1113,15 +1114,15 @@ export default function JavariOSPage() {
                   alignItems:  'center',
                   gap:         '10px',
                   background:  'rgba(24,24,27,0.5)',
-                  border:      '1px solid #27272a',
+                  border:      '1px solid #3f3f46',
                   borderRadius:'10px',
-                  padding:     '8px 12px',
+                  padding:     '12px 16px',
                   transition:  'border-color 0.2s',
                 }}
-                  onFocusCapture={e => { (e.currentTarget as HTMLElement).style.borderColor = mode === 'council' ? 'rgba(168,85,247,0.4)' : 'rgba(59,130,246,0.4)' }}
-                  onBlurCapture={e => { (e.currentTarget as HTMLElement).style.borderColor = '#27272a' }}
+                  onFocusCapture={e => { (e.currentTarget as HTMLElement).style.borderColor = mode === 'council' ? 'rgba(168,85,247,0.7)' : 'rgba(59,130,246,0.7)' }}
+                  onBlurCapture={e => { (e.currentTarget as HTMLElement).style.borderColor = '#3f3f46' }}
                 >
-                  <span style={{ fontFamily: 'monospace', fontSize: '12px', color: '#3f3f46', flexShrink: 0, userSelect: 'none' }}>›</span>
+                  <span style={{ fontFamily: 'monospace', fontSize: '14px', color: '#71717a', flexShrink: 0, userSelect: 'none' }}>›</span>
                   <textarea
                     ref={textRef}
                     rows={1}
@@ -1136,7 +1137,7 @@ export default function JavariOSPage() {
                       outline:     'none',
                       resize:      'none',
                       fontFamily:  'monospace',
-                      fontSize:    '12px',
+                      fontSize:    '15px',
                       color:       '#e4e4e7',
                       minHeight:   '18px',
                       maxHeight:   '100px',
@@ -1179,7 +1180,7 @@ export default function JavariOSPage() {
                     </button>
                   </div>
                 </div>
-                <p style={{ fontFamily: 'monospace', fontSize: '8px', color: '#27272a', marginTop: '4px', letterSpacing: '0.2em' }}>
+                <p style={{ fontFamily: 'monospace', fontSize: '11px', color: '#52525b', marginTop: '6px', letterSpacing: '0.15em' }}>
                   ENTER · SHIFT+ENTER FOR NEWLINE
                 </p>
               </div>
@@ -1197,10 +1198,10 @@ export default function JavariOSPage() {
                     background:   mode === 'council' ? 'rgba(168,85,247,0.04)' : 'rgba(59,130,246,0.04)',
                   }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px' }}>
-                      <span style={{ fontFamily: 'monospace', fontSize: '9px', color: '#3f3f46' }}>
+                      <span style={{ fontFamily: 'monospace', fontSize: '11px', color: '#52525b' }}>
                         {new Date().toISOString().replace('T', ' ').slice(0, 19)}
                       </span>
-                      <span style={{ fontFamily: 'monospace', fontSize: '9px', color: mode === 'council' ? '#a855f7' : '#3b82f6', letterSpacing: '0.2em' }}>
+                      <span style={{ fontFamily: 'monospace', fontSize: '11px', color: mode === 'council' ? '#c084fc' : '#60a5fa', letterSpacing: '0.15em' }}>
                         — {mode === 'council' ? 'COUNCIL' : 'JAVARI'}
                       </span>
                     </div>
@@ -1212,7 +1213,7 @@ export default function JavariOSPage() {
                           style={{ width: '4px', height: '4px', borderRadius: '50%', background: mode === 'council' ? '#a855f7' : '#3b82f6', display: 'inline-block', animationDelay: `${i * 0.15}s` }}
                         />
                       ))}
-                      <span style={{ fontFamily: 'monospace', fontSize: '10px', color: mode === 'council' ? '#a855f7' : '#3b82f6', marginLeft: '6px', letterSpacing: '0.15em' }}>
+                      <span style={{ fontFamily: 'monospace', fontSize: '13px', color: mode === 'council' ? '#c084fc' : '#60a5fa', marginLeft: '8px', letterSpacing: '0.1em' }}>
                         PROCESSING…
                       </span>
                     </div>
@@ -1250,21 +1251,21 @@ export default function JavariOSPage() {
                       className="jv-chat-row jv-msg-in"
                       style={{
                         borderBottom: '1px solid #18181b',
-                        padding:      '10px 20px',
-                        background:   msg.role === 'user' ? 'rgba(255,255,255,0.015)' : 'transparent',
+                        padding:      '14px 20px',
+                        background:   msg.role === 'user' ? 'rgba(255,255,255,0.02)' : 'transparent',
                         transition:   'background 0.15s',
                       }}
                     >
                       <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px', flexWrap: 'wrap' }}>
-                        <span style={{ fontFamily: 'monospace', fontSize: '9px', color: '#27272a', userSelect: 'none' }}>{ts}</span>
-                        <span style={{ fontFamily: 'monospace', fontSize: '9px', color: roleColor, letterSpacing: '0.2em' }}>— {roleLabel}</span>
+                        <span style={{ fontFamily: 'monospace', fontSize: '11px', color: '#52525b', userSelect: 'none' }}>{ts}</span>
+                        <span style={{ fontFamily: 'monospace', fontSize: '11px', color: roleColor, letterSpacing: '0.15em' }}>— {roleLabel}</span>
                         {msg.model && (
-                          <span style={{ fontFamily: 'monospace', fontSize: '9px', color: '#27272a', marginLeft: 'auto' }}>
+                          <span style={{ fontFamily: 'monospace', fontSize: '11px', color: '#52525b', marginLeft: 'auto' }}>
                             {msg.model.split('-').slice(-2).join('-')}
                           </span>
                         )}
                       </div>
-                      <p style={{ fontFamily: 'monospace', fontSize: '12px', color: textColor, lineHeight: 1.6, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                      <p style={{ fontFamily: 'monospace', fontSize: '14px', color: textColor, lineHeight: 1.7, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
                         {msg.content}
                       </p>
                     </div>
@@ -1274,19 +1275,19 @@ export default function JavariOSPage() {
                 {/* Empty state prompt chips */}
                 {messages.filter(m => m.role !== 'system').length === 0 && !loading && (
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', gap: '16px', padding: '32px', userSelect: 'none' }}>
-                    <p style={{ fontFamily: 'monospace', fontSize: '9px', color: '#27272a', letterSpacing: '0.3em' }}>FEED EMPTY — TRY A PROMPT</p>
+                    <p style={{ fontFamily: 'monospace', fontSize: '13px', color: '#71717a', letterSpacing: '0.2em' }}>FEED EMPTY — TRY A PROMPT</p>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', justifyContent: 'center', maxWidth: '480px' }}>
                       {PROMPTS.map(p => (
                         <button
                           key={p}
                           onClick={() => send(p)}
                           style={{
-                            padding:       '6px 12px',
+                            padding:       '8px 14px',
                             fontFamily:    'monospace',
-                            fontSize:      '10px',
-                            color:         '#52525b',
-                            background:    'rgba(24,24,27,0.4)',
-                            border:        '1px solid #27272a',
+                            fontSize:      '13px',
+                            color:         '#a1a1aa',
+                            background:    'rgba(24,24,27,0.6)',
+                            border:        '1px solid #3f3f46',
                             borderRadius:  '20px',
                             cursor:        'pointer',
                             letterSpacing: '0.1em',
@@ -1294,13 +1295,13 @@ export default function JavariOSPage() {
                           }}
                           onMouseEnter={e => {
                             const el = e.currentTarget as HTMLElement
-                            el.style.borderColor = mode === 'council' ? 'rgba(168,85,247,0.4)' : 'rgba(59,130,246,0.4)'
-                            el.style.color = mode === 'council' ? '#a855f7' : '#3b82f6'
+                            el.style.borderColor = mode === 'council' ? 'rgba(192,132,252,0.6)' : 'rgba(96,165,250,0.6)'
+                            el.style.color = mode === 'council' ? '#c084fc' : '#60a5fa'
                           }}
                           onMouseLeave={e => {
                             const el = e.currentTarget as HTMLElement
-                            el.style.borderColor = '#27272a'
-                            el.style.color = '#52525b'
+                            el.style.borderColor = '#3f3f46'
+                            el.style.color = '#a1a1aa'
                           }}
                         >
                           {p}
@@ -1328,7 +1329,7 @@ export default function JavariOSPage() {
                 background:   'rgba(0,0,0,0.3)',
               }}>
                 <Activity size={10} style={{ color: '#f59e0b' }} />
-                <span style={{ fontFamily: 'monospace', fontSize: '9px', letterSpacing: '0.3em', color: '#f59e0b' }}>EXECUTION STREAM</span>
+                <span style={{ fontFamily: 'monospace', fontSize: '12px', letterSpacing: '0.2em', color: '#fbbf24' }}>EXECUTION STREAM</span>
                 <div
                   style={{
                     width:           '6px',
@@ -1341,15 +1342,15 @@ export default function JavariOSPage() {
                   }}
                 />
                 <div style={{ flex: 1 }} />
-                <span style={{ fontFamily: 'monospace', fontSize: '9px', color: '#27272a', letterSpacing: '0.2em' }}>LIVE</span>
+                <span style={{ fontFamily: 'monospace', fontSize: '11px', color: '#52525b', letterSpacing: '0.2em' }}>LIVE</span>
               </div>
 
               {/* Exec rows */}
               <div className="jv-scroll" style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden' }}>
                 {execRows.length === 0 ? (
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', gap: '6px' }}>
-                    <p style={{ fontFamily: 'monospace', fontSize: '9px', color: '#27272a', letterSpacing: '0.3em' }}>NO ACTIVITY</p>
-                    <p style={{ fontFamily: 'monospace', fontSize: '9px', color: '#18181b', letterSpacing: '0.15em' }}>USE RUN LOOP OR WAIT FOR CRON</p>
+                    <p style={{ fontFamily: 'monospace', fontSize: '13px', color: '#52525b', letterSpacing: '0.2em' }}>NO ACTIVITY</p>
+                    <p style={{ fontFamily: 'monospace', fontSize: '11px', color: '#3f3f46', letterSpacing: '0.1em' }}>USE RUN LOOP OR WAIT FOR CRON</p>
                   </div>
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column' }}>
@@ -1382,23 +1383,23 @@ export default function JavariOSPage() {
                           </span>
 
                           {/* Title */}
-                          <span style={{ fontFamily: 'monospace', fontSize: '10px', color: '#a1a1aa', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textTransform: 'capitalize' }}>
+                          <span style={{ fontFamily: 'monospace', fontSize: '12px', color: '#d4d4d8', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textTransform: 'capitalize' }}>
                             {row.title}
                           </span>
 
                           {/* Module */}
-                          <span style={{ fontFamily: 'monospace', fontSize: '9px', color: '#3f3f46', flexShrink: 0 }}>{row.module}</span>
+                          <span style={{ fontFamily: 'monospace', fontSize: '11px', color: '#71717a', flexShrink: 0 }}>{row.module}</span>
 
                           {/* Model */}
                           {row.model && (
-                            <span style={{ fontFamily: 'monospace', fontSize: '9px', color: '#27272a', flexShrink: 0 }}>
+                            <span style={{ fontFamily: 'monospace', fontSize: '11px', color: '#52525b', flexShrink: 0 }}>
                               {row.model.split('-').slice(-1)[0]}
                             </span>
                           )}
 
                           {/* Cost */}
                           {row.cost > 0 && (
-                            <span style={{ fontFamily: 'monospace', fontSize: '9px', color: '#27272a', flexShrink: 0 }}>
+                            <span style={{ fontFamily: 'monospace', fontSize: '11px', color: '#71717a', flexShrink: 0 }}>
                               ${row.cost.toFixed(5)}
                             </span>
                           )}
