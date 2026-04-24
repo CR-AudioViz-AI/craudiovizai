@@ -4,6 +4,7 @@
 // Accepts a raw ExecutionPlan, validates it, builds the execution graph,
 // runs the multi-agent engine, and returns the full ExecutionContext as JSON.
 // Created: April 24, 2026
+// Updated: April 24, 2026 — pass plan to executePlan; expose execution_id in response
 
 import { NextResponse }        from 'next/server'
 import { validateExecutionPlan, buildExecutionGraph } from '@/lib/javari/team/execution-contract'
@@ -21,10 +22,11 @@ const MAX_TASKS = 50
 // ─────────────────────────────────────────────────────────────────────────────
 
 interface SuccessResponse {
-  plan_id:    string
-  total_cost: number
-  results:    TaskResult[]
-  status:     'complete' | 'partial' | 'failed'
+  plan_id:      string
+  execution_id: string
+  total_cost:   number
+  results:      TaskResult[]
+  status:       'complete' | 'partial' | 'failed'
 }
 
 interface ErrorResponse {
@@ -116,7 +118,7 @@ export async function POST(req: Request): Promise<NextResponse<SuccessResponse |
   // ── 7. Execute plan ────────────────────────────────────────────────────────
   let context: Awaited<ReturnType<typeof executePlan>>
   try {
-    context = await executePlan(graph)
+    context = await executePlan(graph, plan)
   } catch (err: unknown) {
     return errorResponse(
       err instanceof Error ? err.message : 'Execution engine error',
@@ -134,9 +136,10 @@ export async function POST(req: Request): Promise<NextResponse<SuccessResponse |
 
   return NextResponse.json<SuccessResponse>(
     {
-      plan_id:    context.plan_id,
-      total_cost: context.total_cost,
-      results:    resultsArray,
+      plan_id:      context.plan_id,
+      execution_id: context.execution_id,
+      total_cost:   context.total_cost,
+      results:      resultsArray,
       status,
     },
     { status: 200 }
