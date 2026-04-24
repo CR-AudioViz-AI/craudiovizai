@@ -4,7 +4,7 @@
 // Sidebar: Avatar identity + status + agents stacked vertically
 // Main: Full-height dominant chat feed + execution log strip at bottom
 // Design: Fortune 50 dark ops — deep black, cyan/purple pill toggles, slide-in animations
-// Updated: April 24, 2026 — v5: WCAG AA readability pass — min 14px fonts, min #71717a secondary text
+// Updated: April 24, 2026 — v6: font scale control (A-/A/A+/A++) with localStorage persistence
 'use client'
 
 import {
@@ -252,6 +252,9 @@ export default function JavariOSPage() {
   const [isExecuting,     setIsExecuting]     = useState(false)
   const [executionResult, setExecutionResult] = useState<TeamExecutionResult | null>(null)
 
+  // ── Font scale — user-adjustable, persisted to localStorage ───────────────
+  const [fontScale, setFontScale] = useState<number>(1)
+
   // ── Auth session ───────────────────────────────────────────────────────────
   const supabase    = createClientComponentClient()
   const [userId,    setUserId]    = useState<string | null>(null)
@@ -320,6 +323,19 @@ export default function JavariOSPage() {
       }
     })
   }, [supabase])
+
+  // Load persisted font scale on mount
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem('javari_font_scale')
+      if (stored) {
+        const parsed = parseFloat(stored)
+        if (!isNaN(parsed) && parsed >= 0.8 && parsed <= 1.4) {
+          setFontScale(parsed)
+        }
+      }
+    } catch { /* localStorage unavailable (SSR/private browsing) — use default */ }
+  }, [])
 
   // ── Send message — v2 logic preserved 100% ────────────────────────────────
   const send = useCallback(async (override?: string) => {
@@ -432,6 +448,12 @@ export default function JavariOSPage() {
   const clearChat = useCallback(() => {
     setMessages([{ id: Date.now().toString(), role: 'system', content: 'Session cleared.', ts: Date.now() }])
     setEnsemble([])
+  }, [])
+
+  // ── Font scale helper — persists to localStorage ─────────────────────────
+  const applyFontScale = useCallback((scale: number) => {
+    setFontScale(scale)
+    try { localStorage.setItem('javari_font_scale', String(scale)) } catch { /* non-fatal */ }
   }, [])
 
   // ── TEAM Execution — fires validated plan through /api/javari/team ────────
@@ -557,6 +579,7 @@ export default function JavariOSPage() {
           flexDirection: 'column',
           overflow:   'hidden',
           fontFamily: 'monospace',
+          fontSize:   `${fontScale}rem`,
         }}
         onClick={() => setModeOpen(false)}
       >
@@ -643,6 +666,58 @@ export default function JavariOSPage() {
               </div>
             </div>
           )}
+
+          <div style={{ width: '1px', height: '20px', background: '#27272a' }} />
+
+          {/* ── Font size control ───────────────────────────────────────── */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
+            <span style={{ fontFamily: 'monospace', fontSize: '10px', color: '#52525b', letterSpacing: '0.15em', marginRight: '2px', userSelect: 'none' }}>
+              SIZE
+            </span>
+            {([
+              { label: 'A−', scale: 0.9,  title: 'Small'   },
+              { label: 'A',  scale: 1.0,  title: 'Default' },
+              { label: 'A+', scale: 1.1,  title: 'Large'   },
+              { label: 'A⁺⁺',scale: 1.2, title: 'X-Large' },
+            ] as { label: string; scale: number; title: string }[]).map(opt => (
+              <button
+                key={opt.scale}
+                title={opt.title}
+                onClick={e => { e.stopPropagation(); applyFontScale(opt.scale) }}
+                style={{
+                  padding:       '3px 7px',
+                  fontFamily:    'monospace',
+                  fontSize:      opt.scale === 0.9 ? '9px' : opt.scale === 1.0 ? '11px' : opt.scale === 1.1 ? '13px' : '14px',
+                  fontWeight:    fontScale === opt.scale ? 700 : 400,
+                  color:         fontScale === opt.scale ? '#e4e4e7' : '#52525b',
+                  background:    fontScale === opt.scale ? 'rgba(255,255,255,0.08)' : 'transparent',
+                  border:        `1px solid ${fontScale === opt.scale ? '#71717a' : '#27272a'}`,
+                  borderRadius:  '5px',
+                  cursor:        'pointer',
+                  transition:    'all 0.15s ease',
+                  lineHeight:    1,
+                }}
+                onMouseEnter={e => {
+                  if (fontScale !== opt.scale) {
+                    const el = e.currentTarget as HTMLElement
+                    el.style.color       = '#a1a1aa'
+                    el.style.borderColor = '#3f3f46'
+                    el.style.background  = 'rgba(255,255,255,0.04)'
+                  }
+                }}
+                onMouseLeave={e => {
+                  if (fontScale !== opt.scale) {
+                    const el = e.currentTarget as HTMLElement
+                    el.style.color       = '#52525b'
+                    el.style.borderColor = '#27272a'
+                    el.style.background  = 'transparent'
+                  }
+                }}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
 
           <div style={{ width: '1px', height: '20px', background: '#27272a' }} />
 
