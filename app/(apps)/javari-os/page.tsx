@@ -4,7 +4,7 @@
 // Sidebar: Avatar identity + status + agents stacked vertically
 // Main: Full-height dominant chat feed + execution log strip at bottom
 // Design: Fortune 50 dark ops — deep black, cyan/purple pill toggles, slide-in animations
-// Updated: April 24, 2026 — v7: theme system (dark/light/contrast) with localStorage persistence
+// Updated: April 24, 2026 — v8: SSE streaming wired (ReadableStream reader + handleStreamEvent)
 'use client'
 
 import {
@@ -52,12 +52,24 @@ interface TeamTaskResult {
 }
 
 interface TeamExecutionResult {
-  plan_id:    string
-  total_cost: number
-  status:     'complete' | 'partial' | 'failed'
-  results:    TeamTaskResult[]
-  error?:     string
+  plan_id:      string
+  execution_id?: string
+  total_cost:   number
+  status:       'running' | 'complete' | 'partial' | 'failed'
+  results:      TeamTaskResult[]
+  error?:       string
 }
+
+// SSE event shapes from /api/javari/team (streaming mode)
+interface SSEStartEvent    { type: 'start';         plan_id: string }
+interface SSETaskStart     { type: 'task_start';    task_id: string }
+interface SSETaskComplete  { type: 'task_complete'; task_id: string; result: TeamTaskResult }
+interface SSETaskError     { type: 'task_error';    task_id: string; result: TeamTaskResult; error?: string }
+interface SSEComplete      { type: 'complete';      plan_id: string; execution_id?: string; total_cost: number; status: 'complete' | 'partial' | 'failed'; task_count?: number }
+interface SSEError         { type: 'error';         message: string }
+type SSEEvent =
+  | SSEStartEvent | SSETaskStart | SSETaskComplete
+  | SSETaskError  | SSEComplete  | SSEError
 
 interface ExecRow {
   id:       string
@@ -476,49 +488,191 @@ export default function JavariOSPage() {
     try { localStorage.setItem('javari_theme', t) } catch { /* non-fatal */ }
   }, [])
 
-  // ── TEAM Execution — fires validated plan through /api/javari/team ────────
+  // ── TEAM SSE Event Handler ────────────────────────────────────────────────
+  // Called for each SSE event as it arrives off the stream.
+  // All state mutations are batched through React — no intermediate flushes needed.
+  const handleStreamEvent = useCallback((event: SSEEvent) => {
+    switch (event.type) {
+
+      case 'start':
+        // Plan accepted — initialize result with empty task list + running status
+        setExecutionResult({
+          plan_id:    event.plan_id,
+          total_cost: 0,
+          status:     'running',
+          results:    [],
+        })
+        setMessages(m => [...m, {
+          id:      Date.now().toString(),
+          role:    'system',
+          content: `⚡ TEAM PLAN [${event.plan_id}] — STARTED`,
+          ts:      Date.now(),
+        }])
+        break
+
+      case 'task_start':
+        // Task is actively running — show it as a pending exec row immediately
+        setExecRows(prev => {
+          // Avoid duplicating if already present
+          if (prev.some(r => r.id === event.task_id)) return prev
+          return [{
+            id:       event.task_id,
+            title:    event.task_id.replace(/-/g, ' '),
+            module:   'team',
+            model:    '',
+            status:   'running',
+            verified: false,
+            cost:     0,
+            ts:       Date.now(),
+          }, ...prev].slice(0, 20)
+        })
+        break
+
+      case 'task_complete': {
+        const r = event.result
+        // Append completed task to results list — UI renders live
+        setExecutionResult(prev => {
+          if (!prev) return prev
+          // Deduplicate: replace in-place if already present (shouldn't happen, but safe)
+          const existing = prev.results.findIndex(t => t.task_id === r.task_id)
+          const updated  = existing >= 0
+            ? prev.results.map((t, i) => i === existing ? r : t)
+            : [...prev.results, r]
+          return { ...prev, results: updated, total_cost: updated.reduce((s, t) => s + (t.cost_used ?? 0), 0) }
+        })
+        // Update exec log row to completed
+        setExecRows(prev => prev.map(row =>
+          row.id === r.task_id
+            ? { ...row, status: 'completed', verified: true, cost: r.cost_used }
+            : row
+        ))
+        break
+      }
+
+      case 'task_error': {
+        const r = event.result
+        // Append failed task to results list
+        setExecutionResult(prev => {
+          if (!prev) return prev
+          const existing = prev.results.findIndex(t => t.task_id === r.task_id)
+          const updated  = existing >= 0
+            ? prev.results.map((t, i) => i === existing ? r : t)
+            : [...prev.results, r]
+          return { ...prev, results: updated }
+        })
+        // Update exec log row to failed
+        setExecRows(prev => prev.map(row =>
+          row.id === r.task_id
+            ? { ...row, status: 'failed', verified: false, cost: r.cost_used }
+            : row
+        ))
+        break
+      }
+
+      case 'complete': {
+        // Final summary — seal the result with authoritative cost + status
+        setExecutionResult(prev => {
+          if (!prev) return prev
+          return {
+            ...prev,
+            plan_id:      event.plan_id ?? prev.plan_id,
+            execution_id: event.execution_id,
+            total_cost:   event.total_cost ?? prev.total_cost,
+            status:       event.status,
+          }
+        })
+        const cost = typeof event.total_cost === 'number' ? event.total_cost.toFixed(6) : '—'
+        setMessages(m => [...m, {
+          id:      Date.now().toString(),
+          role:    'system',
+          content: `⚡ TEAM PLAN [${event.plan_id}] — ${event.status.toUpperCase()} — ${event.task_count ?? '?'} tasks — $${cost}`,
+          ts:      Date.now(),
+        }])
+        break
+      }
+
+      case 'error':
+        setExecutionResult(prev => prev
+          ? { ...prev, status: 'failed', error: event.message }
+          : { plan_id: '', total_cost: 0, status: 'failed', results: [], error: event.message }
+        )
+        setMessages(m => [...m, {
+          id: Date.now().toString(), role: 'assistant', error: true,
+          content: `TEAM execution error: ${event.message}`, ts: Date.now(),
+        }])
+        break
+    }
+  }, [])
+
+  // ── TEAM Execution — SSE streaming via ReadableStream reader ─────────────
   const runTeamExecution = useCallback(async (plan: unknown) => {
     if (isExecuting) return
     setIsExecuting(true)
     setExecutionResult(null)
     setAvState('executing')
     setExecPulse(true)
+
     try {
       const headers: Record<string, string> = { 'Content-Type': 'application/json' }
       if (authToken) headers['Authorization'] = `Bearer ${authToken}`
-      const res  = await fetch('/api/javari/team', {
+
+      const res = await fetch('/api/javari/team', {
         method:  'POST',
         headers,
         body:    JSON.stringify(plan),
       })
-      const data: TeamExecutionResult = await res.json()
-      setExecutionResult(data)
 
-      // Surface execution summary into the chat feed
-      const taskCount  = data.results?.length ?? 0
-      const doneCount  = data.results?.filter(r => r.status === 'complete').length ?? 0
-      const totalCost  = typeof data.total_cost === 'number' ? data.total_cost.toFixed(6) : '—'
-      setMessages(m => [...m, {
-        id:      Date.now().toString(),
-        role:    'system',
-        content: `⚡ TEAM PLAN [${data.plan_id}] — ${data.status.toUpperCase()} — ${doneCount}/${taskCount} tasks — $${totalCost}`,
-        ts:      Date.now(),
-      }])
-
-      // Push task results into exec log strip
-      if (data.results?.length) {
-        const newRows: ExecRow[] = data.results.map((r, i) => ({
-          id:       r.task_id,
-          title:    r.task_id.replace(/-/g, ' '),
-          module:   'team',
-          model:    '',
-          status:   r.status === 'complete' ? 'completed' : 'failed',
-          verified: r.status === 'complete',
-          cost:     r.cost_used,
-          ts:       Date.now() - (data.results.length - i) * 500,
-        }))
-        setExecRows(prev => [...newRows, ...prev].slice(0, 20))
+      if (!res.ok || !res.body) {
+        // Non-200 or no body — fall back to JSON error parse
+        const errData = await res.json().catch(() => ({ error: `HTTP ${res.status}` }))
+        throw new Error(errData.error ?? `HTTP ${res.status}`)
       }
+
+      // ── SSE stream reader ──────────────────────────────────────────────────
+      const reader  = res.body.getReader()
+      const decoder = new TextDecoder('utf-8')
+      let   buffer  = ''
+
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+
+        buffer += decoder.decode(value, { stream: true })
+
+        // SSE frames are delimited by "
+
+"
+        const frames = buffer.split('
+
+')
+        // Last element is a partial frame (or empty) — keep in buffer
+        buffer = frames.pop() ?? ''
+
+        for (const frame of frames) {
+          const line = frame.trim()
+          if (!line.startsWith('data:')) continue
+          const raw = line.slice('data:'.length).trim()
+          if (!raw) continue
+          try {
+            const evt = JSON.parse(raw) as SSEEvent
+            handleStreamEvent(evt)
+          } catch {
+            // Malformed SSE frame — skip, don't abort stream
+          }
+        }
+      }
+
+      // Flush any remaining buffer content (stream ended without final 
+
+)
+      const trailing = buffer.trim()
+      if (trailing.startsWith('data:')) {
+        const raw = trailing.slice('data:'.length).trim()
+        if (raw) {
+          try { handleStreamEvent(JSON.parse(raw) as SSEEvent) } catch { /* ignore */ }
+        }
+      }
+
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err)
       setExecutionResult({ plan_id: '', total_cost: 0, status: 'failed', results: [], error: msg })
@@ -530,7 +684,7 @@ export default function JavariOSPage() {
       setIsExecuting(false)
       setTimeout(() => { setAvState('idle'); setExecPulse(false) }, 3000)
     }
-  }, [isExecuting, authToken])
+  }, [isExecuting, authToken, handleStreamEvent])
 
   const PROMPTS = ['Write a business plan', 'Create brand content', 'Analyze my strategy', 'Build a campaign', 'Draft an email', 'Explain this concept']
 
