@@ -659,9 +659,7 @@ export default function JavariOSPage() {
         }
       }
 
-      // Flush any remaining buffer content (stream ended without final 
-
-)
+      // Flush any remaining buffer content (stream ended without a final delimiter)
       const trailing = buffer.trim()
       if (trailing.startsWith('data:')) {
         const raw = trailing.slice('data:'.length).trim()
