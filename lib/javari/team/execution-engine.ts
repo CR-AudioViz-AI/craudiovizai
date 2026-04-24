@@ -5,6 +5,7 @@
 // Stub runners simulate execution — AI dispatch wired in next layer.
 // Created: April 24, 2026
 // Updated: April 24, 2026 — persistence wired: createExecution, saveTaskResult, finalizeExecution
+// Updated: April 24, 2026 — ExecutionHooks interface + executePlanStreaming wrapper for SSE
 
 import type {
   ExecutionGraph,
@@ -40,6 +41,22 @@ export interface ExecutionContext {
   execution_id: string          // Supabase UUID — added for persistence
   results:      Map<string, TaskResult>
   total_cost:   number
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ExecutionHooks
+// Optional lifecycle callbacks injected into executePlan.
+// Called synchronously inside the batch loop — callers must not throw.
+// Used by executePlanStreaming to emit SSE events as tasks fire.
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface ExecutionHooks {
+  /** Called immediately before a task is dispatched to its runner */
+  onTaskStart?:    (task: TaskNode) => void
+  /** Called immediately after a task settles (success or cascade-fail) */
+  onTaskComplete?: (result: TaskResult) => void
+  /** Called when the engine throws a fatal error (deadlock, DB failure) */
+  onEngineError?:  (error: Error) => void
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -192,8 +209,8 @@ export async function executeTask(
 function deriveFinalStatus(
   results: Map<string, TaskResult>,
 ): 'complete' | 'partial' | 'failed' {
-  const all     = [...results.values()]
-  const total   = all.length
+  const all      = [...results.values()]
+  const total    = all.length
   const complete = all.filter(r => r.status === 'complete').length
   if (total === 0 || complete === 0) return 'failed'
   if (complete === total)            return 'complete'
@@ -205,28 +222,32 @@ function deriveFinalStatus(
 // Executes all tasks in the graph using the topological order from the
 // contract layer, running independent tasks in parallel via Promise.all.
 //
-// Persistence contract:
-//   1. createExecution() called once before any task fires — establishes
-//      the DB record with status 'running'.
-//   2. saveTaskResult() called for every task immediately after it settles —
-//      both success and failure paths. Never skipped.
-//   3. finalizeExecution() called in finally — guaranteed to run even if the
-//      engine throws (deadlock guard, DB error, etc.).
+// Accepts optional ExecutionHooks for streaming/observability — callers that
+// don't need hooks pass nothing and get identical behavior to v2.
 //
-// Concurrency model (unchanged from v1):
-//   - Scan remaining tasks each pass; collect all whose deps are settled.
-//   - Execute ready batch via Promise.all.
-//   - Cascade-fail tasks whose dependencies failed.
-//   - Accumulate total_cost after each batch.
+// Persistence contract:
+//   1. createExecution() called once before any task fires.
+//   2. saveTaskResult() called for every task immediately after it settles.
+//   3. finalizeExecution() called in finally — always runs.
+//
+// Hook contract:
+//   - onTaskStart fires before each task's runner is invoked (or before
+//     cascade-fail is recorded) — lets the caller know the task is active.
+//   - onTaskComplete fires after saveTaskResult — result is fully committed.
+//   - onEngineError fires if the engine loop throws before finalizeExecution.
+//   - Hooks must never throw — errors from hooks are swallowed to protect
+//     the execution loop.
 // ─────────────────────────────────────────────────────────────────────────────
 
 export async function executePlan(
   graph: ExecutionGraph,
   plan:  ExecutionPlan,
+  hooks: ExecutionHooks = {},
 ): Promise<ExecutionContext> {
   const { executionOrder, taskMap } = graph
+  const { onTaskStart, onTaskComplete, onEngineError } = hooks
 
-  // ── 1. Create DB record — establishes execution_id before any work starts ──
+  // ── 1. Create DB record ────────────────────────────────────────────────────
   const execution_id = await createExecution(plan)
 
   const plan_id = plan.plan_id
@@ -241,7 +262,7 @@ export async function executePlan(
   const dispatched = new Set<string>()
   let   remaining  = [...executionOrder]
 
-  // ── 2. Wrap execution loop in try/finally — finalizeExecution always runs ──
+  // ── 2. Execution loop ──────────────────────────────────────────────────────
   try {
     while (remaining.length > 0) {
       const readyBatch:   TaskNode[] = []
@@ -273,9 +294,12 @@ export async function executePlan(
         )
       }
 
-      // Execute all ready tasks in parallel, persist each result immediately
+      // Execute all ready tasks in parallel, persist + hook each result
       const batchResults = await Promise.all(
         readyBatch.map(async (task): Promise<TaskResult> => {
+          // ── Hook: task starting ──────────────────────────────────────────
+          try { onTaskStart?.(task) } catch { /* hook errors never propagate */ }
+
           // Cascade-fail: skip if any dependency failed
           const failedDep = task.dependencies.find(dep =>
             context.results.get(dep)?.status === 'failed'
@@ -297,14 +321,17 @@ export async function executePlan(
             result = await executeTask(task, context)
           }
 
-          // ── 3. Persist task result — awaited, throws on DB error ───────────
+          // Persist — awaited, throws on DB error
           await saveTaskResult(execution_id, result, task.role)
+
+          // ── Hook: task complete ──────────────────────────────────────────
+          try { onTaskComplete?.(result) } catch { /* hook errors never propagate */ }
 
           return result
         })
       )
 
-      // Commit batch to context after all saves complete
+      // Commit batch to context after all saves + hooks complete
       for (const result of batchResults) {
         context.results.set(result.task_id, result)
         context.total_cost = roundCost(context.total_cost + result.cost_used)
@@ -312,13 +339,55 @@ export async function executePlan(
 
       remaining = stillPending
     }
+  } catch (err: unknown) {
+    // ── Hook: engine error ───────────────────────────────────────────────────
+    const engineError = err instanceof Error ? err : new Error(String(err))
+    try { onEngineError?.(engineError) } catch { /* never propagate */ }
+    throw engineError  // re-throw so finally can still finalize
   } finally {
-    // ── 4. Finalize — runs regardless of success, failure, or thrown error ───
+    // ── 3. Finalize — guaranteed regardless of outcome ────────────────────
     const finalStatus = deriveFinalStatus(context.results)
     await finalizeExecution(execution_id, finalStatus, context.total_cost)
   }
 
   return context
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// executePlanStreaming
+// Thin wrapper around executePlan that wires a caller-supplied send function
+// to the hook callbacks. The route uses this to emit SSE events without
+// duplicating any engine logic.
+//
+// send() receives structured SSEEvent objects — the route serializes them.
+// executePlanStreaming does not own the stream or the controller; it only
+// drives the engine and fires send() at the right moments.
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface SSEEvent {
+  type:       'start' | 'task_start' | 'task_complete' | 'task_error' | 'complete' | 'error'
+  plan_id?:   string
+  task_id?:   string
+  result?:    TaskResult
+  error?:     string
+  message?:   string
+}
+
+export async function executePlanStreaming(
+  graph:   ExecutionGraph,
+  plan:    ExecutionPlan,
+  send:    (event: SSEEvent) => void,
+): Promise<ExecutionContext> {
+  return executePlan(graph, plan, {
+    onTaskStart:    (task)   => send({ type: 'task_start',    task_id: task.id }),
+    onTaskComplete: (result) => send({
+      type:    result.status === 'complete' ? 'task_complete' : 'task_error',
+      task_id: result.task_id,
+      result,
+      error:   result.error,
+    }),
+    onEngineError:  (err)    => send({ type: 'error', message: err.message }),
+  })
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
