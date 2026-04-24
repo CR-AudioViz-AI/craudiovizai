@@ -639,12 +639,9 @@ export default function JavariOSPage() {
 
         buffer += decoder.decode(value, { stream: true })
 
-        // SSE frames are delimited by "
-
-"
-        const frames = buffer.split('
-
-')
+        // SSE frames are delimited by double-newline
+        const SSE_DELIMITER = '\n\n'
+        const frames = buffer.split(SSE_DELIMITER)
         // Last element is a partial frame (or empty) — keep in buffer
         buffer = frames.pop() ?? ''
 
