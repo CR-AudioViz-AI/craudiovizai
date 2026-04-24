@@ -4,7 +4,7 @@
 // Sidebar: Avatar identity + status + agents stacked vertically
 // Main: Full-height dominant chat feed + execution log strip at bottom
 // Design: Fortune 50 dark ops — deep black, cyan/purple pill toggles, slide-in animations
-// Updated: April 24, 2026 — v9: UX clarity pass (primary CTA, guided empty state, avatar gradient, exec hint)
+// Updated: April 24, 2026 — v10: clean layout + focus hierarchy (collapsible sidebar, reduced visual noise)
 'use client'
 
 import {
@@ -206,15 +206,16 @@ function Avatar({ state }: { state: AvState }) {
 // Sidebar section wrapper
 // ─────────────────────────────────────────────────────────────────────────────
 function SideSection({
-  label, icon, accent = 'zinc', children, collapsible = false,
+  label, icon, accent = 'zinc', children, collapsible = false, defaultOpen = true,
 }: {
   label: string
   icon?: React.ReactNode
   accent?: 'violet' | 'blue' | 'emerald' | 'amber' | 'zinc'
   children: React.ReactNode
   collapsible?: boolean
+  defaultOpen?: boolean
 }) {
-  const [open, setOpen] = useState(true)
+  const [open, setOpen] = useState(defaultOpen)
   const accentColor = {
     violet:  '#a855f7',
     blue:    '#3b82f6',
@@ -275,6 +276,8 @@ export default function JavariOSPage() {
   const [execRows,    setExecRows]    = useState<ExecRow[]>([])
   const [sysStatus,   setSysStatus]   = useState<SysStatus | null>(null)
   const [execPulse,   setExecPulse]   = useState(false)
+  // Sidebar collapsed by default — chat owns the viewport
+  const [sidebarOpen, setSidebarOpen] = useState(false)
 
   // ── TEAM execution state ───────────────────────────────────────────────────
   const [isExecuting,     setIsExecuting]     = useState(false)
@@ -785,6 +788,16 @@ export default function JavariOSPage() {
         /* Chat message hover */
         .jv-chat-row:hover { background: rgba(255,255,255,0.02) }
 
+        /* Sidebar width transition */
+        .jv-sidebar { transition: width 0.22s cubic-bezier(0.4,0,0.2,1), min-width 0.22s cubic-bezier(0.4,0,0.2,1) }
+
+        /* Exec strip height transition */
+        .jv-exec-strip { transition: height 0.3s cubic-bezier(0.4,0,0.2,1), min-height 0.3s cubic-bezier(0.4,0,0.2,1) }
+
+        /* Remove heavy section dividers */
+        .jv-side-section { border-bottom: none !important }
+        .jv-side-section > button { border-bottom: none !important }
+
         /* ── Light theme overrides ─────────────────────────────────────── */
         [data-theme="light"] .jv-pill-inactive { background: rgba(0,0,0,0.04); border-color: #d1d5db; color: #6b7280 }
         [data-theme="light"] .jv-pill-inactive:hover { border-color: #9ca3af; color: #374151 }
@@ -1040,12 +1053,51 @@ export default function JavariOSPage() {
         <div style={{ flex: 1, minHeight: 0, display: 'flex', overflow: 'hidden' }}>
 
           {/* ── LEFT SIDEBAR — 280px fixed ───────────────────────────────── */}
-          <aside
-            className="jv-scroll jv-slide-in"
+          {/* Sidebar wrapper — controls width transition */}
+          <div style={{
+            flexShrink:  0,
+            position:    'relative',
+            width:       sidebarOpen ? '280px' : '52px',
+            minWidth:    sidebarOpen ? '280px' : '52px',
+            transition:  'width 0.22s cubic-bezier(0.4,0,0.2,1), min-width 0.22s cubic-bezier(0.4,0,0.2,1)',
+            display:     'flex',
+          }}>
+          {/* Toggle chevron */}
+          <button
+            onClick={() => setSidebarOpen(v => !v)}
+            title={sidebarOpen ? 'Collapse sidebar' : 'Expand sidebar'}
             style={{
-              width:        '280px',
-              minWidth:     '280px',
-              maxWidth:     '280px',
+              position:       'absolute',
+              top:            '12px',
+              right:          '-13px',
+              zIndex:         30,
+              width:          '26px',
+              height:         '26px',
+              borderRadius:   '50%',
+              background:     T.bgPanel,
+              border:         `1px solid ${T.border}`,
+              color:          T.textMuted,
+              cursor:         'pointer',
+              display:        'flex',
+              alignItems:     'center',
+              justifyContent: 'center',
+              fontSize:       '12px',
+              lineHeight:     1,
+              transition:     'all 0.15s ease',
+              flexShrink:     0,
+            }}
+            onMouseEnter={e => { const el=e.currentTarget as HTMLElement; el.style.color=T.textPrimary; el.style.borderColor=T.borderStrong }}
+            onMouseLeave={e => { const el=e.currentTarget as HTMLElement; el.style.color=T.textMuted; el.style.borderColor=T.border }}
+          >
+            {sidebarOpen ? '‹' : '›'}
+          </button>
+
+          <aside
+            className="jv-scroll"
+            style={{
+              width:        sidebarOpen ? '280px' : '52px',
+              minWidth:     sidebarOpen ? '280px' : '52px',
+              maxWidth:     sidebarOpen ? '280px' : '52px',
               borderRight:  `1px solid ${T.border}`,
               overflowY:    'auto',
               overflowX:    'hidden',
@@ -1053,8 +1105,21 @@ export default function JavariOSPage() {
               display:      'flex',
               flexDirection:'column',
               flexShrink:   0,
+              transition:   'width 0.22s cubic-bezier(0.4,0,0.2,1), min-width 0.22s cubic-bezier(0.4,0,0.2,1)',
             }}
           >
+            {/* ── Collapsed icon strip ──────────────────────────────────── */}
+            {!sidebarOpen && (
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px', padding: '50px 0 16px' }}>
+                <div onClick={() => setSidebarOpen(true)} title="Javari AI" style={{ width: '28px', height: '28px', borderRadius: '50%', background: avState === 'idle' ? T.bgInput : 'rgba(139,92,246,0.2)', border: `1.5px solid ${avState === 'idle' ? T.border : 'rgba(139,92,246,0.5)'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: '11px', color: avState === 'idle' ? T.textFaint : '#a855f7', transition: 'all 0.25s' }}>
+                  {avState === 'executing' ? '⚡' : '◉'}
+                </div>
+                <div onClick={() => setSidebarOpen(true)} title="AI Agents" style={{ width: '28px', height: '28px', borderRadius: '6px', background: T.bgInput, border: `1px solid ${T.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: '11px', color: T.textFaint }}>◈</div>
+                <div onClick={() => setSidebarOpen(true)} title="Team Execute" style={{ width: '28px', height: '28px', borderRadius: '6px', background: T.bgInput, border: `1px solid ${T.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: '11px', color: T.textFaint }}>▶</div>
+              </div>
+            )}
+            {/* ── Sidebar expanded content ──────────────────────────────── */}
+            {sidebarOpen && (<>
             {/* ── Identity section ──────────────────────────────────────── */}
             <SideSection label="IDENTITY" icon={<Cpu size={10} />} accent="violet">
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px' }}>
@@ -1127,7 +1192,7 @@ export default function JavariOSPage() {
             </SideSection>
 
             {/* ── AI Agents section ─────────────────────────────────────── */}
-            <SideSection label="AI AGENTS" icon={<Users size={10} />} accent="emerald" collapsible>
+            <SideSection label="AI AGENTS" icon={<Users size={10} />} accent="emerald" collapsible defaultOpen={false}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 {Object.entries(AGENT_CFG).map(([key, cfg]) => {
                   const step    = ensemble.find(s => s.role === key)
@@ -1218,7 +1283,7 @@ export default function JavariOSPage() {
             </SideSection>
 
             {/* ── TEAM Execution section ─────────────────────────────── */}
-            <SideSection label="TEAM EXECUTE" icon={<Zap size={10} />} accent="amber" collapsible>
+            <SideSection label="TEAM EXECUTE" icon={<Zap size={10} />} accent="amber" collapsible defaultOpen={false}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
 
                 {/* Execute button */}
@@ -1432,13 +1497,15 @@ export default function JavariOSPage() {
                 )}
               </div>
             </SideSection>
+          </>)}{/* /sidebarOpen */}
           </aside>
+          </div>{/* /sidebar-wrapper */}
 
           {/* ── MAIN AREA — 1fr dominant ─────────────────────────────────── */}
           <main style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
 
             {/* ── CHAT FEED — dominant, fills available height ──────────── */}
-            <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', borderBottom: `1px solid ${T.border}` }}>
+            <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
 
               {/* Chat header */}
               <div style={{
@@ -1451,12 +1518,8 @@ export default function JavariOSPage() {
                 borderBottom: `1px solid ${T.border}`,
                 background:   T.bgExecHdr,
               }}>
-                <Terminal size={10} style={{ color: '#3b82f6' }} />
-                <span style={{ fontFamily: 'monospace', fontSize: '12px', letterSpacing: '0.2em', color: '#60a5fa' }}>
-                  LIVE FEED
-                </span>
-                <span style={{ fontFamily: 'monospace', fontSize: '11px', color: '#71717a' }}>
-                  /{mode.toUpperCase()}
+                <span style={{ fontFamily: 'monospace', fontSize: '13px', letterSpacing: '0.1em', color: mode === 'council' ? '#c084fc' : '#60a5fa', fontWeight: 600 }}>
+                  {mode === 'council' ? 'AI Council' : 'Javari AI'}
                 </span>
                 <div style={{ flex: 1 }} />
                 {messages.filter(m => m.role !== 'system').length > 0 && (
@@ -1475,9 +1538,9 @@ export default function JavariOSPage() {
               {/* Input bar — fixed directly under chat header */}
               <div style={{
                 flexShrink:   0,
-                padding:      '10px 16px',
+                padding:      '8px 16px',
                 borderBottom: `1px solid ${T.border}`,
-                background:   T.bgExecHdr,
+                background:   T.bgHeader,
               }}>
                 <div style={{
                   display:     'flex',
@@ -1791,17 +1854,17 @@ export default function JavariOSPage() {
               </div>
             </div>
 
-            {/* ── EXECUTION LOG — fixed-height strip at bottom ──────────── */}
-            <div style={{ flexShrink: 0, height: '200px', minHeight: '200px', display: 'flex', flexDirection: 'column' }}>
+            {/* ── EXECUTION LOG — height expands when active ──────────────── */}
+            <div className="jv-exec-strip" style={{ flexShrink: 0, height: (execRows.length > 0 || execPulse || isExecuting) ? '180px' : '44px', minHeight: (execRows.length > 0 || execPulse || isExecuting) ? '180px' : '44px', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
               {/* Exec header */}
               <div style={{
                 flexShrink:   0,
-                padding:      '0 20px',
-                height:       '36px',
+                padding:      '0 16px',
+                height:       '44px',
                 display:      'flex',
                 alignItems:   'center',
-                gap:          '10px',
-                borderBottom: `1px solid ${T.border}`,
+                gap:          '8px',
+                borderTop:    `1px solid ${T.border}`,
                 background:   T.bgExecHdr,
               }}>
                 <Activity size={10} style={{ color: '#f59e0b' }} />
