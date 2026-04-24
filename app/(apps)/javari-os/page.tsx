@@ -4,7 +4,7 @@
 // Sidebar: Avatar identity + status + agents stacked vertically
 // Main: Full-height dominant chat feed + execution log strip at bottom
 // Design: Fortune 50 dark ops — deep black, cyan/purple pill toggles, slide-in animations
-// Updated: April 24, 2026 — v10: clean layout + focus hierarchy (collapsible sidebar, reduced visual noise)
+// Updated: April 24, 2026 — v11: agent activity + execution motion (active glow, step counter, micro-delay, status labels)
 'use client'
 
 import {
@@ -278,6 +278,8 @@ export default function JavariOSPage() {
   const [execPulse,   setExecPulse]   = useState(false)
   // Sidebar collapsed by default — chat owns the viewport
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  // Active agent: task_id currently running (cleared on complete/error)
+  const [activeTaskId, setActiveTaskId] = useState<string | null>(null)
 
   // ── TEAM execution state ───────────────────────────────────────────────────
   const [isExecuting,     setIsExecuting]     = useState(false)
@@ -529,61 +531,68 @@ export default function JavariOSPage() {
         break
 
       case 'task_start':
-        // Task is actively running — show it as a pending exec row immediately
-        setExecRows(prev => {
-          // Avoid duplicating if already present
-          if (prev.some(r => r.id === event.task_id)) return prev
-          return [{
-            id:       event.task_id,
-            title:    event.task_id.replace(/-/g, ' '),
-            module:   'team',
-            model:    '',
-            status:   'running',
-            verified: false,
-            cost:     0,
-            ts:       Date.now(),
-          }, ...prev].slice(0, 20)
-        })
+        // Micro-delay: 400ms so humans can perceive each step firing
+        setTimeout(() => {
+          setActiveTaskId(event.task_id)
+          setExecRows(prev => {
+            if (prev.some(r => r.id === event.task_id)) {
+              // Already present — just mark running
+              return prev.map(r => r.id === event.task_id ? { ...r, status: 'running' } : r)
+            }
+            return [{
+              id:       event.task_id,
+              title:    event.task_id.replace(/-/g, ' '),
+              module:   'team',
+              model:    '',
+              status:   'running',
+              verified: false,
+              cost:     0,
+              ts:       Date.now(),
+            }, ...prev].slice(0, 20)
+          })
+        }, 400)
         break
 
       case 'task_complete': {
         const r = event.result
-        // Append completed task to results list — UI renders live
-        setExecutionResult(prev => {
-          if (!prev) return prev
-          // Deduplicate: replace in-place if already present (shouldn't happen, but safe)
-          const existing = prev.results.findIndex(t => t.task_id === r.task_id)
-          const updated  = existing >= 0
-            ? prev.results.map((t, i) => i === existing ? r : t)
-            : [...prev.results, r]
-          return { ...prev, results: updated, total_cost: updated.reduce((s, t) => s + (t.cost_used ?? 0), 0) }
-        })
-        // Update exec log row to completed
-        setExecRows(prev => prev.map(row =>
-          row.id === r.task_id
-            ? { ...row, status: 'completed', verified: true, cost: r.cost_used }
-            : row
-        ))
+        // Micro-delay: 300ms so the transition from running → complete is perceptible
+        setTimeout(() => {
+          setActiveTaskId(prev => prev === r.task_id ? null : prev)
+          setExecutionResult(prev => {
+            if (!prev) return prev
+            const existing = prev.results.findIndex(t => t.task_id === r.task_id)
+            const updated  = existing >= 0
+              ? prev.results.map((t, i) => i === existing ? r : t)
+              : [...prev.results, r]
+            return { ...prev, results: updated, total_cost: updated.reduce((s, t) => s + (t.cost_used ?? 0), 0) }
+          })
+          setExecRows(prev => prev.map(row =>
+            row.id === r.task_id
+              ? { ...row, status: 'completed', verified: true, cost: r.cost_used }
+              : row
+          ))
+        }, 300)
         break
       }
 
       case 'task_error': {
         const r = event.result
-        // Append failed task to results list
-        setExecutionResult(prev => {
-          if (!prev) return prev
-          const existing = prev.results.findIndex(t => t.task_id === r.task_id)
-          const updated  = existing >= 0
-            ? prev.results.map((t, i) => i === existing ? r : t)
-            : [...prev.results, r]
-          return { ...prev, results: updated }
-        })
-        // Update exec log row to failed
-        setExecRows(prev => prev.map(row =>
-          row.id === r.task_id
-            ? { ...row, status: 'failed', verified: false, cost: r.cost_used }
-            : row
-        ))
+        setTimeout(() => {
+          setActiveTaskId(prev => prev === r.task_id ? null : prev)
+          setExecutionResult(prev => {
+            if (!prev) return prev
+            const existing = prev.results.findIndex(t => t.task_id === r.task_id)
+            const updated  = existing >= 0
+              ? prev.results.map((t, i) => i === existing ? r : t)
+              : [...prev.results, r]
+            return { ...prev, results: updated }
+          })
+          setExecRows(prev => prev.map(row =>
+            row.id === r.task_id
+              ? { ...row, status: 'failed', verified: false, cost: r.cost_used }
+              : row
+          ))
+        }, 300)
         break
       }
 
@@ -787,6 +796,36 @@ export default function JavariOSPage() {
 
         /* Chat message hover */
         .jv-chat-row:hover { background: rgba(255,255,255,0.02) }
+
+        /* Running task shimmer */
+        @keyframes jv-shimmer {
+          0%   { background-position: -200% center }
+          100% { background-position:  200% center }
+        }
+        .jv-running {
+          background: linear-gradient(90deg, transparent 0%, rgba(245,158,11,0.12) 50%, transparent 100%);
+          background-size: 200% 100%;
+          animation: jv-shimmer 1.6s ease infinite;
+        }
+
+        /* Agent active glow ring */
+        @keyframes jv-agent-pulse {
+          0%,100% { box-shadow: 0 0 0 0 rgba(245,158,11,0.0) }
+          50%     { box-shadow: 0 0 0 4px rgba(245,158,11,0.25) }
+        }
+        .jv-agent-active {
+          animation: jv-agent-pulse 1.4s ease-in-out infinite;
+          border-color: rgba(245,158,11,0.55) !important;
+          background: rgba(245,158,11,0.06) !important;
+        }
+
+        /* Completed row fade-in check */
+        @keyframes jv-check-pop {
+          0%   { transform: scale(0.5); opacity: 0 }
+          70%  { transform: scale(1.2) }
+          100% { transform: scale(1);   opacity: 1 }
+        }
+        .jv-check-pop { animation: jv-check-pop 0.3s cubic-bezier(0.34,1.56,0.64,1) forwards }
 
         /* Sidebar width transition */
         .jv-sidebar { transition: width 0.22s cubic-bezier(0.4,0,0.2,1), min-width 0.22s cubic-bezier(0.4,0,0.2,1) }
@@ -1200,12 +1239,15 @@ export default function JavariOSPage() {
                   return (
                     <div
                       key={key}
-                      className={waiting && !step ? 'av-blink' : undefined}
+                      className={[
+                        waiting && !step ? 'av-blink' : '',
+                        activeTaskId && activeTaskId.includes(key) ? 'jv-agent-active' : '',
+                      ].filter(Boolean).join(' ') || undefined}
                       style={{
                         padding:      '10px 12px',
                         borderRadius: '10px',
-                        border:       `1px solid ${step ? cfg.hue + '40' : waiting ? cfg.hue + '18' : '#18181b'}`,
-                        background:   step ? 'rgba(24,24,27,0.6)' : waiting ? 'rgba(24,24,27,0.2)' : 'transparent',
+                        border:       `1px solid ${activeTaskId && activeTaskId.includes(key) ? 'rgba(245,158,11,0.55)' : step ? cfg.hue + '40' : waiting ? cfg.hue + '18' : '#18181b'}`,
+                        background:   activeTaskId && activeTaskId.includes(key) ? 'rgba(245,158,11,0.06)' : step ? 'rgba(24,24,27,0.6)' : waiting ? 'rgba(24,24,27,0.2)' : 'transparent',
                         transition:   'all 0.3s ease',
                         borderStyle:  waiting && !step ? 'dashed' : 'solid',
                       }}
@@ -1235,10 +1277,19 @@ export default function JavariOSPage() {
                           {step.content}
                         </p>
                       ) : (
-                        <p style={{ fontFamily: 'monospace', fontSize: '11px', color: '#71717a', letterSpacing: '0.08em' }}>
-                          {key === 'planner'   ? 'Breaks down tasks into steps' :
-                           key === 'builder'   ? 'Implements the plan fully'    :
-                                                 'Reviews and validates output'}
+                        <p style={{ fontFamily: 'monospace', fontSize: '11px', color: activeTaskId && activeTaskId.includes(key) ? '#f59e0b' : '#71717a', letterSpacing: '0.08em', transition: 'color 0.3s' }}
+                          className={activeTaskId && activeTaskId.includes(key) ? 'av-blink' : undefined}
+                        >
+                          {activeTaskId && activeTaskId.includes(key)
+                            ? (key === 'planner'   ? 'Designing…'   :
+                               key === 'builder'   ? 'Building…'    :
+                               key === 'reviewer'  ? 'Reviewing…'   :
+                               key === 'tester'    ? 'Testing…'     :
+                               key === 'deployer'  ? 'Deploying…'   : 'Working…')
+                            : (key === 'planner'   ? 'Breaks down tasks into steps' :
+                               key === 'builder'   ? 'Implements the plan fully'    :
+                                                     'Reviews and validates output')
+                          }
                         </p>
                       )}
 
@@ -1854,6 +1905,34 @@ export default function JavariOSPage() {
               </div>
             </div>
 
+            {/* ── Step progress counter ─────────────────────────────────────── */}
+            {isExecuting && executionResult && (
+              <div style={{ flexShrink: 0, padding: '6px 20px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div style={{ display: 'flex', gap: '4px' }}>
+                  {Array.from({ length: Math.max(executionResult.results.length + (activeTaskId ? 1 : 0), 3) }).map((_, i) => {
+                    const done = i < executionResult.results.length
+                    const active = i === executionResult.results.length && !!activeTaskId
+                    return (
+                      <div key={i} style={{
+                        width:      done ? '20px' : '6px',
+                        height:     '4px',
+                        borderRadius:'2px',
+                        background: done ? '#10b981' : active ? '#f59e0b' : T.borderMid,
+                        transition: 'all 0.4s cubic-bezier(0.4,0,0.2,1)',
+                        animation:  active ? 'av-blink 1.2s ease-in-out infinite' : 'none',
+                      }} />
+                    )
+                  })}
+                </div>
+                <span style={{ fontFamily: 'monospace', fontSize: '11px', color: T.textMuted, letterSpacing: '0.08em' }}>
+                  {activeTaskId
+                    ? `Running step ${executionResult.results.length + 1}${' of ' + Math.max(executionResult.results.length + 1, 3)}`
+                    : `${executionResult.results.length} step${executionResult.results.length !== 1 ? 's' : ''} complete`
+                  }
+                </span>
+              </div>
+            )}
+
             {/* ── EXECUTION LOG — height expands when active ──────────────── */}
             <div className="jv-exec-strip" style={{ flexShrink: 0, height: (execRows.length > 0 || execPulse || isExecuting) ? '180px' : '44px', minHeight: (execRows.length > 0 || execPulse || isExecuting) ? '180px' : '44px', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
               {/* Exec header */}
@@ -1898,32 +1977,43 @@ export default function JavariOSPage() {
                       return (
                         <div
                           key={row.id + row.ts}
-                          className={`jv-exec-row ${i < 3 ? 'jv-exec-in' : ''}`}
+                          className={[
+                            'jv-exec-row',
+                            i < 3 ? 'jv-exec-in' : '',
+                            row.status === 'running' ? 'jv-running' : '',
+                          ].filter(Boolean).join(' ')}
                           style={{
                             padding:       '7px 20px',
                             borderBottom:  `1px solid ${T.border}`,
                             display:       'flex',
                             alignItems:    'center',
                             gap:           '10px',
-                            background:    isNew ? 'rgba(245,158,11,0.04)' : 'transparent',
-                            transition:    'background 0.3s',
+                            background:    row.status === 'running'
+                              ? 'transparent'
+                              : isNew ? 'rgba(245,158,11,0.04)' : 'transparent',
+                            transition:    'background 0.4s ease',
                           }}
                         >
                           {/* Status glyph */}
-                          <span style={{
-                            fontFamily: 'monospace',
-                            fontSize:   '11px',
-                            flexShrink: 0,
-                            color:      row.verified      ? '#10b981' :
-                                        row.status === 'completed' ? '#3b82f6' :
-                                        row.status === 'failed'    ? '#ef4444' : '#f59e0b',
-                          }}>
-                            {row.verified ? '✓' : row.status === 'failed' ? '✗' : row.status === 'completed' ? '●' : '○'}
+                          <span
+                            className={row.verified ? 'jv-check-pop' : undefined}
+                            style={{
+                              fontFamily: 'monospace',
+                              fontSize:   '11px',
+                              flexShrink: 0,
+                              color:      row.verified          ? '#10b981' :
+                                          row.status === 'completed' ? '#3b82f6' :
+                                          row.status === 'failed'    ? '#ef4444' :
+                                          row.status === 'running'   ? '#f59e0b' : '#f59e0b',
+                              display:    'inline-block',
+                            }}
+                          >
+                            {row.verified ? '✓' : row.status === 'failed' ? '✗' : row.status === 'running' ? '◌' : row.status === 'completed' ? '●' : '○'}
                           </span>
 
                           {/* Title */}
-                          <span style={{ fontFamily: 'monospace', fontSize: '12px', color: T.textSecond, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textTransform: 'capitalize' }}>
-                            {row.title}
+                          <span style={{ fontFamily: 'monospace', fontSize: '12px', color: row.status === 'running' ? '#fbbf24' : T.textSecond, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textTransform: 'capitalize', transition: 'color 0.3s' }}>
+                            {row.title}{row.status === 'running' ? '…' : ''}
                           </span>
 
                           {/* Module */}
