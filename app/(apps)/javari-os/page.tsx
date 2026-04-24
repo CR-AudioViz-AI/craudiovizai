@@ -4,7 +4,7 @@
 // Sidebar: Avatar identity + status + agents stacked vertically
 // Main: Full-height dominant chat feed + execution log strip at bottom
 // Design: Fortune 50 dark ops — deep black, cyan/purple pill toggles, slide-in animations
-// Updated: April 24, 2026 — v6: font scale control (A-/A/A+/A++) with localStorage persistence
+// Updated: April 24, 2026 — v7: theme system (dark/light/contrast) with localStorage persistence
 'use client'
 
 import {
@@ -19,6 +19,7 @@ import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 type Mode       = 'single' | 'council'
 type AvState    = 'idle' | 'thinking' | 'responding' | 'executing'
 type MsgRole    = 'user' | 'assistant' | 'system' | 'agent'
+type Theme      = 'dark' | 'light' | 'contrast'
 
 interface Msg {
   id:      string
@@ -196,7 +197,7 @@ function SideSection({
   }[accent]
 
   return (
-    <div className="jv-side-section" style={{ borderBottom: '1px solid #18181b', paddingBottom: '0' }}>
+    <div className="jv-side-section" style={{ borderBottom: '1px solid var(--jv-border)', paddingBottom: '0' }}>
       <button
         onClick={() => collapsible && setOpen(v => !v)}
         style={{
@@ -208,7 +209,7 @@ function SideSection({
           background:     'transparent',
           border:         'none',
           cursor:         collapsible ? 'pointer' : 'default',
-          borderBottom:   '1px solid #18181b',
+          borderBottom:   '1px solid var(--jv-border)',
         }}
       >
         {icon && <span style={{ color: accentColor, display: 'flex', alignItems: 'center' }}>{icon}</span>}
@@ -254,6 +255,9 @@ export default function JavariOSPage() {
 
   // ── Font scale — user-adjustable, persisted to localStorage ───────────────
   const [fontScale, setFontScale] = useState<number>(1)
+
+  // ── Theme — dark / light / contrast, persisted to localStorage ───────────
+  const [theme, setTheme] = useState<Theme>('dark')
 
   // ── Auth session ───────────────────────────────────────────────────────────
   const supabase    = createClientComponentClient()
@@ -335,6 +339,16 @@ export default function JavariOSPage() {
         }
       }
     } catch { /* localStorage unavailable (SSR/private browsing) — use default */ }
+  }, [])
+
+  // Load persisted theme on mount
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem('javari_theme') as Theme | null
+      if (stored === 'dark' || stored === 'light' || stored === 'contrast') {
+        setTheme(stored)
+      }
+    } catch { /* non-fatal */ }
   }, [])
 
   // ── Send message — v2 logic preserved 100% ────────────────────────────────
@@ -456,6 +470,12 @@ export default function JavariOSPage() {
     try { localStorage.setItem('javari_font_scale', String(scale)) } catch { /* non-fatal */ }
   }, [])
 
+  // ── Theme helper — persists to localStorage ───────────────────────────────
+  const applyTheme = useCallback((t: Theme) => {
+    setTheme(t)
+    try { localStorage.setItem('javari_theme', t) } catch { /* non-fatal */ }
+  }, [])
+
   // ── TEAM Execution — fires validated plan through /api/javari/team ────────
   const runTeamExecution = useCallback(async (plan: unknown) => {
     if (isExecuting) return
@@ -514,6 +534,35 @@ export default function JavariOSPage() {
 
   const PROMPTS = ['Write a business plan', 'Create brand content', 'Analyze my strategy', 'Build a campaign', 'Draft an email', 'Explain this concept']
 
+  // ── Theme token resolver ───────────────────────────────────────────────────
+  // All theme-conditional values live here. Components read T.x — never branch
+  // on `theme` inline. Adding a new theme = one new column in this object.
+  const T = {
+    // Root canvas
+    bg:           theme === 'light' ? '#f4f4f5' : theme === 'contrast' ? '#000000' : '#050507',
+    bgPanel:      theme === 'light' ? '#ffffff'  : theme === 'contrast' ? '#0a0a0a' : 'rgba(0,0,0,0.4)',
+    bgHeader:     theme === 'light' ? 'rgba(255,255,255,0.95)' : theme === 'contrast' ? 'rgba(0,0,0,0.98)' : 'rgba(0,0,0,0.7)',
+    bgInput:      theme === 'light' ? 'rgba(244,244,245,0.8)' : theme === 'contrast' ? '#000000' : 'rgba(24,24,27,0.5)',
+    bgMsgUser:    theme === 'light' ? 'rgba(0,0,0,0.03)' : theme === 'contrast' ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.02)',
+    bgSectionHdr: theme === 'light' ? 'rgba(0,0,0,0.03)' : theme === 'contrast' ? '#000000' : 'transparent',
+    bgExecHdr:    theme === 'light' ? 'rgba(0,0,0,0.04)' : theme === 'contrast' ? '#000000' : 'rgba(0,0,0,0.3)',
+    // Text
+    textPrimary:  theme === 'light' ? '#111111' : theme === 'contrast' ? '#ffffff'  : '#e4e4e7',
+    textSecond:   theme === 'light' ? '#374151' : theme === 'contrast' ? '#f4f4f5'  : '#d4d4d8',
+    textTertiary: theme === 'light' ? '#6b7280' : theme === 'contrast' ? '#e4e4e7'  : '#a1a1aa',
+    textMuted:    theme === 'light' ? '#9ca3af' : theme === 'contrast' ? '#d1d5db'  : '#71717a',
+    textFaint:    theme === 'light' ? '#d1d5db' : theme === 'contrast' ? '#9ca3af'  : '#52525b',
+    textUser:     theme === 'light' ? '#1f2937' : theme === 'contrast' ? '#ffffff'  : '#d4d4d8',
+    textSystem:   theme === 'light' ? '#9ca3af' : theme === 'contrast' ? '#9ca3af'  : '#52525b',
+    textError:    '#f87171',
+    // Borders
+    border:       theme === 'light' ? '#e5e7eb' : theme === 'contrast' ? '#ffffff'  : '#18181b',
+    borderMid:    theme === 'light' ? '#d1d5db' : theme === 'contrast' ? '#e4e4e7'  : '#27272a',
+    borderStrong: theme === 'light' ? '#9ca3af' : theme === 'contrast' ? '#ffffff'  : '#3f3f46',
+    // Scanlines — off in light/contrast
+    scanlines:    theme === 'dark',
+  } as const
+
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <>
@@ -564,23 +613,49 @@ export default function JavariOSPage() {
 
         /* Chat message hover */
         .jv-chat-row:hover { background: rgba(255,255,255,0.02) }
+
+        /* ── Light theme overrides ─────────────────────────────────────── */
+        [data-theme="light"] .jv-pill-inactive { background: rgba(0,0,0,0.04); border-color: #d1d5db; color: #6b7280 }
+        [data-theme="light"] .jv-pill-inactive:hover { border-color: #9ca3af; color: #374151 }
+        [data-theme="light"] .jv-pill-active-cyan  { background: rgba(6,182,212,0.1); border-color: rgba(6,182,212,0.6); color: #0891b2 }
+        [data-theme="light"] .jv-pill-active-purple { background: rgba(168,85,247,0.1); border-color: rgba(168,85,247,0.6); color: #9333ea }
+        [data-theme="light"] .jv-chat-row:hover { background: rgba(0,0,0,0.02) }
+        [data-theme="light"] .jv-exec-row:hover { background: rgba(245,158,11,0.06) }
+        [data-theme="light"] .jv-scroll::-webkit-scrollbar-thumb { background: #d1d5db }
+        [data-theme="light"] .jv-scroll::-webkit-scrollbar-thumb:hover { background: #9ca3af }
+
+        /* ── High contrast overrides ───────────────────────────────────── */
+        [data-theme="contrast"] .jv-pill-inactive { background: transparent; border-color: #4b5563; color: #d1d5db }
+        [data-theme="contrast"] .jv-pill-inactive:hover { border-color: #9ca3af; color: #ffffff }
+        [data-theme="contrast"] .jv-pill-active-cyan  { background: rgba(6,182,212,0.2); border-color: #06b6d4; color: #67e8f9 }
+        [data-theme="contrast"] .jv-pill-active-purple { background: rgba(168,85,247,0.2); border-color: #a855f7; color: #d8b4fe }
+        [data-theme="contrast"] .jv-chat-row:hover { background: rgba(255,255,255,0.04) }
+        [data-theme="contrast"] .jv-exec-row:hover { background: rgba(245,158,11,0.08) }
       `}</style>
 
       {/* ── Root — fixed inset-0 z-50 ───────────────────────────────────── */}
       <div
-        className="jv-scanlines"
+        className={T.scanlines ? 'jv-scanlines' : undefined}
+        data-theme={theme}
         style={{
-          position:   'fixed',
-          inset:      0,
-          zIndex:     50,
-          background: '#050507',
-          color:      '#e4e4e7',
-          display:    'flex',
+          position:      'fixed',
+          inset:         0,
+          zIndex:        50,
+          background:    T.bg,
+          color:         T.textPrimary,
+          display:       'flex',
           flexDirection: 'column',
-          overflow:   'hidden',
-          fontFamily: 'monospace',
-          fontSize:   `${fontScale}rem`,
-        }}
+          overflow:      'hidden',
+          fontFamily:    'monospace',
+          fontSize:      `${fontScale}rem`,
+          // CSS vars consumed by SideSection and any child without T access
+          '--jv-border':       T.border,
+          '--jv-border-mid':   T.borderMid,
+          '--jv-bg-panel':     T.bgPanel,
+          '--jv-text-muted':   T.textMuted,
+          '--jv-text-faint':   T.textFaint,
+          '--jv-text-primary': T.textPrimary,
+        } as React.CSSProperties}
         onClick={() => setModeOpen(false)}
       >
 
@@ -594,7 +669,7 @@ export default function JavariOSPage() {
           padding:        '0 20px',
           gap:            '16px',
           borderBottom:   '1px solid #18181b',
-          background:     'rgba(0,0,0,0.7)',
+          background:     T.bgHeader,
           backdropFilter: 'blur(8px)',
           zIndex:         20,
           position:       'relative',
@@ -610,7 +685,7 @@ export default function JavariOSPage() {
             />
           </div>
 
-          <div style={{ width: '1px', height: '20px', background: '#27272a' }} />
+          <div style={{ width: '1px', height: '20px', background: T.borderMid }} />
 
           {/* Mode pill toggle */}
           <div style={{ position: 'relative', flexShrink: 0 }} onClick={e => e.stopPropagation()}>
@@ -658,7 +733,7 @@ export default function JavariOSPage() {
           {sysStatus && (
             <div style={{ display: 'flex', alignItems: 'center', gap: '16px', fontFamily: 'monospace', fontSize: '12px' }}>
               <span style={{ color: sysStatus.mode === 'BUILD' ? '#60a5fa' : '#f59e0b', letterSpacing: '0.2em' }}>{sysStatus.mode}</span>
-              <span style={{ color: '#71717a' }}>P{sysStatus.phase}</span>
+              <span style={{ color: T.textMuted }}>P{sysStatus.phase}</span>
               <span style={{ color: '#34d399', letterSpacing: '0.15em' }}>{sysStatus.pct}% VERIFIED</span>
               {/* Mini progress bar */}
               <div style={{ width: '60px', height: '2px', background: '#18181b', borderRadius: '1px', overflow: 'hidden' }}>
@@ -667,7 +742,56 @@ export default function JavariOSPage() {
             </div>
           )}
 
-          <div style={{ width: '1px', height: '20px', background: '#27272a' }} />
+          <div style={{ width: '1px', height: '20px', background: T.borderMid }} />
+
+          {/* ── Theme control ──────────────────────────────────────────────── */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
+            <span style={{ fontFamily: 'monospace', fontSize: '10px', color: T.textFaint, letterSpacing: '0.15em', marginRight: '2px', userSelect: 'none' }}>
+              THEME
+            </span>
+            {([
+              { label: '◐ DARK',     value: 'dark'     as Theme },
+              { label: '○ LIGHT',    value: 'light'    as Theme },
+              { label: '● CONTRAST', value: 'contrast' as Theme },
+            ]).map(opt => (
+              <button
+                key={opt.value}
+                onClick={e => { e.stopPropagation(); applyTheme(opt.value) }}
+                style={{
+                  padding:       '3px 8px',
+                  fontFamily:    'monospace',
+                  fontSize:      '10px',
+                  fontWeight:    theme === opt.value ? 700 : 400,
+                  color:         theme === opt.value ? T.textPrimary : T.textFaint,
+                  background:    theme === opt.value ? (opt.value === 'light' ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.08)') : 'transparent',
+                  border:        `1px solid ${theme === opt.value ? T.borderStrong : T.borderMid}`,
+                  borderRadius:  '5px',
+                  cursor:        'pointer',
+                  transition:    'all 0.15s ease',
+                  letterSpacing: '0.1em',
+                  whiteSpace:    'nowrap',
+                }}
+                onMouseEnter={e => {
+                  if (theme !== opt.value) {
+                    const el = e.currentTarget as HTMLElement
+                    el.style.color       = T.textTertiary
+                    el.style.borderColor = T.borderStrong
+                  }
+                }}
+                onMouseLeave={e => {
+                  if (theme !== opt.value) {
+                    const el = e.currentTarget as HTMLElement
+                    el.style.color       = T.textFaint
+                    el.style.borderColor = T.borderMid
+                  }
+                }}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+
+          <div style={{ width: '1px', height: '20px', background: T.borderMid }} />
 
           {/* ── Font size control ───────────────────────────────────────── */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
@@ -719,7 +843,7 @@ export default function JavariOSPage() {
             ))}
           </div>
 
-          <div style={{ width: '1px', height: '20px', background: '#27272a' }} />
+          <div style={{ width: '1px', height: '20px', background: T.borderMid }} />
 
           <a
             href="/command-center"
@@ -727,15 +851,15 @@ export default function JavariOSPage() {
               fontFamily:    'monospace',
               fontSize:      '11px',
               letterSpacing: '0.2em',
-              color:         '#71717a',
+              color:         T.textMuted,
               textDecoration:'none',
               padding:       '4px 10px',
-              border:        '1px solid #27272a',
+              border:        `1px solid ${T.borderMid}`,
               borderRadius:  '6px',
               transition:    'all 0.2s',
             }}
-            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = '#e4e4e7'; (e.currentTarget as HTMLElement).style.borderColor = '#71717a' }}
-            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = '#71717a'; (e.currentTarget as HTMLElement).style.borderColor = '#3f3f46' }}
+            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = T.textPrimary; (e.currentTarget as HTMLElement).style.borderColor = T.borderStrong }}
+            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = T.textMuted; (e.currentTarget as HTMLElement).style.borderColor = T.borderMid }}
           >
             ⚙ ADMIN
           </a>
@@ -751,10 +875,10 @@ export default function JavariOSPage() {
               width:        '280px',
               minWidth:     '280px',
               maxWidth:     '280px',
-              borderRight:  '1px solid #18181b',
+              borderRight:  `1px solid ${T.border}`,
               overflowY:    'auto',
               overflowX:    'hidden',
-              background:   'rgba(0,0,0,0.4)',
+              background:   T.bgPanel,
               display:      'flex',
               flexDirection:'column',
               flexShrink:   0,
@@ -777,7 +901,7 @@ export default function JavariOSPage() {
                       { k: 'REMAINING', v: `$${(sysStatus.budget ?? 0).toFixed(4)}`,      c: '#10b981' },
                     ].map(row => (
                       <div key={row.k} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span style={{ fontFamily: 'monospace', fontSize: '11px', letterSpacing: '0.15em', color: '#71717a' }}>{row.k}</span>
+                        <span style={{ fontFamily: 'monospace', fontSize: '11px', letterSpacing: '0.15em', color: T.textMuted }}>{row.k}</span>
                         <span style={{ fontFamily: 'monospace', fontSize: '11px', fontWeight: 700, color: row.c, tabularNums: true } as React.CSSProperties}>{row.v}</span>
                       </div>
                     ))}
@@ -787,7 +911,7 @@ export default function JavariOSPage() {
                     </div>
                   </div>
                 ) : (
-                  <p className="av-blink" style={{ fontFamily: 'monospace', fontSize: '12px', color: '#71717a', letterSpacing: '0.2em', textAlign: 'center' }}>CONNECTING…</p>
+                  <p className="av-blink" style={{ fontFamily: 'monospace', fontSize: '12px', color: T.textMuted, letterSpacing: '0.2em', textAlign: 'center' }}>CONNECTING…</p>
                 )}
 
                 {/* Run loop button */}
@@ -1058,7 +1182,7 @@ export default function JavariOSPage() {
                     </div>
 
                     {/* Cost */}
-                    <div style={{ padding: '6px 10px', display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #0f0f10' }}>
+                    <div style={{ padding: '6px 10px', display: 'flex', justifyContent: 'space-between', borderBottom: `1px solid ${T.border}` }}>
                       <span style={{ fontFamily: 'monospace', fontSize: '12px', color: '#71717a', letterSpacing: '0.1em' }}>TOTAL COST</span>
                       <span style={{ fontFamily: 'monospace', fontSize: '12px', color: '#fbbf24', fontWeight: 700 }}>
                         ${(executionResult.total_cost ?? 0).toFixed(6)}
@@ -1080,7 +1204,7 @@ export default function JavariOSPage() {
                         key={task.task_id}
                         style={{
                           padding:      '7px 10px',
-                          borderBottom: '1px solid #0f0f10',
+                          borderBottom: `1px solid ${T.border}`,
                           display:      'flex',
                           flexDirection:'column',
                           gap:          '4px',
@@ -1096,7 +1220,7 @@ export default function JavariOSPage() {
                           }}>
                             {task.status === 'complete' ? '✓' : '✗'}
                           </span>
-                          <strong style={{ fontFamily: 'monospace', fontSize: '12px', color: '#d4d4d8', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          <strong style={{ fontFamily: 'monospace', fontSize: '12px', color: T.textSecond, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                             {task.task_id}
                           </strong>
                           <span style={{
@@ -1120,7 +1244,7 @@ export default function JavariOSPage() {
                           <pre style={{
                             fontFamily:   'monospace',
                             fontSize:     '11px',
-                            color:        task.error ? '#f87171' : '#a1a1aa',
+                            color:        task.error ? T.textError : T.textTertiary,
                             whiteSpace:   'pre-wrap',
                             wordBreak:    'break-word',
                             margin:       0,
@@ -1143,7 +1267,7 @@ export default function JavariOSPage() {
           <main style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
 
             {/* ── CHAT FEED — dominant, fills available height ──────────── */}
-            <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', borderBottom: '1px solid #18181b' }}>
+            <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', borderBottom: `1px solid ${T.border}` }}>
 
               {/* Chat header */}
               <div style={{
@@ -1153,8 +1277,8 @@ export default function JavariOSPage() {
                 display:      'flex',
                 alignItems:   'center',
                 gap:          '12px',
-                borderBottom: '1px solid #18181b',
-                background:   'rgba(0,0,0,0.2)',
+                borderBottom: `1px solid ${T.border}`,
+                background:   T.bgExecHdr,
               }}>
                 <Terminal size={10} style={{ color: '#3b82f6' }} />
                 <span style={{ fontFamily: 'monospace', fontSize: '12px', letterSpacing: '0.2em', color: '#60a5fa' }}>
@@ -1181,15 +1305,15 @@ export default function JavariOSPage() {
               <div style={{
                 flexShrink:   0,
                 padding:      '10px 16px',
-                borderBottom: '1px solid #18181b',
-                background:   'rgba(0,0,0,0.3)',
+                borderBottom: `1px solid ${T.border}`,
+                background:   T.bgExecHdr,
               }}>
                 <div style={{
                   display:     'flex',
                   alignItems:  'center',
                   gap:         '10px',
-                  background:  'rgba(24,24,27,0.5)',
-                  border:      '1px solid #3f3f46',
+                  background:  T.bgInput,
+                  border:      `1px solid ${T.borderStrong}`,
                   borderRadius:'10px',
                   padding:     '12px 16px',
                   transition:  'border-color 0.2s',
@@ -1255,7 +1379,7 @@ export default function JavariOSPage() {
                     </button>
                   </div>
                 </div>
-                <p style={{ fontFamily: 'monospace', fontSize: '11px', color: '#52525b', marginTop: '6px', letterSpacing: '0.15em' }}>
+                <p style={{ fontFamily: 'monospace', fontSize: '11px', color: T.textFaint, marginTop: '6px', letterSpacing: '0.15em' }}>
                   ENTER · SHIFT+ENTER FOR NEWLINE
                 </p>
               </div>
@@ -1268,7 +1392,7 @@ export default function JavariOSPage() {
                 {/* In-flight row */}
                 {loading && (
                   <div style={{
-                    borderBottom: '1px solid #18181b',
+                    borderBottom: `1px solid ${T.border}`,
                     padding:      '10px 20px',
                     background:   mode === 'council' ? 'rgba(168,85,247,0.04)' : 'rgba(59,130,246,0.04)',
                   }}>
@@ -1316,23 +1440,23 @@ export default function JavariOSPage() {
                     mode      === 'council'   ? '#a855f7'    : '#3b82f6'
 
                   const textColor =
-                    msg.role === 'user'   ? '#d4d4d8' :
-                    msg.role === 'system' ? '#3f3f46'  :
-                    msg.error             ? '#f87171'  : '#e4e4e7'
+                    msg.role === 'user'   ? T.textUser    :
+                    msg.role === 'system' ? T.textSystem  :
+                    msg.error             ? T.textError   : T.textSecond
 
                   return (
                     <div
                       key={msg.id}
                       className="jv-chat-row jv-msg-in"
                       style={{
-                        borderBottom: '1px solid #18181b',
+                        borderBottom: `1px solid ${T.border}`,
                         padding:      '14px 20px',
-                        background:   msg.role === 'user' ? 'rgba(255,255,255,0.02)' : 'transparent',
+                        background:   msg.role === 'user' ? T.bgMsgUser : 'transparent',
                         transition:   'background 0.15s',
                       }}
                     >
                       <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px', flexWrap: 'wrap' }}>
-                        <span style={{ fontFamily: 'monospace', fontSize: '11px', color: '#52525b', userSelect: 'none' }}>{ts}</span>
+                        <span style={{ fontFamily: 'monospace', fontSize: '11px', color: T.textFaint, userSelect: 'none' }}>{ts}</span>
                         <span style={{ fontFamily: 'monospace', fontSize: '11px', color: roleColor, letterSpacing: '0.15em' }}>— {roleLabel}</span>
                         {msg.model && (
                           <span style={{ fontFamily: 'monospace', fontSize: '11px', color: '#52525b', marginLeft: 'auto' }}>
@@ -1350,7 +1474,7 @@ export default function JavariOSPage() {
                 {/* Empty state prompt chips */}
                 {messages.filter(m => m.role !== 'system').length === 0 && !loading && (
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', gap: '16px', padding: '32px', userSelect: 'none' }}>
-                    <p style={{ fontFamily: 'monospace', fontSize: '13px', color: '#71717a', letterSpacing: '0.2em' }}>FEED EMPTY — TRY A PROMPT</p>
+                    <p style={{ fontFamily: 'monospace', fontSize: '13px', color: T.textMuted, letterSpacing: '0.2em' }}>FEED EMPTY — TRY A PROMPT</p>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', justifyContent: 'center', maxWidth: '480px' }}>
                       {PROMPTS.map(p => (
                         <button
@@ -1400,8 +1524,8 @@ export default function JavariOSPage() {
                 display:      'flex',
                 alignItems:   'center',
                 gap:          '10px',
-                borderBottom: '1px solid #18181b',
-                background:   'rgba(0,0,0,0.3)',
+                borderBottom: `1px solid ${T.border}`,
+                background:   T.bgExecHdr,
               }}>
                 <Activity size={10} style={{ color: '#f59e0b' }} />
                 <span style={{ fontFamily: 'monospace', fontSize: '12px', letterSpacing: '0.2em', color: '#fbbf24' }}>EXECUTION STREAM</span>
@@ -1424,8 +1548,8 @@ export default function JavariOSPage() {
               <div className="jv-scroll" style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden' }}>
                 {execRows.length === 0 ? (
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', gap: '6px' }}>
-                    <p style={{ fontFamily: 'monospace', fontSize: '13px', color: '#52525b', letterSpacing: '0.2em' }}>NO ACTIVITY</p>
-                    <p style={{ fontFamily: 'monospace', fontSize: '11px', color: '#3f3f46', letterSpacing: '0.1em' }}>USE RUN LOOP OR WAIT FOR CRON</p>
+                    <p style={{ fontFamily: 'monospace', fontSize: '13px', color: T.textFaint, letterSpacing: '0.2em' }}>NO ACTIVITY</p>
+                    <p style={{ fontFamily: 'monospace', fontSize: '11px', color: T.textFaint, letterSpacing: '0.1em' }}>USE RUN LOOP OR WAIT FOR CRON</p>
                   </div>
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column' }}>
@@ -1437,7 +1561,7 @@ export default function JavariOSPage() {
                           className={`jv-exec-row ${i < 3 ? 'jv-exec-in' : ''}`}
                           style={{
                             padding:       '7px 20px',
-                            borderBottom:  '1px solid #0f0f10',
+                            borderBottom:  `1px solid ${T.border}`,
                             display:       'flex',
                             alignItems:    'center',
                             gap:           '10px',
@@ -1458,7 +1582,7 @@ export default function JavariOSPage() {
                           </span>
 
                           {/* Title */}
-                          <span style={{ fontFamily: 'monospace', fontSize: '12px', color: '#d4d4d8', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textTransform: 'capitalize' }}>
+                          <span style={{ fontFamily: 'monospace', fontSize: '12px', color: T.textSecond, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textTransform: 'capitalize' }}>
                             {row.title}
                           </span>
 
