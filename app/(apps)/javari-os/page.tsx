@@ -4,7 +4,7 @@
 // Sidebar: Avatar identity + status + agents stacked vertically
 // Main: Full-height dominant chat feed + execution log strip at bottom
 // Design: Fortune 50 dark ops — deep black, cyan/purple pill toggles, slide-in animations
-// Updated: April 24, 2026 — v8: SSE streaming wired (ReadableStream reader + handleStreamEvent)
+// Updated: April 24, 2026 — v9: UX clarity pass (primary CTA, guided empty state, avatar gradient, exec hint)
 'use client'
 
 import {
@@ -144,7 +144,7 @@ function Avatar({ state }: { state: AvState }) {
           aspectRatio:  '3/4',
           borderRadius: '14px',
           overflow:     'hidden',
-          background:   '#ffffff',
+          background:   'transparent',
           border:       `2px solid ${ringColor[state]}`,
           boxShadow:    glowColor[state],
           transition:   'border-color 0.5s ease, box-shadow 0.5s ease',
@@ -156,6 +156,21 @@ function Avatar({ state }: { state: AvState }) {
           alt="Javari AI"
           style={{ width: '100%', height: '100%', objectFit: 'contain', objectPosition: 'center top', display: 'block' }}
           draggable={false}
+          onError={e => {
+            // Portrait missing — swap to default avatar, then gradient on second fail
+            const img = e.currentTarget as HTMLImageElement
+            if (img.src.includes('javari-portrait')) {
+              img.src = '/default-avatar.png'
+              img.style.objectFit = 'cover'
+            } else {
+              img.style.display = 'none'
+              const parent = img.parentElement
+              if (parent) {
+                parent.style.background = 'linear-gradient(135deg, #3f3f46 0%, #27272a 40%, #1c1c1f 100%)'
+                parent.setAttribute('data-avatar-fallback', '1')
+              }
+            }
+          }}
         />
         {/* Status dot */}
         <div style={{
@@ -681,7 +696,14 @@ export default function JavariOSPage() {
     }
   }, [isExecuting, authToken, handleStreamEvent])
 
-  const PROMPTS = ['Write a business plan', 'Create brand content', 'Analyze my strategy', 'Build a campaign', 'Draft an email', 'Explain this concept']
+  // Primary action prompts — fill input on click
+  const PRIMARY_ACTIONS: { label: string; prompt: string; icon: string }[] = [
+    { label: 'Build something',       prompt: 'Build a full-stack feature: user authentication with email/password, JWT sessions, and a dashboard page.',          icon: '⚡' },
+    { label: 'Analyze a business',    prompt: 'Analyze the business model, strengths, and risks of a SaaS startup targeting small business owners.',              icon: '◈' },
+    { label: 'Create content',        prompt: 'Create a full content campaign: landing page copy, 3 email sequences, and 5 social posts for a product launch.',   icon: '◉' },
+    { label: 'Automate a workflow',   prompt: 'Design and automate a lead capture workflow: form submission → CRM entry → welcome email → sales alert.',          icon: '◎' },
+  ]
+  const PROMPTS = PRIMARY_ACTIONS.map(a => a.prompt)
 
   // ── Theme token resolver ───────────────────────────────────────────────────
   // All theme-conditional values live here. Components read T.x — never branch
@@ -1620,42 +1642,148 @@ export default function JavariOSPage() {
                   )
                 })}
 
-                {/* Empty state prompt chips */}
+                {/* ── Guided empty state ─────────────────────────────────────── */}
                 {messages.filter(m => m.role !== 'system').length === 0 && !loading && (
-                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', gap: '16px', padding: '32px', userSelect: 'none' }}>
-                    <p style={{ fontFamily: 'monospace', fontSize: '13px', color: T.textMuted, letterSpacing: '0.2em' }}>FEED EMPTY — TRY A PROMPT</p>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', justifyContent: 'center', maxWidth: '480px' }}>
-                      {PROMPTS.map(p => (
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', gap: '28px', padding: '40px 32px', userSelect: 'none' }}>
+
+                    {/* Heading */}
+                    <div style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      <h2 style={{
+                        fontFamily:    'monospace',
+                        fontSize:      '20px',
+                        fontWeight:    700,
+                        color:         T.textPrimary,
+                        letterSpacing: '-0.01em',
+                        margin:        0,
+                      }}>
+                        What do you want Javari to do?
+                      </h2>
+                      <p style={{
+                        fontFamily:    'monospace',
+                        fontSize:      '13px',
+                        color:         T.textMuted,
+                        letterSpacing: '0.02em',
+                        margin:        0,
+                        lineHeight:    1.5,
+                        maxWidth:      '420px',
+                      }}>
+                        Choose a task or describe your goal. Javari will execute it using AI agents.
+                      </p>
+                    </div>
+
+                    {/* 4 primary action cards */}
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', maxWidth: '540px', width: '100%' }}>
+                      {PRIMARY_ACTIONS.map(action => (
                         <button
-                          key={p}
-                          onClick={() => send(p)}
+                          key={action.label}
+                          onClick={() => {
+                            send(action.prompt)
+                          }}
                           style={{
-                            padding:       '8px 14px',
+                            padding:       '16px 18px',
                             fontFamily:    'monospace',
                             fontSize:      '13px',
-                            color:         '#a1a1aa',
-                            background:    'rgba(24,24,27,0.6)',
-                            border:        '1px solid #3f3f46',
-                            borderRadius:  '20px',
+                            fontWeight:    600,
+                            color:         T.textSecond,
+                            background:    T.bgInput,
+                            border:        `1px solid ${T.borderStrong}`,
+                            borderRadius:  '10px',
                             cursor:        'pointer',
-                            letterSpacing: '0.1em',
-                            transition:    'all 0.2s',
+                            textAlign:     'left',
+                            display:       'flex',
+                            flexDirection: 'column',
+                            gap:           '6px',
+                            transition:    'all 0.18s ease',
+                            lineHeight:    1.3,
                           }}
                           onMouseEnter={e => {
                             const el = e.currentTarget as HTMLElement
                             el.style.borderColor = mode === 'council' ? 'rgba(192,132,252,0.6)' : 'rgba(96,165,250,0.6)'
-                            el.style.color = mode === 'council' ? '#c084fc' : '#60a5fa'
+                            el.style.color       = mode === 'council' ? '#c084fc' : '#60a5fa'
+                            el.style.background  = mode === 'council' ? 'rgba(192,132,252,0.07)' : 'rgba(96,165,250,0.07)'
+                            el.style.transform   = 'translateY(-1px)'
                           }}
                           onMouseLeave={e => {
                             const el = e.currentTarget as HTMLElement
-                            el.style.borderColor = '#3f3f46'
-                            el.style.color = '#a1a1aa'
+                            el.style.borderColor = T.borderStrong
+                            el.style.color       = T.textSecond
+                            el.style.background  = T.bgInput
+                            el.style.transform   = 'translateY(0)'
                           }}
                         >
-                          {p}
+                          <span style={{ fontSize: '18px', lineHeight: 1 }}>{action.icon}</span>
+                          <span>{action.label}</span>
                         </button>
                       ))}
                     </div>
+
+                    {/* Primary CTA — Run with AI Team */}
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px', width: '100%', maxWidth: '380px' }}>
+                      <button
+                        onClick={() => {
+                          // Build demo plan from current input or default objective
+                          const objective = textRef.current?.value.trim() || 'Build and analyze the system'
+                          const demoPlan = {
+                            plan_id:              `ui-${Date.now().toString(36)}`,
+                            created_at:           new Date().toISOString(),
+                            total_estimated_cost: 0.005,
+                            tasks: [
+                              { id: 'task-architect', role: 'architect', objective, inputs: [], outputs: ['blueprint'], dependencies: [], model: 'gpt-4o-mini', max_cost: 0.001, status: 'pending' },
+                              { id: 'task-builder',   role: 'builder',   objective: 'Implement the blueprint', inputs: ['blueprint'], outputs: ['artifact'], dependencies: ['task-architect'], model: 'deepseek-chat', max_cost: 0.002, status: 'pending' },
+                              { id: 'task-reviewer',  role: 'reviewer',  objective: 'Review and validate artifact', inputs: ['artifact'], outputs: ['review'], dependencies: ['task-builder'], model: 'claude-3-haiku', max_cost: 0.001, status: 'pending' },
+                            ],
+                          }
+                          runTeamExecution(demoPlan)
+                        }}
+                        disabled={isExecuting}
+                        style={{
+                          width:         '100%',
+                          padding:       '16px 24px',
+                          fontFamily:    'monospace',
+                          fontSize:      '15px',
+                          fontWeight:    700,
+                          letterSpacing: '0.08em',
+                          color:         isExecuting ? '#92400e' : '#fbbf24',
+                          background:    isExecuting
+                            ? 'rgba(245,158,11,0.12)'
+                            : 'linear-gradient(135deg, rgba(245,158,11,0.18) 0%, rgba(245,158,11,0.10) 100%)',
+                          border:        `1px solid ${isExecuting ? 'rgba(245,158,11,0.4)' : 'rgba(251,191,36,0.5)'}`,
+                          borderRadius:  '12px',
+                          cursor:        isExecuting ? 'wait' : 'pointer',
+                          transition:    'all 0.2s ease',
+                          display:       'flex',
+                          alignItems:    'center',
+                          justifyContent:'center',
+                          gap:           '10px',
+                          boxShadow:     isExecuting ? 'none' : '0 0 24px rgba(245,158,11,0.12)',
+                        }}
+                        onMouseEnter={e => {
+                          if (!isExecuting) {
+                            const el = e.currentTarget as HTMLElement
+                            el.style.borderColor = 'rgba(251,191,36,0.8)'
+                            el.style.boxShadow   = '0 0 32px rgba(245,158,11,0.22)'
+                            el.style.transform   = 'translateY(-1px)'
+                          }
+                        }}
+                        onMouseLeave={e => {
+                          if (!isExecuting) {
+                            const el = e.currentTarget as HTMLElement
+                            el.style.borderColor = 'rgba(251,191,36,0.5)'
+                            el.style.boxShadow   = '0 0 24px rgba(245,158,11,0.12)'
+                            el.style.transform   = 'translateY(0)'
+                          }
+                        }}
+                      >
+                        {isExecuting
+                          ? <><span>⚡</span> EXECUTING TEAM PLAN…</>
+                          : <><span>▶</span> RUN WITH AI TEAM</>
+                        }
+                      </button>
+                      <p style={{ fontFamily: 'monospace', fontSize: '11px', color: T.textFaint, letterSpacing: '0.1em', textAlign: 'center' }}>
+                        or describe a goal above · ENTER to send to Javari
+                      </p>
+                    </div>
+
                   </div>
                 )}
 
@@ -1697,8 +1825,8 @@ export default function JavariOSPage() {
               <div className="jv-scroll" style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden' }}>
                 {execRows.length === 0 ? (
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', gap: '6px' }}>
-                    <p style={{ fontFamily: 'monospace', fontSize: '13px', color: T.textFaint, letterSpacing: '0.2em' }}>NO ACTIVITY</p>
-                    <p style={{ fontFamily: 'monospace', fontSize: '11px', color: T.textFaint, letterSpacing: '0.1em' }}>USE RUN LOOP OR WAIT FOR CRON</p>
+                    <p style={{ fontFamily: 'monospace', fontSize: '13px', color: T.textFaint, letterSpacing: '0.1em' }}>Execution will appear here in real time</p>
+                    <p style={{ fontFamily: 'monospace', fontSize: '11px', color: T.textFaint, opacity: 0.6, letterSpacing: '0.08em' }}>Run a task above or trigger the autonomy loop</p>
                   </div>
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column' }}>
