@@ -4,7 +4,7 @@
 // Sidebar: Avatar identity + status + agents stacked vertically
 // Main: Full-height dominant chat feed + execution log strip at bottom
 // Design: Fortune 50 dark ops — deep black, cyan/purple pill toggles, slide-in animations
-// Updated: April 24, 2026 — v3 redesign, all v2 logic preserved 100%
+// Updated: April 24, 2026 — v4: TEAM execution wiring added (runTeamExecution, isExecuting, executionResult)
 'use client'
 
 import {
@@ -37,6 +37,25 @@ interface EnsembleStep {
   tier:    string
   content: string
   cost:    number
+}
+
+// TEAM execution result types — mirrors /api/javari/team response
+interface TeamTaskResult {
+  task_id:      string
+  status:       'complete' | 'failed'
+  output?:      string
+  error?:       string
+  cost_used:    number
+  started_at:   string
+  completed_at: string
+}
+
+interface TeamExecutionResult {
+  plan_id:    string
+  total_cost: number
+  status:     'complete' | 'partial' | 'failed'
+  results:    TeamTaskResult[]
+  error?:     string
 }
 
 interface ExecRow {
@@ -229,6 +248,10 @@ export default function JavariOSPage() {
   const [sysStatus,   setSysStatus]   = useState<SysStatus | null>(null)
   const [execPulse,   setExecPulse]   = useState(false)
 
+  // ── TEAM execution state ───────────────────────────────────────────────────
+  const [isExecuting,     setIsExecuting]     = useState(false)
+  const [executionResult, setExecutionResult] = useState<TeamExecutionResult | null>(null)
+
   // ── Auth session ───────────────────────────────────────────────────────────
   const supabase    = createClientComponentClient()
   const [userId,    setUserId]    = useState<string | null>(null)
@@ -410,6 +433,62 @@ export default function JavariOSPage() {
     setMessages([{ id: Date.now().toString(), role: 'system', content: 'Session cleared.', ts: Date.now() }])
     setEnsemble([])
   }, [])
+
+  // ── TEAM Execution — fires validated plan through /api/javari/team ────────
+  const runTeamExecution = useCallback(async (plan: unknown) => {
+    if (isExecuting) return
+    setIsExecuting(true)
+    setExecutionResult(null)
+    setAvState('executing')
+    setExecPulse(true)
+    try {
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+      if (authToken) headers['Authorization'] = `Bearer ${authToken}`
+      const res  = await fetch('/api/javari/team', {
+        method:  'POST',
+        headers,
+        body:    JSON.stringify(plan),
+      })
+      const data: TeamExecutionResult = await res.json()
+      setExecutionResult(data)
+
+      // Surface execution summary into the chat feed
+      const taskCount  = data.results?.length ?? 0
+      const doneCount  = data.results?.filter(r => r.status === 'complete').length ?? 0
+      const totalCost  = typeof data.total_cost === 'number' ? data.total_cost.toFixed(6) : '—'
+      setMessages(m => [...m, {
+        id:      Date.now().toString(),
+        role:    'system',
+        content: `⚡ TEAM PLAN [${data.plan_id}] — ${data.status.toUpperCase()} — ${doneCount}/${taskCount} tasks — $${totalCost}`,
+        ts:      Date.now(),
+      }])
+
+      // Push task results into exec log strip
+      if (data.results?.length) {
+        const newRows: ExecRow[] = data.results.map((r, i) => ({
+          id:       r.task_id,
+          title:    r.task_id.replace(/-/g, ' '),
+          module:   'team',
+          model:    '',
+          status:   r.status === 'complete' ? 'completed' : 'failed',
+          verified: r.status === 'complete',
+          cost:     r.cost_used,
+          ts:       Date.now() - (data.results.length - i) * 500,
+        }))
+        setExecRows(prev => [...newRows, ...prev].slice(0, 20))
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err)
+      setExecutionResult({ plan_id: '', total_cost: 0, status: 'failed', results: [], error: msg })
+      setMessages(m => [...m, {
+        id: Date.now().toString(), role: 'assistant', error: true,
+        content: `TEAM execution failed: ${msg}`, ts: Date.now(),
+      }])
+    } finally {
+      setIsExecuting(false)
+      setTimeout(() => { setAvState('idle'); setExecPulse(false) }, 3000)
+    }
+  }, [isExecuting, authToken])
 
   const PROMPTS = ['Write a business plan', 'Create brand content', 'Analyze my strategy', 'Build a campaign', 'Draft an email', 'Explain this concept']
 
@@ -764,6 +843,221 @@ export default function JavariOSPage() {
                   <p style={{ fontFamily: 'monospace', fontSize: '9px', color: '#27272a', letterSpacing: '0.2em', textAlign: 'center', paddingTop: '4px' }}>
                     SWITCH TO COUNCIL TO ACTIVATE
                   </p>
+                )}
+              </div>
+            </SideSection>
+
+            {/* ── TEAM Execution section ─────────────────────────────── */}
+            <SideSection label="TEAM EXECUTE" icon={<Zap size={10} />} accent="amber" collapsible>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+
+                {/* Execute button */}
+                <button
+                  onClick={() => {
+                    // Build a minimal demo plan — in production this comes from
+                    // the council plan response or a user-defined workflow
+                    const demoPlan = {
+                      plan_id:               `ui-${Date.now().toString(36)}`,
+                      created_at:            new Date().toISOString(),
+                      total_estimated_cost:  0.005,
+                      tasks: [
+                        {
+                          id:           'task-architect',
+                          role:         'architect',
+                          objective:    'Design the execution blueprint',
+                          inputs:       [],
+                          outputs:      ['blueprint'],
+                          dependencies: [],
+                          model:        'gpt-4o-mini',
+                          max_cost:     0.001,
+                          status:       'pending',
+                        },
+                        {
+                          id:           'task-builder',
+                          role:         'builder',
+                          objective:    'Implement the blueprint',
+                          inputs:       ['blueprint'],
+                          outputs:      ['artifact'],
+                          dependencies: ['task-architect'],
+                          model:        'deepseek-chat',
+                          max_cost:     0.002,
+                          status:       'pending',
+                        },
+                        {
+                          id:           'task-reviewer',
+                          role:         'reviewer',
+                          objective:    'Review and validate artifact',
+                          inputs:       ['artifact'],
+                          outputs:      ['review'],
+                          dependencies: ['task-builder'],
+                          model:        'claude-3-haiku',
+                          max_cost:     0.001,
+                          status:       'pending',
+                        },
+                      ],
+                    }
+                    runTeamExecution(demoPlan)
+                  }}
+                  disabled={isExecuting}
+                  style={{
+                    width:         '100%',
+                    padding:       '9px',
+                    fontFamily:    'monospace',
+                    fontSize:      '10px',
+                    letterSpacing: '0.2em',
+                    textTransform: 'uppercase',
+                    borderRadius:  '8px',
+                    border:        '1px solid',
+                    borderColor:   isExecuting ? 'rgba(245,158,11,0.4)' : 'rgba(245,158,11,0.25)',
+                    background:    isExecuting ? 'rgba(245,158,11,0.08)' : 'rgba(245,158,11,0.04)',
+                    color:         isExecuting ? '#f59e0b' : '#78350f',
+                    cursor:        isExecuting ? 'wait' : 'pointer',
+                    transition:    'all 0.2s ease',
+                  }}
+                  onMouseEnter={e => {
+                    if (!isExecuting) {
+                      const el = e.currentTarget as HTMLElement
+                      el.style.borderColor = 'rgba(245,158,11,0.5)'
+                      el.style.color       = '#f59e0b'
+                      el.style.background  = 'rgba(245,158,11,0.08)'
+                    }
+                  }}
+                  onMouseLeave={e => {
+                    if (!isExecuting) {
+                      const el = e.currentTarget as HTMLElement
+                      el.style.borderColor = 'rgba(245,158,11,0.25)'
+                      el.style.color       = '#78350f'
+                      el.style.background  = 'rgba(245,158,11,0.04)'
+                    }
+                  }}
+                >
+                  {isExecuting ? '⚡ EXECUTING WORKFLOW…' : '▶ EXECUTE TEAM PLAN'}
+                </button>
+
+                {/* Loading indicator */}
+                {isExecuting && (
+                  <div className="av-blink" style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 0' }}>
+                    <div style={{ display: 'flex', gap: '3px' }}>
+                      {[0,1,2].map(i => (
+                        <div key={i} className="animate-bounce" style={{ width: '3px', height: '3px', borderRadius: '50%', background: '#f59e0b', animationDelay: `${i * 0.15}s` }} />
+                      ))}
+                    </div>
+                    <span style={{ fontFamily: 'monospace', fontSize: '9px', color: '#92400e', letterSpacing: '0.15em' }}>
+                      Executing multi-agent workflow…
+                    </span>
+                  </div>
+                )}
+
+                {/* Execution result panel */}
+                {executionResult && !isExecuting && (
+                  <div style={{
+                    borderRadius: '8px',
+                    border:       `1px solid ${
+                      executionResult.status === 'complete' ? 'rgba(16,185,129,0.25)' :
+                      executionResult.status === 'partial'  ? 'rgba(245,158,11,0.25)' :
+                                                              'rgba(239,68,68,0.25)'
+                    }`,
+                    background:   executionResult.status === 'complete' ? 'rgba(16,185,129,0.04)' :
+                                  executionResult.status === 'partial'  ? 'rgba(245,158,11,0.04)' :
+                                                                          'rgba(239,68,68,0.04)',
+                    overflow:     'hidden',
+                  }}>
+                    {/* Result header */}
+                    <div style={{ padding: '8px 10px', borderBottom: '1px solid #18181b', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                      <span style={{
+                        fontFamily:    'monospace',
+                        fontSize:      '9px',
+                        letterSpacing: '0.2em',
+                        color:         executionResult.status === 'complete' ? '#10b981' :
+                                       executionResult.status === 'partial'  ? '#f59e0b' : '#ef4444',
+                        fontWeight:    700,
+                      }}>
+                        {executionResult.status.toUpperCase()}
+                      </span>
+                      {executionResult.plan_id && (
+                        <span style={{ fontFamily: 'monospace', fontSize: '8px', color: '#27272a', marginLeft: 'auto' }}>
+                          {executionResult.plan_id.slice(0, 20)}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Cost */}
+                    <div style={{ padding: '6px 10px', display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #0f0f10' }}>
+                      <span style={{ fontFamily: 'monospace', fontSize: '9px', color: '#3f3f46', letterSpacing: '0.15em' }}>TOTAL COST</span>
+                      <span style={{ fontFamily: 'monospace', fontSize: '9px', color: '#f59e0b', fontWeight: 700 }}>
+                        ${(executionResult.total_cost ?? 0).toFixed(6)}
+                      </span>
+                    </div>
+
+                    {/* Error state */}
+                    {executionResult.error && (
+                      <div style={{ padding: '6px 10px' }}>
+                        <p style={{ fontFamily: 'monospace', fontSize: '9px', color: '#f87171', lineHeight: 1.5 }}>
+                          {executionResult.error}
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Task results */}
+                    {executionResult.results?.map(task => (
+                      <div
+                        key={task.task_id}
+                        style={{
+                          padding:      '7px 10px',
+                          borderBottom: '1px solid #0f0f10',
+                          display:      'flex',
+                          flexDirection:'column',
+                          gap:          '4px',
+                        }}
+                      >
+                        {/* Task header */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <span style={{
+                            fontFamily: 'monospace',
+                            fontSize:   '10px',
+                            color:      task.status === 'complete' ? '#10b981' : '#ef4444',
+                            flexShrink: 0,
+                          }}>
+                            {task.status === 'complete' ? '✓' : '✗'}
+                          </span>
+                          <strong style={{ fontFamily: 'monospace', fontSize: '9px', color: '#a1a1aa', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {task.task_id}
+                          </strong>
+                          <span style={{
+                            fontFamily:    'monospace',
+                            fontSize:      '8px',
+                            padding:       '1px 5px',
+                            borderRadius:  '3px',
+                            background:    task.status === 'complete' ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.1)',
+                            color:         task.status === 'complete' ? '#065f46' : '#b91c1c',
+                            flexShrink:    0,
+                          }}>
+                            {task.status.toUpperCase()}
+                          </span>
+                        </div>
+                        {/* Cost */}
+                        <div style={{ fontFamily: 'monospace', fontSize: '8px', color: '#27272a' }}>
+                          ${(task.cost_used ?? 0).toFixed(6)}
+                        </div>
+                        {/* Output or error */}
+                        {(task.output || task.error) && (
+                          <pre style={{
+                            fontFamily:   'monospace',
+                            fontSize:     '8px',
+                            color:        task.error ? '#f87171' : '#52525b',
+                            whiteSpace:   'pre-wrap',
+                            wordBreak:    'break-word',
+                            margin:       0,
+                            maxHeight:    '60px',
+                            overflow:     'hidden',
+                            lineHeight:   1.4,
+                          }}>
+                            {task.error ?? (task.output ? task.output.slice(0, 120) + (task.output.length > 120 ? '…' : '') : '')}
+                          </pre>
+                        )}
+                      </div>
+                    ))}
+                  </div>
                 )}
               </div>
             </SideSection>
