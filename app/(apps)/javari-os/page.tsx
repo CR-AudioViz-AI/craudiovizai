@@ -4,7 +4,7 @@
 // Sidebar: Avatar identity + status + agents stacked vertically
 // Main: Full-height dominant chat feed + execution log strip at bottom
 // Design: Fortune 50 dark ops — deep black, cyan/purple pill toggles, slide-in animations
-// Updated: April 24, 2026 — v11: agent activity + execution motion (active glow, step counter, micro-delay, status labels)
+// Updated: April 24, 2026 — v12: investor demo mode (auto-execute, banner, slower pacing, completion message)
 'use client'
 
 import {
@@ -280,6 +280,9 @@ export default function JavariOSPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   // Active agent: task_id currently running (cleared on complete/error)
   const [activeTaskId, setActiveTaskId] = useState<string | null>(null)
+  // Demo mode — not persisted, resets on refresh
+  const [demoMode,   setDemoMode]   = useState(false)
+  const [demoBanner, setDemoBanner] = useState(false)
 
   // ── TEAM execution state ───────────────────────────────────────────────────
   const [isExecuting,     setIsExecuting]     = useState(false)
@@ -550,7 +553,7 @@ export default function JavariOSPage() {
               ts:       Date.now(),
             }, ...prev].slice(0, 20)
           })
-        }, 400)
+        }, demoMode ? 800 : 400)
         break
 
       case 'task_complete': {
@@ -571,7 +574,7 @@ export default function JavariOSPage() {
               ? { ...row, status: 'completed', verified: true, cost: r.cost_used }
               : row
           ))
-        }, 300)
+        }, demoMode ? 600 : 300)
         break
       }
 
@@ -592,7 +595,7 @@ export default function JavariOSPage() {
               ? { ...row, status: 'failed', verified: false, cost: r.cost_used }
               : row
           ))
-        }, 300)
+        }, demoMode ? 600 : 300)
         break
       }
 
@@ -615,6 +618,18 @@ export default function JavariOSPage() {
           content: `⚡ TEAM PLAN [${event.plan_id}] — ${event.status.toUpperCase()} — ${event.task_count ?? '?'} tasks — $${cost}`,
           ts:      Date.now(),
         }])
+        if (demoMode) {
+          const agentN = event.task_count ?? '?'
+          const costN  = typeof event.total_cost === 'number' ? event.total_cost.toFixed(6) : '0'
+          setTimeout(() => {
+            setMessages(m => [...m, {
+              id:      Date.now().toString(),
+              role:    'assistant',
+              content: `Execution complete — Javari coordinated ${agentN} AI agents to deliver this result in real time. Each agent handled a distinct phase: architecture, implementation, review, and delivery. Total compute cost: $${costN}.`,
+              ts:      Date.now(),
+            }])
+          }, 1200)
+        }
         break
       }
 
@@ -629,7 +644,7 @@ export default function JavariOSPage() {
         }])
         break
     }
-  }, [])
+  }, [demoMode])
 
   // ── TEAM Execution — SSE streaming via ReadableStream reader ─────────────
   const runTeamExecution = useCallback(async (plan: unknown) => {
@@ -707,6 +722,36 @@ export default function JavariOSPage() {
       setTimeout(() => { setAvState('idle'); setExecPulse(false) }, 3000)
     }
   }, [isExecuting, authToken, handleStreamEvent])
+
+  // Demo mode — fires auto-execution after 800ms, shows banner
+  useEffect(() => {
+    if (!demoMode) return
+    setDemoBanner(true)
+    const demoPlan = {
+      plan_id:              `demo-${Date.now().toString(36)}`,
+      created_at:           new Date().toISOString(),
+      total_estimated_cost: 0.008,
+      tasks: [
+        { id: 'task-architect', role: 'architect', objective: 'Design a full SaaS business plan including product, marketing, and monetization strategy', inputs: [], outputs: ['blueprint'], dependencies: [], model: 'gpt-4o-mini', max_cost: 0.002, status: 'pending' },
+        { id: 'task-builder',   role: 'builder',   objective: 'Build out the detailed product and technical specification', inputs: ['blueprint'], outputs: ['product-spec'], dependencies: ['task-architect'], model: 'deepseek-chat', max_cost: 0.002, status: 'pending' },
+        { id: 'task-reviewer',  role: 'reviewer',  objective: 'Review the product spec for market fit, risks, and completeness', inputs: ['product-spec'], outputs: ['review'], dependencies: ['task-builder'], model: 'claude-3-haiku', max_cost: 0.002, status: 'pending' },
+        { id: 'task-deployer',  role: 'deployer',  objective: 'Prepare the final executive summary and go-to-market plan', inputs: ['product-spec', 'review'], outputs: ['executive-summary'], dependencies: ['task-reviewer'], model: 'gpt-4o-mini', max_cost: 0.002, status: 'pending' },
+      ],
+    }
+    if (textRef.current) {
+      textRef.current.value = 'Build a full SaaS business plan including product, marketing, and monetization strategy'
+      setInput('Build a full SaaS business plan including product, marketing, and monetization strategy')
+    }
+    const t = setTimeout(() => { runTeamExecution(demoPlan) }, 800)
+    return () => clearTimeout(t)
+  }, [demoMode]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Auto-dismiss demo banner after 5s
+  useEffect(() => {
+    if (!demoBanner) return
+    const t = setTimeout(() => setDemoBanner(false), 5000)
+    return () => clearTimeout(t)
+  }, [demoBanner])
 
   // Primary action prompts — fill input on click
   const PRIMARY_ACTIONS: { label: string; prompt: string; icon: string }[] = [
@@ -1067,6 +1112,36 @@ export default function JavariOSPage() {
           </div>
 
           <div style={{ width: '1px', height: '20px', background: T.borderMid }} />
+
+          {/* Demo Mode toggle */}
+          <button
+            onClick={e => { e.stopPropagation(); setDemoMode(v => !v) }}
+            title={demoMode ? 'Disable demo mode' : 'Enable demo mode'}
+            style={{
+              display:       'flex',
+              alignItems:    'center',
+              gap:           '6px',
+              padding:       '4px 10px',
+              fontFamily:    'monospace',
+              fontSize:      '10px',
+              letterSpacing: '0.15em',
+              fontWeight:    demoMode ? 700 : 400,
+              color:         demoMode ? '#fbbf24' : T.textFaint,
+              background:    demoMode ? 'rgba(245,158,11,0.1)' : 'transparent',
+              border:        `1px solid ${demoMode ? 'rgba(251,191,36,0.5)' : T.borderMid}`,
+              borderRadius:  '6px',
+              cursor:        'pointer',
+              transition:    'all 0.2s ease',
+              flexShrink:    0,
+            }}
+            onMouseEnter={e => { if (!demoMode) { const el=e.currentTarget as HTMLElement; el.style.color=T.textTertiary; el.style.borderColor=T.borderStrong } }}
+            onMouseLeave={e => { if (!demoMode) { const el=e.currentTarget as HTMLElement; el.style.color=T.textFaint;    el.style.borderColor=T.borderMid    } }}
+          >
+            <span style={{ display:'inline-block', width:'26px', height:'14px', borderRadius:'7px', background: demoMode ? '#f59e0b' : T.borderStrong, position:'relative', transition:'background 0.2s', flexShrink:0 }}>
+              <span style={{ position:'absolute', top:'2px', left: demoMode ? '14px' : '2px', width:'10px', height:'10px', borderRadius:'50%', background:'#ffffff', transition:'left 0.18s cubic-bezier(0.4,0,0.2,1)', boxShadow:'0 1px 3px rgba(0,0,0,0.3)' }} />
+            </span>
+            DEMO
+          </button>
 
           <a
             href="/command-center"
@@ -1674,7 +1749,28 @@ export default function JavariOSPage() {
                 className="jv-scroll"
                 style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}
               >
-                {/* In-flight row */}
+                {/* Demo banner */}
+              {demoBanner && (
+                <div style={{
+                  flexShrink:   0,
+                  padding:      '10px 20px',
+                  background:   'linear-gradient(90deg, rgba(245,158,11,0.08) 0%, rgba(245,158,11,0.03) 100%)',
+                  borderBottom: `1px solid rgba(245,158,11,0.2)`,
+                  display:      'flex',
+                  alignItems:   'center',
+                  gap:          '10px',
+                  animation:    'jv-msg-in 0.3s ease forwards',
+                }}>
+                  <span style={{ color: '#f59e0b', fontSize: '14px', flexShrink: 0 }}>⚡</span>
+                  <span style={{ fontFamily: 'monospace', fontSize: '12px', color: '#fbbf24', letterSpacing: '0.04em' }}>
+                    Javari is executing a multi-agent workflow in real time
+                  </span>
+                  <div style={{ flex: 1 }} />
+                  <span style={{ fontFamily: 'monospace', fontSize: '9px', color: 'rgba(245,158,11,0.45)', letterSpacing: '0.2em', flexShrink: 0 }}>DEMO</span>
+                </div>
+              )}
+
+              {/* In-flight row */}
                 {loading && (
                   <div style={{
                     borderBottom: `1px solid ${T.border}`,
