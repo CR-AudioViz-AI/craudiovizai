@@ -180,7 +180,7 @@ function Q({
     >
       <div className="flex-shrink-0 flex items-center gap-2 px-4 py-2 border-b border-zinc-800/40">
         <span className={`font-mono text-[9px] tracking-[0.3em] uppercase ${labelMap[glow]}`}>{label}</span>
-        {tag && <span className="font-mono text-[9px] text-zinc-700 ml-auto">{tag}</span>}
+        {tag && <span className="font-mono text-[9px] text-zinc-400 ml-auto">{tag}</span>}
       </div>
 
       <div className="flex-1 min-h-0 overflow-hidden">
@@ -662,7 +662,7 @@ export default function JavariOSPage() {
           <div className="w-px h-5 bg-zinc-800" />
 
           <a href="/command-center"
-            className="font-mono text-[9px] tracking-[0.2em] uppercase text-zinc-700 hover:text-zinc-500 transition-colors px-2 py-1 border border-zinc-800/60 rounded">
+            className="font-mono text-[9px] tracking-[0.2em] uppercase text-zinc-400 hover:text-zinc-300 transition-colors px-2 py-1 border border-zinc-800/60 rounded">
             ⚙ ADMIN
           </a>
         </header>
@@ -703,7 +703,7 @@ export default function JavariOSPage() {
                     </div>
                   </>
                 ) : (
-                  <p className="text-[9px] text-zinc-700 text-center tracking-widest av-blink">CONNECTING…</p>
+                  <p className="text-[9px] text-zinc-500 text-center tracking-widest av-blink">CONNECTING…</p>
                 )}
               </div>
 
@@ -739,7 +739,7 @@ export default function JavariOSPage() {
                     className={`px-2.5 py-1 font-mono text-[9px] tracking-[0.2em] uppercase rounded border transition-all ${
                       execMode === 'auto'
                         ? 'border-cyan-700/60 bg-cyan-950/40 text-cyan-400'
-                        : 'border-zinc-800/50 bg-transparent text-zinc-700 hover:text-zinc-500 hover:border-zinc-700'
+                        : 'border-zinc-800/50 bg-transparent text-zinc-400 hover:text-zinc-300 hover:border-zinc-600'
                     }`}
                   >
                     ◉ JAVARI AUTO
@@ -749,7 +749,7 @@ export default function JavariOSPage() {
                     className={`px-2.5 py-1 font-mono text-[9px] tracking-[0.2em] uppercase rounded border transition-all ${
                       execMode === 'team'
                         ? 'border-purple-700/60 bg-purple-950/40 text-purple-400'
-                        : 'border-zinc-800/50 bg-transparent text-zinc-700 hover:text-zinc-500 hover:border-zinc-700'
+                        : 'border-zinc-800/50 bg-transparent text-zinc-400 hover:text-zinc-300 hover:border-zinc-600'
                     }`}
                   >
                     ◈ MULTI-AI TEAM
@@ -758,7 +758,7 @@ export default function JavariOSPage() {
 
                 <div className="flex items-center gap-2 bg-zinc-900/50 border border-zinc-800/60
                   hover:border-blue-800/40 focus-within:border-blue-700/50 rounded-md px-3 py-2 transition-all">
-                  <span className="font-mono text-[10px] text-zinc-700 flex-shrink-0 select-none">›</span>
+                  <span className="font-mono text-[10px] text-zinc-500 flex-shrink-0 select-none">›</span>
                   <textarea
                     ref={textRef}
                     rows={1}
@@ -766,7 +766,7 @@ export default function JavariOSPage() {
                     onChange={e => setInput(e.target.value)}
                     onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() } }}
                     placeholder={execMode === 'team' ? 'PLAN WITH MULTI-AI TEAM…' : mode === 'council' ? 'QUERY COUNCIL…' : 'QUERY JAVARI…'}
-                    className="flex-1 bg-transparent resize-none text-xs text-zinc-200 placeholder-zinc-700
+                    className="flex-1 bg-transparent resize-none text-xs text-zinc-200 placeholder-zinc-500
                       outline-none font-mono min-h-[16px] max-h-[80px] leading-relaxed tracking-wide"
                   />
                   <div className="flex items-center gap-1.5 flex-shrink-0">
@@ -797,7 +797,7 @@ export default function JavariOSPage() {
                     )}
                   </div>
                 </div>
-                <p className="font-mono text-[8px] text-zinc-800 mt-1 tracking-[0.2em]">
+                <p className="font-mono text-[8px] text-zinc-600 mt-1 tracking-[0.2em]">
                   ENTER — SHIFT+ENTER FOR NEWLINE
                 </p>
               </div>
@@ -850,7 +850,7 @@ export default function JavariOSPage() {
                               {plan.estimated_cost}u est.
                             </span>
                           </div>
-                          <p className="font-mono text-[9px] text-zinc-600 tracking-wider break-all">
+                          <p className="font-mono text-[9px] text-zinc-400 tracking-wider break-all">
                             {plan.cost_breakdown}
                           </p>
                           {Object.entries(plan.providers).length > 0 && (
@@ -893,7 +893,7 @@ export default function JavariOSPage() {
                                                     'JAVARI'
                   const roleColor =
                     msg.role === 'user'           ? 'text-zinc-400'    :
-                    msg.role === 'system'          ? 'text-zinc-700'    :
+                    msg.role === 'system'          ? 'text-zinc-500'    :
                     msg.agent === 'planner'        ? 'text-violet-500'  :
                     msg.agent === 'builder'        ? 'text-blue-500'    :
                     msg.agent === 'validator'      ? 'text-emerald-500' :
@@ -901,7 +901,7 @@ export default function JavariOSPage() {
                                                     'text-blue-400'
                   const textColor =
                     msg.role === 'user'   ? 'text-zinc-300'  :
-                    msg.role === 'system' ? 'text-zinc-700'  :
+                    msg.role === 'system' ? 'text-zinc-500'  :
                     msg.error             ? 'text-red-400'   :
                                             'text-zinc-200'
 
@@ -934,7 +934,7 @@ export default function JavariOSPage() {
 
                 {(messages ?? []).filter(m => m.role !== 'system').length === 0 && !loading && (
                   <div className="flex flex-col items-center justify-center h-full gap-3 py-8 select-none">
-                    <p className="font-mono text-[9px] text-zinc-800 tracking-[0.3em] uppercase">
+                    <p className="font-mono text-[9px] text-zinc-500 tracking-[0.3em] uppercase">
                       Feed empty
                     </p>
                     <div className="flex flex-wrap gap-1.5 justify-center max-w-xs px-4">
@@ -942,7 +942,7 @@ export default function JavariOSPage() {
                         <button
                           key={p}
                           onClick={() => send(p)}
-                          className="px-2 py-1 font-mono text-[9px] text-zinc-700 bg-zinc-900/40
+                          className="px-2 py-1 font-mono text-[9px] text-zinc-500 bg-zinc-900/60
                             border border-zinc-800/50 rounded hover:border-blue-800/40
                             hover:text-blue-500 transition-all tracking-wider"
                         >
@@ -973,9 +973,9 @@ export default function JavariOSPage() {
                     }`}>
                     <div className="flex items-center gap-2 mb-2">
                       <span className="font-mono text-base leading-none" style={{ color: cfg.hue }}>{cfg.glyph}</span>
-                      <span className="font-mono text-[10px] tracking-[0.25em] uppercase" style={{ color: step ? cfg.hue : '#52525b' }}>{cfg.label}</span>
+                      <span className="font-mono text-[10px] tracking-[0.25em] uppercase" style={{ color: step ? cfg.hue : '#71717a' }}>{cfg.label}</span>
                       {step && (
-                        <span className="font-mono text-[9px] text-zinc-700 ml-auto">
+                        <span className="font-mono text-[9px] text-zinc-400 ml-auto">
                           {step.model.split('-').slice(-2).join('-')} · ${step.cost.toFixed(5)}
                         </span>
                       )}
@@ -988,7 +988,7 @@ export default function JavariOSPage() {
                     {step ? (
                       <p className="text-xs text-zinc-400 leading-relaxed line-clamp-4 font-mono">{step.content}</p>
                     ) : (
-                      <p className="font-mono text-[9px] text-zinc-700 tracking-wider">
+                      <p className="font-mono text-[9px] text-zinc-500 tracking-wider">
                         {key === 'planner'   ? 'Breaks down tasks into executable steps' :
                          key === 'builder'   ? 'Implements the plan fully'                :
                                               'Reviews and validates output'}
@@ -1007,7 +1007,7 @@ export default function JavariOSPage() {
                 )
               })}
               {mode === 'single' && (
-                <p className="font-mono text-[9px] text-zinc-800 text-center py-2 tracking-widest">SWITCH TO COUNCIL TO ACTIVATE AGENTS</p>
+                <p className="font-mono text-[9px] text-zinc-500 text-center py-2 tracking-widest">SWITCH TO COUNCIL TO ACTIVATE AGENTS</p>
               )}
             </div>
           </Q>
@@ -1019,8 +1019,8 @@ export default function JavariOSPage() {
               {execRows.length === 0 && (
                 <div className="h-full flex flex-col items-center justify-center gap-2 text-center py-4">
                   <div className={`w-2 h-2 rounded-full bg-zinc-800 mx-auto ${execPulse ? 'bg-amber-500 av-blink' : ''}`} />
-                  <p className="font-mono text-[9px] text-zinc-700 tracking-widest">NO ACTIVITY</p>
-                  <p className="font-mono text-[9px] text-zinc-800">USE RUN LOOP OR WAIT FOR CRON</p>
+                  <p className="font-mono text-[9px] text-zinc-400 tracking-widest">NO ACTIVITY</p>
+                  <p className="font-mono text-[9px] text-zinc-500">USE RUN LOOP OR WAIT FOR CRON</p>
                 </div>
               )}
 
@@ -1046,7 +1046,7 @@ export default function JavariOSPage() {
                         <p className="font-mono text-[10px] text-zinc-300 truncate capitalize leading-tight">{row.title}</p>
                         <div className="flex items-center gap-2 mt-0.5">
                           <span className="font-mono text-[9px] text-zinc-700">{row.module}</span>
-                          {row.model && <span className="font-mono text-[9px] text-zinc-800">{row.model.split('-').slice(-1)}</span>}
+                          {row.model && <span className="font-mono text-[9px] text-zinc-500">{row.model.split('-').slice(-1)}</span>}
                           {row.cost > 0 && (
                             <span className="font-mono text-[9px] text-zinc-800 ml-auto tabular-nums">${row.cost.toFixed(5)}</span>
                           )}
