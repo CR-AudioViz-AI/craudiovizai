@@ -139,7 +139,7 @@ function Avatar({ state }: { state: AvState }) {
 
       <div className="text-center">
         <p className={`font-mono text-[10px] tracking-[0.25em] transition-colors duration-300 ${
-          state === 'idle'       ? 'text-zinc-700'            :
+          state === 'idle'       ? 'text-zinc-500'            :
           state === 'thinking'   ? 'text-violet-500 av-blink' :
           state === 'responding' ? 'text-violet-400'           :
                                    'text-amber-500 av-blink'
@@ -713,7 +713,7 @@ export default function JavariOSPage() {
                 className={`w-full py-2 font-mono text-[10px] tracking-[0.25em] uppercase rounded border transition-all ${
                   avState === 'executing'
                     ? 'border-amber-800/50 bg-amber-950/30 text-amber-700 cursor-wait'
-                    : 'border-zinc-800 bg-zinc-900/40 text-zinc-600 hover:border-violet-800/60 hover:text-violet-500 hover:bg-violet-950/20'
+                    : 'border-zinc-700 bg-zinc-900/60 text-zinc-400 hover:border-violet-700/60 hover:text-violet-400 hover:bg-violet-950/30'
                 }`}>
                 {avState === 'executing' ? '⚡ EXECUTING…' : '▶ RUN LOOP'}
               </button>
