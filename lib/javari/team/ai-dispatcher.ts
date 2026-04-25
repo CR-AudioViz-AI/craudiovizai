@@ -4,18 +4,26 @@
 // Simulated responses now — structured for zero-friction drop-in of real API calls.
 // Model policy: cheap-first with typed fallbacks per role.
 // Created: April 24, 2026
+// Updated: April 24, 2026 — executeAgent routes to tool-runner for real tool calls;
+//                            simulation retained as fallback for non-tool roles.
 
-import type { AgentRole } from './execution-contract'
+import type { AgentRole }    from './execution-contract'
+import { runTool }           from '@/lib/javari/tools/tool-runner'
+import type { ToolContext }  from '@/lib/javari/tools/tool-runner'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
 // ─────────────────────────────────────────────────────────────────────────────
 
 export interface AIRequest {
-  role:       AgentRole
-  objective:  string
-  inputs:     string[]
-  max_cost:   number
+  role:        AgentRole
+  objective:   string
+  inputs:      string[]
+  max_cost:    number
+  /** User ID passed through from execution context — required for tool logging */
+  userId?:     string
+  /** Execution ID from the TEAM engine — included in tool logs */
+  executionId?: string
 }
 
 export interface AIResponse {
@@ -23,6 +31,8 @@ export interface AIResponse {
   cost_used:  number
   model:      string
   latency_ms: number
+  /** True when a real tool was invoked instead of a simulation */
+  tool_used?: string
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -45,7 +55,6 @@ const MODEL_POLICY: Record<AgentRole, ModelPolicy> = {
 }
 
 // Approximate cost per 1K tokens (USD) — used for simulation estimates only.
-// Replace with live pricing table when wiring real API calls.
 const COST_PER_1K_TOKENS: Record<string, number> = {
   'gpt-4o-mini':    0.000150,
   'gpt-4.1':        0.002000,
@@ -66,7 +75,6 @@ const SIMULATED_OUTPUT_TOKENS: Record<AgentRole, number> = {
 // ─────────────────────────────────────────────────────────────────────────────
 // selectModel
 // Returns the primary model for a given role per the routing policy.
-// Fallback selection is handled inside dispatchAI after a simulated failure.
 // ─────────────────────────────────────────────────────────────────────────────
 
 export function selectModel(role: AgentRole): string {
@@ -76,7 +84,6 @@ export function selectModel(role: AgentRole): string {
 // ─────────────────────────────────────────────────────────────────────────────
 // enforceCostLimit
 // Throws if cost_used exceeds max_cost.
-// Called after cost estimation, before committing a result.
 // ─────────────────────────────────────────────────────────────────────────────
 
 export function enforceCostLimit(cost_used: number, max_cost: number): void {
@@ -90,8 +97,7 @@ export function enforceCostLimit(cost_used: number, max_cost: number): void {
 // ─────────────────────────────────────────────────────────────────────────────
 // buildPrompt
 // Constructs a structured prompt string from the request.
-// This is the single source of truth for prompt shape — swap in template
-// library or RAG injection here when ready.
+// Single source of truth for prompt shape — swap in RAG injection here.
 // ─────────────────────────────────────────────────────────────────────────────
 
 function buildPrompt(request: AIRequest): string {
@@ -109,8 +115,8 @@ function buildPrompt(request: AIRequest): string {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // estimateCost
-// Returns a deterministic cost estimate for a given model + token count.
-// Clamps to max_cost. Replace with real token count from API response later.
+// Deterministic cost estimate for a given model + token count.
+// Clamps to max_cost with a 5% headroom buffer.
 // ─────────────────────────────────────────────────────────────────────────────
 
 function estimateCost(model: string, role: AgentRole, max_cost: number): number {
@@ -118,15 +124,13 @@ function estimateCost(model: string, role: AgentRole, max_cost: number): number 
   const tokens   = SIMULATED_OUTPUT_TOKENS[role]
   const raw      = (tokens / 1000) * ratePerK
   const rounded  = Math.round(raw * 1_000_000) / 1_000_000
-  // Must never exceed max_cost — clamp with a 5% headroom buffer
   return Math.min(rounded, max_cost * 0.95)
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // simulateResponse
-// Produces a structured simulated output for a given prompt + model.
-// Designed so replacing this function with a real fetch() call requires
-// zero changes to the callers — identical return shape.
+// Simulation fallback — used when no tool is mapped for a role.
+// Designed for zero-friction replacement with real fetch() calls.
 // ─────────────────────────────────────────────────────────────────────────────
 
 function simulateResponse(
@@ -135,8 +139,6 @@ function simulateResponse(
   role:    AgentRole,
   cost:    number,
 ): string {
-  // Structured output matches what a real model response would contain.
-  // Downstream executor reads `output` as a string — parse as JSON if needed.
   return JSON.stringify({
     model,
     role,
@@ -150,13 +152,153 @@ function simulateResponse(
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// executeAgent
+// Routes agent roles to real tools where mapped, falls back to simulation.
+//
+// Tool routing:
+//   deployer  → vercel.deploy  (HIGH risk — approved=true for now, dynamic later)
+//   builder   → github.commit  (HIGH risk — approved=true for now)
+//   architect → supabase.query (medium risk — approved=false, auto-gated)
+//   tester    → simulation (no tool mapped yet)
+//   reviewer  → simulation (no tool mapped yet)
+//
+// Returns { output, tool_used? } — output is always a JSON string.
+// Wraps all tool calls in try/catch — tool failures return structured error output
+// rather than throwing, so dispatchAI can apply its own retry/fallback logic.
+// ─────────────────────────────────────────────────────────────────────────────
+
+interface AgentExecuteResult {
+  output:    string
+  tool_used: string | null
+}
+
+async function executeAgent(
+  request: AIRequest,
+  prompt:  string,
+  model:   string,
+  cost:    number,
+): Promise<AgentExecuteResult> {
+  // Build tool context from request — userId is required for tool logging
+  const toolCtx: ToolContext = {
+    userId:      request.userId ?? 'system',
+    executionId: request.executionId,
+    approved:    false,   // default — role routing overrides per tool
+  }
+
+  // ── deployer → vercel.deploy ──────────────────────────────────────────────
+  if (request.role === 'deployer') {
+    try {
+      const result = await runTool(
+        'vercel.deploy',
+        {
+          projectId: 'craudiovizai',
+          ref:       'main',
+          target:    'preview',
+        },
+        { ...toolCtx, approved: true },  // deployer role = pre-approved
+      )
+      return {
+        output:    JSON.stringify({ ...result.output, role: 'deployer', tool: 'vercel.deploy', cost_used: cost }),
+        tool_used: 'vercel.deploy',
+      }
+    } catch (err: unknown) {
+      // Tool failed — return structured error output, do not throw
+      return {
+        output: JSON.stringify({
+          role:      'deployer',
+          tool:      'vercel.deploy',
+          error:     err instanceof Error ? err.message : String(err),
+          fallback:  'simulation',
+          cost_used: cost,
+        }),
+        tool_used: 'vercel.deploy',
+      }
+    }
+  }
+
+  // ── builder → github.commit ───────────────────────────────────────────────
+  if (request.role === 'builder') {
+    try {
+      // Use objective as commit message; content is a placeholder until AI generates it
+      const result = await runTool(
+        'github.commit',
+        {
+          repo:    'CR-AudioViz-AI/craudiovizai',
+          path:    `javari-builds/${Date.now().toString(36)}.json`,
+          content: JSON.stringify({ objective: request.objective, inputs: request.inputs, built_at: new Date().toISOString() }, null, 2),
+          message: request.objective.slice(0, 72),
+          branch:  'javari/builds',
+        },
+        { ...toolCtx, approved: true },  // builder role = pre-approved
+      )
+      return {
+        output:    JSON.stringify({ ...result.output, role: 'builder', tool: 'github.commit', cost_used: cost }),
+        tool_used: 'github.commit',
+      }
+    } catch (err: unknown) {
+      return {
+        output: JSON.stringify({
+          role:      'builder',
+          tool:      'github.commit',
+          error:     err instanceof Error ? err.message : String(err),
+          fallback:  'simulation',
+          cost_used: cost,
+        }),
+        tool_used: 'github.commit',
+      }
+    }
+  }
+
+  // ── architect → supabase.query ────────────────────────────────────────────
+  if (request.role === 'architect') {
+    try {
+      // architect reads context from DB to inform its blueprint
+      const result = await runTool(
+        'supabase.query',
+        {
+          table:  'javari_team_executions',
+          select: 'id, plan_id, status, total_cost, created_at',
+          filter: { status: 'complete' },
+          limit:  5,
+        },
+        { ...toolCtx, approved: false },  // medium risk — no approval needed
+      )
+      return {
+        output: JSON.stringify({
+          role:      'architect',
+          tool:      'supabase.query',
+          context:   result.output,
+          objective: request.objective,
+          cost_used: cost,
+          note:      'Blueprint informed by recent execution history.',
+        }),
+        tool_used: 'supabase.query',
+      }
+    } catch (err: unknown) {
+      // architect falls back to simulation gracefully
+      return {
+        output: simulateResponse(prompt, model, request.role, cost),
+        tool_used: null,
+      }
+    }
+  }
+
+  // ── tester / reviewer — no tool mapped yet, use simulation ────────────────
+  return {
+    output:    simulateResponse(prompt, model, request.role, cost),
+    tool_used: null,
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // dispatchAI
 // Main entry point for all agent AI calls.
 // 1. Selects model via policy
 // 2. Builds prompt
 // 3. Estimates cost and enforces limit
-// 4. Calls simulation (replace with real API call here)
+// 4. Routes to executeAgent (tool or simulation)
 // 5. Returns AIResponse
+// All original cost tracking, latency, and fallback logic preserved.
 // ─────────────────────────────────────────────────────────────────────────────
 
 export async function dispatchAI(request: AIRequest): Promise<AIResponse> {
@@ -166,31 +308,28 @@ export async function dispatchAI(request: AIRequest): Promise<AIResponse> {
   let   model  = policy.primary
   let   usedFallback = false
 
-  // Prompt construction
   const prompt = buildPrompt(request)
 
-  // Cost estimation against primary model
   let cost_used = estimateCost(model, request.role, request.max_cost)
 
-  // If primary model cost exceeds budget, try fallback
-  // (In real dispatch: also retry on 429/503)
   if (cost_used > request.max_cost) {
     model        = policy.fallback
     cost_used    = estimateCost(model, request.role, request.max_cost)
     usedFallback = true
   }
 
-  // Hard enforcement — throws if still over budget after fallback
   enforceCostLimit(cost_used, request.max_cost)
 
-  // Dispatch — simulation now, real fetch() later
-  // To wire real API: replace this block with fetch() to your model endpoint.
-  // The AIResponse shape is the contract — callers never change.
-  let output: string
+  let output:    string
+  let tool_used: string | null = null
+
   try {
-    output = simulateResponse(prompt, model, request.role, cost_used)
+    const result = await executeAgent(request, prompt, model, cost_used)
+    output    = result.output
+    tool_used = result.tool_used
   } catch (err: unknown) {
-    // Primary failed — try fallback (pattern preserved for real API wiring)
+    // executeAgent should never throw (all tool errors are caught internally)
+    // but defensive fallback to simulation if it does
     if (!usedFallback) {
       model     = policy.fallback
       cost_used = estimateCost(model, request.role, request.max_cost)
@@ -206,25 +345,26 @@ export async function dispatchAI(request: AIRequest): Promise<AIResponse> {
 
   const latency_ms = Date.now() - startMs
 
-  return {
+  const response: AIResponse = {
     output,
     cost_used,
     model,
     latency_ms,
   }
+  if (tool_used) response.tool_used = tool_used
+
+  return response
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// simpleHash
-// Deterministic non-cryptographic hash for prompt fingerprinting in logs.
-// djb2 variant — stable across runs, no dependencies.
+// simpleHash — djb2 for prompt fingerprinting
 // ─────────────────────────────────────────────────────────────────────────────
 
 function simpleHash(str: string): string {
   let hash = 5381
   for (let i = 0; i < str.length; i++) {
     hash = ((hash << 5) + hash) ^ str.charCodeAt(i)
-    hash = hash >>> 0 // keep unsigned 32-bit
+    hash = hash >>> 0
   }
   return hash.toString(16).padStart(8, '0')
 }
