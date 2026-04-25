@@ -6,6 +6,7 @@
 // Created: April 24, 2026
 // Updated: April 24, 2026 — persistence wired: createExecution, saveTaskResult, finalizeExecution
 // Updated: April 24, 2026 — ExecutionHooks interface + executePlanStreaming wrapper for SSE
+// Updated: April 24, 2026 — abort signal via Supabase status flag (serverless-safe kill switch)
 
 import type {
   ExecutionGraph,
@@ -17,6 +18,8 @@ import {
   saveTaskResult,
   finalizeExecution,
 } from './execution-store'
+
+import { supabaseAdmin } from '@/lib/supabase'
 
 import type { ExecutionPlan } from './execution-contract'
 
@@ -55,8 +58,50 @@ export interface ExecutionHooks {
   onTaskStart?:    (task: TaskNode) => void
   /** Called immediately after a task settles (success or cascade-fail) */
   onTaskComplete?: (result: TaskResult) => void
-  /** Called when the engine throws a fatal error (deadlock, DB failure) */
+  /** Called when the engine throws a fatal error (deadlock, DB failure, abort) */
   onEngineError?:  (error: Error) => void
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Abort signal
+//
+// Architecture note: Vercel serverless functions do NOT share module-level
+// memory across invocations. A simple in-process Map would not work because
+// the abort POST arrives in a different Lambda than the running SSE stream.
+//
+// Solution: abortExecution() writes status='aborting' to the Supabase
+// executions row. The engine polls this flag before each task batch via
+// checkAborted(). The poll adds one DB read per batch — acceptable latency
+// (typically <5ms) and no Redis dependency.
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Exported — called by the abort API route
+export async function abortExecution(execution_id: string): Promise<void> {
+  const { error } = await supabaseAdmin
+    .from('javari_team_executions')
+    .update({ status: 'aborting' })
+    .eq('id', execution_id)
+
+  if (error) {
+    throw new Error(
+      `abortExecution failed for "${execution_id}": ${error.message} (code: ${error.code})`
+    )
+  }
+}
+
+// Internal — polled by executePlan before each task batch
+async function checkAborted(execution_id: string): Promise<boolean> {
+  try {
+    const { data } = await supabaseAdmin
+      .from('javari_team_executions')
+      .select('status')
+      .eq('id', execution_id)
+      .single()
+    return data?.status === 'aborting'
+  } catch {
+    // Non-fatal — if the check fails, continue execution (fail-safe over fail-stop)
+    return false
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -207,8 +252,10 @@ export async function executeTask(
 // ─────────────────────────────────────────────────────────────────────────────
 
 function deriveFinalStatus(
-  results: Map<string, TaskResult>,
+  results:  Map<string, TaskResult>,
+  aborted?: boolean,
 ): 'complete' | 'partial' | 'failed' {
+  if (aborted) return 'failed'
   const all      = [...results.values()]
   const total    = all.length
   const complete = all.filter(r => r.status === 'complete').length
@@ -222,21 +269,12 @@ function deriveFinalStatus(
 // Executes all tasks in the graph using the topological order from the
 // contract layer, running independent tasks in parallel via Promise.all.
 //
-// Accepts optional ExecutionHooks for streaming/observability — callers that
-// don't need hooks pass nothing and get identical behavior to v2.
-//
-// Persistence contract:
-//   1. createExecution() called once before any task fires.
-//   2. saveTaskResult() called for every task immediately after it settles.
-//   3. finalizeExecution() called in finally — always runs.
-//
-// Hook contract:
-//   - onTaskStart fires before each task's runner is invoked (or before
-//     cascade-fail is recorded) — lets the caller know the task is active.
-//   - onTaskComplete fires after saveTaskResult — result is fully committed.
-//   - onEngineError fires if the engine loop throws before finalizeExecution.
-//   - Hooks must never throw — errors from hooks are swallowed to protect
-//     the execution loop.
+// Abort flow:
+//   - checkAborted() is called at the top of each batch loop iteration.
+//   - If the Supabase row shows status='aborting', the engine throws
+//     "Execution aborted by user" which propagates to the SSE error hook,
+//     emitting { type: 'error', message: 'Execution aborted by user' }.
+//   - finalizeExecution() still runs in finally — row is closed out as 'failed'.
 // ─────────────────────────────────────────────────────────────────────────────
 
 export async function executePlan(
@@ -261,10 +299,17 @@ export async function executePlan(
 
   const dispatched = new Set<string>()
   let   remaining  = [...executionOrder]
+  let   aborted    = false
 
   // ── 2. Execution loop ──────────────────────────────────────────────────────
   try {
     while (remaining.length > 0) {
+      // ── Abort check — poll Supabase before each batch ──────────────────────
+      if (await checkAborted(execution_id)) {
+        aborted = true
+        throw new Error('Execution aborted by user')
+      }
+
       const readyBatch:   TaskNode[] = []
       const stillPending: string[]   = []
 
@@ -346,7 +391,7 @@ export async function executePlan(
     throw engineError  // re-throw so finally can still finalize
   } finally {
     // ── 3. Finalize — guaranteed regardless of outcome ────────────────────
-    const finalStatus = deriveFinalStatus(context.results)
+    const finalStatus = deriveFinalStatus(context.results, aborted)
     await finalizeExecution(execution_id, finalStatus, context.total_cost)
   }
 
@@ -365,7 +410,7 @@ export async function executePlan(
 // ─────────────────────────────────────────────────────────────────────────────
 
 export interface SSEEvent {
-  type:       'start' | 'task_start' | 'task_complete' | 'task_error' | 'complete' | 'error'
+  type:       'start' | 'task_start' | 'task_complete' | 'task_error' | 'complete' | 'error' | 'aborted'
   plan_id?:   string
   task_id?:   string
   result?:    TaskResult
@@ -386,7 +431,10 @@ export async function executePlanStreaming(
       result,
       error:   result.error,
     }),
-    onEngineError:  (err)    => send({ type: 'error', message: err.message }),
+    onEngineError:  (err)    => send({
+      type:    err.message === 'Execution aborted by user' ? 'aborted' : 'error',
+      message: err.message,
+    }),
   })
 }
 
