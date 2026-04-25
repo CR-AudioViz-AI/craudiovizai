@@ -702,45 +702,37 @@ export default function JavariOSPage() {
   }, [])
 
   // ── Replay helpers ────────────────────────────────────────────────────────
+  // Plain functions (not useCallback) — only called on user interaction,
+  // never during render. Avoids circular closure chain that breaks SSR prerender.
 
-  // Rebuild a valid ExecutionPlan from a past execution's task rows.
-  // Dependencies are stripped (set to []) to make replay self-contained.
-  // max_cost defaults to the original cost_used or 0.001 as a floor.
-  const buildReplayPlan = useCallback((exec: ExecDetailResult) => {
-    return {
+  function replayExecution(exec: ExecDetailResult) {
+    const plan = {
       plan_id:              `replay-${exec.execution.plan_id.slice(0, 20)}-${Date.now().toString(36)}`,
       created_at:           new Date().toISOString(),
       total_estimated_cost: exec.tasks.reduce((s, t) => s + Math.max(t.cost_used ?? 0, 0.001), 0),
       tasks: exec.tasks.map(t => ({
         id:           t.task_id,
         role:         t.role,
-        objective:    // Use original output content as context for re-run
-          t.output
-            ? (() => { try { const p = JSON.parse(t.output); return p.blueprint ?? p.summary ?? t.output.slice(0, 200) } catch { return t.output.slice(0, 200) } })()
-            : t.error ?? 'Re-run task',
+        objective:    t.output
+          ? (() => { try { const p = JSON.parse(t.output!); return p.blueprint ?? p.summary ?? t.output!.slice(0, 200) } catch { return t.output!.slice(0, 200) } })()
+          : t.error ?? 'Re-run task',
         inputs:       [],
         outputs:      [],
-        dependencies: [],   // flat replay — no inter-task deps
+        dependencies: [],
         model:        'gpt-4o-mini',
         max_cost:     Math.max(t.cost_used ?? 0, 0.001),
         status:       'pending' as const,
       })),
     }
-  }, [])
-
-  const replayExecution = useCallback((exec: ExecDetailResult) => {
-    const plan = buildReplayPlan(exec)
     setSelectedExecution(null)
     setExecutionResult(null)
     setReplayMsg(`Re-running "${exec.execution.plan_id.slice(0, 30)}"...`)
     setTimeout(() => setReplayMsg(null), 3000)
     runTeamExecution(plan)
-    // Expand sidebar so the TEAM EXECUTE panel is visible
     setSidebarOpen(true)
-  }, [buildReplayPlan, runTeamExecution])
+  }
 
-  const editAndRun = useCallback((exec: ExecDetailResult) => {
-    // Summarise the plan into a readable prompt and load it into the input box
+  function editAndRun(exec: ExecDetailResult) {
     const roles   = [...new Set(exec.tasks.map(t => t.role))].join(', ')
     const summary = `Re-run: ${exec.execution.plan_id} — roles: ${roles} — ${exec.tasks.length} tasks`
     setInput(summary)
@@ -751,7 +743,7 @@ export default function JavariOSPage() {
     setSelectedExecution(null)
     setReplayMsg('Plan loaded into input — edit and press ENTER or Run with AI Team')
     setTimeout(() => setReplayMsg(null), 4000)
-  }, [])
+  }
 
   // ── TEAM Execution — SSE streaming via ReadableStream reader ─────────────
   const runTeamExecution = useCallback(async (plan: unknown) => {
