@@ -4,7 +4,7 @@
 // Sidebar: Avatar identity + status + agents stacked vertically
 // Main: Full-height dominant chat feed + execution log strip at bottom
 // Design: Fortune 50 dark ops — deep black, cyan/purple pill toggles, slide-in animations
-// Updated: April 24, 2026 — v16: resume from failure (continuation engine)
+// Updated: April 24, 2026 — v17: execution kill switch (Stop Execution button + abort SSE event)
 'use client'
 
 import {
@@ -55,7 +55,7 @@ interface TeamExecutionResult {
   plan_id:      string
   execution_id?: string
   total_cost:   number
-  status:       'running' | 'complete' | 'partial' | 'failed'
+  status:       'running' | 'complete' | 'partial' | 'failed' | 'aborted'
   results:      TeamTaskResult[]
   error?:       string
 }
@@ -93,9 +93,10 @@ interface SSETaskComplete  { type: 'task_complete'; task_id: string; result: Tea
 interface SSETaskError     { type: 'task_error';    task_id: string; result: TeamTaskResult; error?: string }
 interface SSEComplete      { type: 'complete';      plan_id: string; execution_id?: string; total_cost: number; status: 'complete' | 'partial' | 'failed'; task_count?: number }
 interface SSEError         { type: 'error';         message: string }
+interface SSEAborted       { type: 'aborted';       message?: string }
 type SSEEvent =
   | SSEStartEvent | SSETaskStart | SSETaskComplete
-  | SSETaskError  | SSEComplete  | SSEError
+  | SSETaskError  | SSEComplete  | SSEError | SSEAborted
 
 interface ExecRow {
   id:       string
@@ -677,6 +678,19 @@ export default function JavariOSPage() {
           content: `TEAM execution error: ${event.message}`, ts: Date.now(),
         }])
         break
+
+      case 'aborted':
+        setExecutionResult(prev => prev
+          ? { ...prev, status: 'aborted' }
+          : { plan_id: '', total_cost: 0, status: 'aborted', results: [] }
+        )
+        setMessages(m => [...m, {
+          id: Date.now().toString(), role: 'system',
+          content: 'Execution stopped by user.',
+          ts: Date.now(),
+        }])
+        setReplayMsg(null)
+        break
     }
   }, [demoMode])
 
@@ -772,6 +786,24 @@ export default function JavariOSPage() {
     setTimeout(() => setReplayMsg(null), 3000)
     runTeamExecution(retryPlan)
     setSidebarOpen(true)
+  }
+
+  async function stopExecution() {
+    if (!executionResult?.execution_id) return
+    try {
+      await fetch('/api/javari/executions', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ action: 'abort', execution_id: executionResult.execution_id }),
+      })
+      // Optimistic UI update — SSE 'aborted' event will confirm
+      setReplayMsg('Stop signal sent — execution will halt after current task...')
+      setTimeout(() => setReplayMsg(null), 4000)
+    } catch {
+      // Non-fatal — the engine will time out or complete naturally
+      setReplayMsg('Stop signal failed — execution may continue')
+      setTimeout(() => setReplayMsg(null), 3000)
+    }
   }
 
   function resumeExecution(exec: ExecDetailResult) {
@@ -1333,6 +1365,45 @@ export default function JavariOSPage() {
             </span>
             DEMO
           </button>
+
+          {/* Stop Execution — visible only while executing */}
+          {isExecuting && (
+            <button
+              onClick={stopExecution}
+              style={{
+                display:       'flex',
+                alignItems:    'center',
+                gap:           '6px',
+                padding:       '4px 10px',
+                fontFamily:    'monospace',
+                fontSize:      '10px',
+                letterSpacing: '0.15em',
+                fontWeight:    600,
+                color:         '#f87171',
+                background:    'rgba(239,68,68,0.1)',
+                border:        '1px solid rgba(248,113,113,0.4)',
+                borderRadius:  '6px',
+                cursor:        'pointer',
+                transition:    'all 0.2s ease',
+                flexShrink:    0,
+                animation:     'av-blink 2s ease-in-out infinite',
+              }}
+              onMouseEnter={e => {
+                const el = e.currentTarget as HTMLElement
+                el.style.background    = 'rgba(239,68,68,0.18)'
+                el.style.borderColor   = 'rgba(248,113,113,0.7)'
+                el.style.animation     = 'none'
+              }}
+              onMouseLeave={e => {
+                const el = e.currentTarget as HTMLElement
+                el.style.background    = 'rgba(239,68,68,0.1)'
+                el.style.borderColor   = 'rgba(248,113,113,0.4)'
+                el.style.animation     = 'av-blink 2s ease-in-out infinite'
+              }}
+            >
+              ■ STOP
+            </button>
+          )}
 
           <a
             href="/command-center"
