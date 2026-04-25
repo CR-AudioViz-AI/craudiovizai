@@ -5,6 +5,7 @@
 // High-risk tools require explicit caller approval — never auto-execute.
 // Logs every invocation to ai_generations (tool_type, parameters, result, status).
 // Created: April 24, 2026
+// Updated: April 24, 2026 — runTool returns ApprovalRequired object for high-risk tools instead of throwing
 
 import { supabaseAdmin } from '@/lib/supabase'
 
@@ -38,6 +39,23 @@ export interface ToolRunResult<T = unknown> {
   risk:       ToolRisk
   durationMs: number
   logId?:     string
+}
+
+// Returned by runTool when tool.risk === 'high' && !context.approved
+// The caller must present this to the user and re-call runTool with approved=true
+export interface ApprovalRequired {
+  requiresApproval: true
+  tool:             string
+  risk:             ToolRisk
+  description:      string
+  input:            unknown   // sanitized — secrets already stripped
+}
+
+export type ToolResult<T = unknown> = ToolRunResult<T> | ApprovalRequired
+
+/** Type guard: narrows ToolResult to ApprovalRequired */
+export function isApprovalRequired(r: ToolResult): r is ApprovalRequired {
+  return (r as ApprovalRequired).requiresApproval === true
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -347,7 +365,7 @@ export async function runTool<TOutput = unknown>(
   name:    string,
   input:   unknown,
   context: ToolContext,
-): Promise<ToolRunResult<TOutput>> {
+): Promise<ToolResult<TOutput>> {
   // ── 1. Registry lookup ─────────────────────────────────────────────────────
   const tool = REGISTRY[name]
   if (!tool) {
@@ -356,12 +374,28 @@ export async function runTool<TOutput = unknown>(
     )
   }
 
-  // ── 2. Risk gate ───────────────────────────────────────────────────────────
+  // ── 2. Risk gate — return ApprovalRequired instead of throwing ────────────
+  // Callers check isApprovalRequired(result) and surface to the user.
+  // Re-call runTool with context.approved = true after user confirms.
   if (tool.risk === 'high' && !context.approved) {
-    throw new Error(
-      `runTool: tool "${name}" has risk="high" and requires explicit approval. ` +
-      `Set context.approved = true after obtaining user confirmation.`
-    )
+    const approval: ApprovalRequired = {
+      requiresApproval: true,
+      tool:             name,
+      risk:             'high',
+      description:      tool.description,
+      input:            sanitize(input),   // strip secrets before surfacing to UI
+    }
+    // Log the approval request (non-fatal)
+    try {
+      await supabaseAdmin.from('ai_generations').insert({
+        user_id:   context.userId,
+        tool_type: `javari.tool.${name}.approval_requested`,
+        prompt:    truncateForLog(sanitize(input)),
+        parameters: { tool: name, risk: 'high', approved: false, executionId: context.executionId ?? null },
+        status: 'pending',
+      })
+    } catch { /* non-fatal */ }
+    return approval
   }
 
   // ── 3. Execute ─────────────────────────────────────────────────────────────
@@ -390,7 +424,7 @@ export async function runTool<TOutput = unknown>(
   // ── 4. Log (non-blocking) ──────────────────────────────────────────────────
   result.logId = await logExecution(context, name, tool.risk, input, result)
 
-  // ── 5. Re-throw on failure so callers can handle ───────────────────────────
+  // ── 5. Re-throw on failure (not ApprovalRequired — that returned early above) ──
   if (!result.success) {
     throw new Error(result.error)
   }
