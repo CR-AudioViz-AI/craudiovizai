@@ -4,7 +4,7 @@
 // Sidebar: Avatar identity + status + agents stacked vertically
 // Main: Full-height dominant chat feed + execution log strip at bottom
 // Design: Fortune 50 dark ops — deep black, cyan/purple pill toggles, slide-in animations
-// Updated: April 24, 2026 — v17: execution kill switch (Stop Execution button + abort SSE event)
+// Updated: April 24, 2026 — v18: tool approval modal (pre-execution approval, re-POST on approve)
 'use client'
 
 import {
@@ -59,6 +59,10 @@ interface TeamExecutionResult {
   results:      TeamTaskResult[]
   error?:       string
 }
+
+// Tool approval payload shapes
+interface ApprovalToolItem { taskId: string; role: string; description: string; tool: string }
+interface ApprovalRequest { status: 'requires_approval'; tools: ApprovalToolItem[]; plan: unknown }
 
 // Execution history types — mirrors /api/javari/executions response
 interface ExecHistoryRow {
@@ -310,6 +314,8 @@ export default function JavariOSPage() {
   // Demo mode — not persisted, resets on refresh
   const [demoMode,   setDemoMode]   = useState(false)
   const [demoBanner, setDemoBanner] = useState(false)
+  // Tool approval — set when route returns 202 requires_approval
+  const [approvalRequest, setApprovalRequest] = useState<ApprovalRequest | null>(null)
   // Execution history
   const [executions,        setExecutions]        = useState<ExecHistoryRow[]>([])
   const [selectedExecution, setSelectedExecution] = useState<ExecDetailResult | null>(null)
@@ -806,6 +812,24 @@ export default function JavariOSPage() {
     }
   }
 
+  async function approveAndRun() {
+    if (!approvalRequest) return
+    const plan = { ...(approvalRequest.plan as Record<string, unknown>), approved: true }
+    setApprovalRequest(null)
+    await runTeamExecution(plan)
+  }
+
+  function rejectApproval() {
+    if (!approvalRequest) return
+    setApprovalRequest(null)
+    setReplayMsg('Execution cancelled — high-risk tool rejected')
+    setTimeout(() => setReplayMsg(null), 3000)
+    setExecutionResult(prev => prev
+      ? { ...prev, status: 'failed', error: 'User rejected tool approval' }
+      : { plan_id: '', total_cost: 0, status: 'failed', results: [], error: 'User rejected tool approval' }
+    )
+  }
+
   function resumeExecution(exec: ExecDetailResult) {
     const completed = exec.tasks.filter(t => t.status === 'complete')
     const failed    = exec.tasks.filter(t => t.status === 'failed')
@@ -884,8 +908,16 @@ export default function JavariOSPage() {
         body:    JSON.stringify(plan),
       })
 
+      if (res.status === 202) {
+        const payload = await res.json() as ApprovalRequest
+        if (payload.status === 'requires_approval') {
+          setApprovalRequest(payload)
+          setIsExecuting(false)
+          setTimeout(() => { setAvState('idle'); setExecPulse(false) }, 500)
+          return
+        }
+      }
       if (!res.ok || !res.body) {
-        // Non-200 or no body — fall back to JSON error parse
         const errData = await res.json().catch(() => ({ error: `HTTP ${res.status}` }))
         throw new Error(errData.error ?? `HTTP ${res.status}`)
       }
@@ -2598,6 +2630,51 @@ export default function JavariOSPage() {
 
           </main>
         </div>
+      {/* ── Tool Approval Modal ─────────────────────────────────────────────── */}
+      {approvalRequest && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 100, background: 'rgba(0,0,0,0.72)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
+          <div style={{ background: T.bgPanel, border: `1px solid ${T.borderStrong}`, borderRadius: '16px', padding: '28px 32px', maxWidth: '520px', width: '100%', display: 'flex', flexDirection: 'column', gap: '20px', boxShadow: '0 24px 64px rgba(0,0,0,0.5)' }}>
+            {/* Header */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <span style={{ fontSize: '18px' }}>⚠</span>
+                <h2 style={{ fontFamily: 'monospace', fontSize: '16px', fontWeight: 700, color: T.textPrimary, margin: 0 }}>
+                  Approval Required
+                </h2>
+              </div>
+              <p style={{ fontFamily: 'monospace', fontSize: '12px', color: T.textMuted, margin: 0, lineHeight: 1.5 }}>
+                This execution plan contains high-risk tools that require your explicit approval before running.
+              </p>
+            </div>
+            {/* Tool list */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <span style={{ fontFamily: 'monospace', fontSize: '10px', color: T.textFaint, letterSpacing: '0.2em' }}>PENDING APPROVAL</span>
+              {approvalRequest.tools.map(tool => (
+                <div key={tool.taskId} style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid rgba(248,113,113,0.3)', background: 'rgba(239,68,68,0.05)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ fontFamily: 'monospace', fontSize: '10px', padding: '2px 7px', borderRadius: '4px', background: 'rgba(248,113,113,0.15)', color: '#f87171', letterSpacing: '0.1em', flexShrink: 0 }}>HIGH RISK</span>
+                    <span style={{ fontFamily: 'monospace', fontSize: '12px', color: '#fbbf24', fontWeight: 600 }}>{tool.tool}</span>
+                    <span style={{ fontFamily: 'monospace', fontSize: '10px', color: T.textFaint }}>({tool.role})</span>
+                  </div>
+                  <p style={{ fontFamily: 'monospace', fontSize: '11px', color: T.textTertiary, margin: 0, lineHeight: 1.5 }}>{tool.description}</p>
+                </div>
+              ))}
+            </div>
+            {/* Buttons */}
+            <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+              <button onClick={rejectApproval} style={{ fontFamily: 'monospace', fontSize: '12px', fontWeight: 500, color: T.textMuted, background: 'none', border: `1px solid ${T.borderMid}`, borderRadius: '8px', padding: '8px 18px', cursor: 'pointer', letterSpacing: '0.1em', transition: 'all 0.15s' }}
+                onMouseEnter={e => { const el=e.currentTarget as HTMLElement; el.style.color=T.textPrimary; el.style.borderColor=T.borderStrong }}
+                onMouseLeave={e => { const el=e.currentTarget as HTMLElement; el.style.color=T.textMuted; el.style.borderColor=T.borderMid }}
+              >✕ REJECT</button>
+              <button onClick={approveAndRun} style={{ fontFamily: 'monospace', fontSize: '12px', fontWeight: 700, color: '#fbbf24', background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(251,191,36,0.45)', borderRadius: '8px', padding: '8px 20px', cursor: 'pointer', letterSpacing: '0.1em', transition: 'all 0.2s', boxShadow: '0 0 16px rgba(245,158,11,0.1)' }}
+                onMouseEnter={e => { const el=e.currentTarget as HTMLElement; el.style.borderColor='rgba(251,191,36,0.75)'; el.style.boxShadow='0 0 24px rgba(245,158,11,0.2)' }}
+                onMouseLeave={e => { const el=e.currentTarget as HTMLElement; el.style.borderColor='rgba(251,191,36,0.45)'; el.style.boxShadow='0 0 16px rgba(245,158,11,0.1)' }}
+              >✓ APPROVE & RUN</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       </div>
     </>
   )
