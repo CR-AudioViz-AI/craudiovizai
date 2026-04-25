@@ -7,6 +7,7 @@
 // Updated: April 24, 2026 — persistence wired: createExecution, saveTaskResult, finalizeExecution
 // Updated: April 24, 2026 — ExecutionHooks interface + executePlanStreaming wrapper for SSE
 // Updated: April 24, 2026 — abort signal via Supabase status flag (serverless-safe kill switch)
+// Updated: April 24, 2026 — self-healing loop: MAX_RETRIES per task, generateFixContext, intra-loop retry
 
 import type {
   ExecutionGraph,
@@ -41,41 +42,72 @@ export interface TaskResult {
 
 export interface ExecutionContext {
   plan_id:      string
-  execution_id: string          // Supabase UUID — added for persistence
+  execution_id: string
   results:      Map<string, TaskResult>
   total_cost:   number
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ExecutionHooks
-// Optional lifecycle callbacks injected into executePlan.
-// Called synchronously inside the batch loop — callers must not throw.
-// Used by executePlanStreaming to emit SSE events as tasks fire.
 // ─────────────────────────────────────────────────────────────────────────────
 
 export interface ExecutionHooks {
-  /** Called immediately before a task is dispatched to its runner */
   onTaskStart?:    (task: TaskNode) => void
-  /** Called immediately after a task settles (success or cascade-fail) */
   onTaskComplete?: (result: TaskResult) => void
-  /** Called when the engine throws a fatal error (deadlock, DB failure, abort) */
   onEngineError?:  (error: Error) => void
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Abort signal
-//
-// Architecture note: Vercel serverless functions do NOT share module-level
-// memory across invocations. A simple in-process Map would not work because
-// the abort POST arrives in a different Lambda than the running SSE stream.
-//
-// Solution: abortExecution() writes status='aborting' to the Supabase
-// executions row. The engine polls this flag before each task batch via
-// checkAborted(). The poll adds one DB read per batch — acceptable latency
-// (typically <5ms) and no Redis dependency.
+// Self-Healing constants
 // ─────────────────────────────────────────────────────────────────────────────
 
-// Exported — called by the abort API route
+/** Maximum retry attempts per task before the engine gives up and marks it failed */
+const MAX_RETRIES = 2
+
+/**
+ * FixContext — structured diagnosis from generateFixContext().
+ * Injected into the retry attempt's objective as additional context.
+ * Deliberately lightweight — just a string to prepend to the objective.
+ * Replace with real AI-generated diagnosis when real model dispatch is wired.
+ */
+interface FixContext {
+  diagnosis: string
+  suggestion: string
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// generateFixContext
+// Synthesises a diagnostic context for a failed task.
+// Runs synchronously (no DB, no AI calls) — keeps the loop tight.
+// When real model dispatch is wired, replace this with an async architect call.
+// ─────────────────────────────────────────────────────────────────────────────
+
+function generateFixContext(
+  failed:   TaskResult,
+  attempt:  number,
+): FixContext {
+  const errorSummary = failed.error?.slice(0, 200) ?? 'Unknown error'
+
+  const diagnosis =
+    `Task "${failed.task_id}" failed on attempt ${attempt} with: ${errorSummary}`
+
+  const suggestion = (() => {
+    const err = failed.error?.toLowerCase() ?? ''
+    if (err.includes('timeout'))        return 'Reduce scope or simplify objective to avoid timeout.'
+    if (err.includes('cost'))           return 'Lower max_cost ceiling or reduce output complexity.'
+    if (err.includes('dependency'))     return 'Check that all dependency outputs are present and non-empty.'
+    if (err.includes('unknown agent'))  return 'Verify agent role is one of: architect/builder/tester/reviewer/deployer.'
+    if (err.includes('aborted'))        return null  // aborts should not be retried
+    return 'Retry with simplified objective — previous attempt output may be incomplete.'
+  })()
+
+  return { diagnosis, suggestion: suggestion ?? 'No retry suggestion available.' }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Abort signal
+// ─────────────────────────────────────────────────────────────────────────────
+
 export async function abortExecution(execution_id: string): Promise<void> {
   const { error } = await supabaseAdmin
     .from('javari_team_executions')
@@ -89,7 +121,6 @@ export async function abortExecution(execution_id: string): Promise<void> {
   }
 }
 
-// Internal — polled by executePlan before each task batch
 async function checkAborted(execution_id: string): Promise<boolean> {
   try {
     const { data } = await supabaseAdmin
@@ -99,7 +130,6 @@ async function checkAborted(execution_id: string): Promise<boolean> {
       .single()
     return data?.status === 'aborting'
   } catch {
-    // Non-fatal — if the check fails, continue execution (fail-safe over fail-stop)
     return false
   }
 }
@@ -115,12 +145,9 @@ interface StubResult {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Stub Runners
-// Each simulates execution for its role.
-// No AI calls yet — structured output, respects max_cost, includes context.
-// Replace internals with real dispatch when wiring AI layer.
 // ─────────────────────────────────────────────────────────────────────────────
 
-async function runArchitect(task: TaskNode): Promise<StubResult> {
+async function runArchitect(task: TaskNode, fixCtx?: FixContext): Promise<StubResult> {
   return {
     output: JSON.stringify({
       role:       'architect',
@@ -128,13 +155,14 @@ async function runArchitect(task: TaskNode): Promise<StubResult> {
       blueprint:  `Decomposed objective "${task.objective}" into ${task.outputs.length} output artifact(s).`,
       outputs:    task.outputs,
       model_used: task.model,
+      fix_context: fixCtx ?? null,
       note:       'Stub — AI dispatch pending',
     }),
     cost_used: Math.min(task.max_cost * 0.8, task.max_cost),
   }
 }
 
-async function runBuilder(task: TaskNode): Promise<StubResult> {
+async function runBuilder(task: TaskNode, fixCtx?: FixContext): Promise<StubResult> {
   return {
     output: JSON.stringify({
       role:        'builder',
@@ -142,6 +170,7 @@ async function runBuilder(task: TaskNode): Promise<StubResult> {
       artifacts:   task.outputs.map(o => ({ name: o, status: 'generated' })),
       inputs_used: task.inputs,
       model_used:  task.model,
+      fix_context: fixCtx ?? null,
       note:        'Stub — AI dispatch pending',
     }),
     cost_used: Math.min(task.max_cost * 0.9, task.max_cost),
@@ -196,14 +225,15 @@ async function runDeployer(task: TaskNode): Promise<StubResult> {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // executeTask
-// Dispatches a single task to its role-specific runner.
-// Records timestamps, handles errors, returns a complete TaskResult.
-// Pure — no side effects, no DB calls. Persistence is the caller's concern.
+// Dispatches a single task to its runner.
+// Accepts an optional FixContext — passed to stubs so they can embed
+// the self-healing context in their output for downstream visibility.
 // ─────────────────────────────────────────────────────────────────────────────
 
 export async function executeTask(
-  task: TaskNode,
+  task:    TaskNode,
   _context: ExecutionContext,
+  fixCtx?: FixContext,
 ): Promise<TaskResult> {
   const started_at = new Date().toISOString()
 
@@ -211,19 +241,17 @@ export async function executeTask(
     let stub: StubResult
 
     switch (task.role) {
-      case 'architect': stub = await runArchitect(task); break
-      case 'builder':   stub = await runBuilder(task);   break
-      case 'tester':    stub = await runTester(task);    break
-      case 'reviewer':  stub = await runReviewer(task);  break
-      case 'deployer':  stub = await runDeployer(task);  break
+      case 'architect': stub = await runArchitect(task, fixCtx); break
+      case 'builder':   stub = await runBuilder(task, fixCtx);   break
+      case 'tester':    stub = await runTester(task);             break
+      case 'reviewer':  stub = await runReviewer(task);           break
+      case 'deployer':  stub = await runDeployer(task);           break
       default: {
-        // TypeScript exhaustiveness guard — should never reach here
         const _exhaustive: never = task.role
         throw new Error(`Unknown agent role: ${String(_exhaustive)}`)
       }
     }
 
-    // Clamp cost to declared max — runner must not exceed contract
     const cost_used = Math.min(stub.cost_used, task.max_cost)
 
     return {
@@ -248,7 +276,6 @@ export async function executeTask(
 
 // ─────────────────────────────────────────────────────────────────────────────
 // deriveFinalStatus
-// Inspects all task results to determine the overall execution outcome.
 // ─────────────────────────────────────────────────────────────────────────────
 
 function deriveFinalStatus(
@@ -266,15 +293,18 @@ function deriveFinalStatus(
 
 // ─────────────────────────────────────────────────────────────────────────────
 // executePlan
-// Executes all tasks in the graph using the topological order from the
-// contract layer, running independent tasks in parallel via Promise.all.
+// Runs tasks in topological order. After each task failure, the self-healing
+// loop kicks in (up to MAX_RETRIES per task):
 //
-// Abort flow:
-//   - checkAborted() is called at the top of each batch loop iteration.
-//   - If the Supabase row shows status='aborting', the engine throws
-//     "Execution aborted by user" which propagates to the SSE error hook,
-//     emitting { type: 'error', message: 'Execution aborted by user' }.
-//   - finalizeExecution() still runs in finally — row is closed out as 'failed'.
+//   1. generateFixContext() synthesises a diagnosis from the error
+//   2. executeTask() retried with fixCtx injected as additional context
+//   3. If the retry succeeds → commit result, continue normally
+//   4. If all retries exhausted → commit final failure, cascade downstream
+//
+// Self-healing is INTRA-LOOP — no nested executePlan calls, no shared
+// context corruption, no extra DB execution rows.
+//
+// Aborts, high-risk approvals, and cascade-fails are not retried.
 // ─────────────────────────────────────────────────────────────────────────────
 
 export async function executePlan(
@@ -285,26 +315,25 @@ export async function executePlan(
   const { executionOrder, taskMap } = graph
   const { onTaskStart, onTaskComplete, onEngineError } = hooks
 
-  // ── 1. Create DB record ────────────────────────────────────────────────────
   const execution_id = await createExecution(plan)
 
-  const plan_id = plan.plan_id
-
   const context: ExecutionContext = {
-    plan_id,
+    plan_id:    plan.plan_id,
     execution_id,
     results:    new Map<string, TaskResult>(),
     total_cost: 0,
   }
 
+  // Per-task retry counter — reset across batches, tracked by task ID
+  const retryCount = new Map<string, number>()
+
   const dispatched = new Set<string>()
   let   remaining  = [...executionOrder]
   let   aborted    = false
 
-  // ── 2. Execution loop ──────────────────────────────────────────────────────
   try {
     while (remaining.length > 0) {
-      // ── Abort check — poll Supabase before each batch ──────────────────────
+      // ── Abort check ────────────────────────────────────────────────────────
       if (await checkAborted(execution_id)) {
         aborted = true
         throw new Error('Execution aborted by user')
@@ -315,14 +344,9 @@ export async function executePlan(
 
       for (const taskId of remaining) {
         const task = taskMap.get(taskId)
-        if (!task) {
-          stillPending.push(taskId)
-          continue
-        }
+        if (!task) { stillPending.push(taskId); continue }
 
-        const depsAllSettled = task.dependencies.every(dep =>
-          context.results.has(dep)
-        )
+        const depsAllSettled = task.dependencies.every(dep => context.results.has(dep))
 
         if (depsAllSettled && !dispatched.has(taskId)) {
           readyBatch.push(task)
@@ -333,28 +357,23 @@ export async function executePlan(
       }
 
       if (readyBatch.length === 0 && stillPending.length > 0) {
-        const blocked = stillPending.join(', ')
         throw new Error(
-          `executePlan: no tasks became ready — possible unresolved dependency deadlock. Blocked tasks: [${blocked}]`
+          `executePlan: no tasks became ready — possible deadlock. Blocked: [${stillPending.join(', ')}]`
         )
       }
 
-      // Execute all ready tasks in parallel, persist + hook each result
+      // ── Batch execution with self-healing ────────────────────────────────
       const batchResults = await Promise.all(
         readyBatch.map(async (task): Promise<TaskResult> => {
-          // ── Hook: task starting ──────────────────────────────────────────
           try { onTaskStart?.(task) } catch { /* hook errors never propagate */ }
 
-          // Cascade-fail: skip if any dependency failed
+          // Cascade-fail: skip if a dependency failed
           const failedDep = task.dependencies.find(dep =>
             context.results.get(dep)?.status === 'failed'
           )
-
-          let result: TaskResult
-
           if (failedDep !== undefined) {
             const now = new Date().toISOString()
-            result = {
+            const cascadeResult: TaskResult = {
               task_id:      task.id,
               status:       'failed',
               error:        `Skipped: dependency "${failedDep}" failed`,
@@ -362,21 +381,56 @@ export async function executePlan(
               started_at:   now,
               completed_at: now,
             }
-          } else {
-            result = await executeTask(task, context)
+            await saveTaskResult(execution_id, cascadeResult, task.role)
+            try { onTaskComplete?.(cascadeResult) } catch { /* never propagate */ }
+            return cascadeResult
           }
 
-          // Persist — awaited, throws on DB error
+          // Initial dispatch
+          let result = await executeTask(task, context)
+
+          // ── Self-healing loop ─────────────────────────────────────────────
+          // Retries: up to MAX_RETRIES per task.
+          // Each retry gets a FixContext synthesised from the prior failure.
+          // Aborted tasks and cascade-fails are never retried.
+          // High-risk tool approvals flow through the normal approval gate —
+          // self-healing never auto-approves.
+          while (
+            result.status === 'failed' &&
+            !(result.error?.includes('aborted')) &&
+            !(result.error?.includes('approval'))
+          ) {
+            const attempts = (retryCount.get(task.id) ?? 0) + 1
+            retryCount.set(task.id, attempts)
+
+            if (attempts > MAX_RETRIES) {
+              // Retries exhausted — commit final failure
+              break
+            }
+
+            // Synthesise fix context from the failure
+            const fixCtx = generateFixContext(result, attempts)
+
+            // If fix context has no suggestion (e.g. abort), stop retrying
+            if (!fixCtx.suggestion || fixCtx.suggestion === 'No retry suggestion available.') {
+              break
+            }
+
+            // Emit hook: task restarting (reuse task_start so UI shows activity)
+            try { onTaskStart?.(task) } catch { /* never propagate */ }
+
+            // Retry with fix context injected
+            result = await executeTask(task, context, fixCtx)
+          }
+          // ── End self-healing loop ─────────────────────────────────────────
+
+          // Persist the final result (success or final failure after retries)
           await saveTaskResult(execution_id, result, task.role)
-
-          // ── Hook: task complete ──────────────────────────────────────────
-          try { onTaskComplete?.(result) } catch { /* hook errors never propagate */ }
-
+          try { onTaskComplete?.(result) } catch { /* never propagate */ }
           return result
         })
       )
 
-      // Commit batch to context after all saves + hooks complete
       for (const result of batchResults) {
         context.results.set(result.task_id, result)
         context.total_cost = roundCost(context.total_cost + result.cost_used)
@@ -385,12 +439,10 @@ export async function executePlan(
       remaining = stillPending
     }
   } catch (err: unknown) {
-    // ── Hook: engine error ───────────────────────────────────────────────────
     const engineError = err instanceof Error ? err : new Error(String(err))
     try { onEngineError?.(engineError) } catch { /* never propagate */ }
-    throw engineError  // re-throw so finally can still finalize
+    throw engineError
   } finally {
-    // ── 3. Finalize — guaranteed regardless of outcome ────────────────────
     const finalStatus = deriveFinalStatus(context.results, aborted)
     await finalizeExecution(execution_id, finalStatus, context.total_cost)
   }
@@ -400,13 +452,6 @@ export async function executePlan(
 
 // ─────────────────────────────────────────────────────────────────────────────
 // executePlanStreaming
-// Thin wrapper around executePlan that wires a caller-supplied send function
-// to the hook callbacks. The route uses this to emit SSE events without
-// duplicating any engine logic.
-//
-// send() receives structured SSEEvent objects — the route serializes them.
-// executePlanStreaming does not own the stream or the controller; it only
-// drives the engine and fires send() at the right moments.
 // ─────────────────────────────────────────────────────────────────────────────
 
 export interface SSEEvent {
@@ -419,19 +464,19 @@ export interface SSEEvent {
 }
 
 export async function executePlanStreaming(
-  graph:   ExecutionGraph,
-  plan:    ExecutionPlan,
-  send:    (event: SSEEvent) => void,
+  graph: ExecutionGraph,
+  plan:  ExecutionPlan,
+  send:  (event: SSEEvent) => void,
 ): Promise<ExecutionContext> {
   return executePlan(graph, plan, {
-    onTaskStart:    (task)   => send({ type: 'task_start',    task_id: task.id }),
+    onTaskStart:    (task)   => send({ type: 'task_start', task_id: task.id }),
     onTaskComplete: (result) => send({
       type:    result.status === 'complete' ? 'task_complete' : 'task_error',
       task_id: result.task_id,
       result,
       error:   result.error,
     }),
-    onEngineError:  (err)    => send({
+    onEngineError: (err) => send({
       type:    err.message === 'Execution aborted by user' ? 'aborted' : 'error',
       message: err.message,
     }),
@@ -439,7 +484,7 @@ export async function executePlanStreaming(
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// roundCost — prevent IEEE 754 float accumulation drift
+// roundCost
 // ─────────────────────────────────────────────────────────────────────────────
 
 function roundCost(value: number): number {
