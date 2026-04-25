@@ -7,9 +7,11 @@
 // Updated: April 24, 2026 — pass plan to executePlan; expose execution_id in response
 // Updated: April 24, 2026 — SSE streaming via ReadableStream + executePlanStreaming
 // Updated: April 24, 2026 — billing enforcement: auth gate, tier gate, credit pre-check, credit debit
+// Updated: April 24, 2026 — Option A approval: pre-execution scan, 202 payload, approved flag passthrough
 
 import { NextRequest, NextResponse } from 'next/server'
 import { validateExecutionPlan, buildExecutionGraph, estimatePlanCost } from '@/lib/javari/team/execution-contract'
+import type { ExecutionPlan } from '@/lib/javari/team/execution-contract'
 import { executePlan, executePlanStreaming } from '@/lib/javari/team/execution-engine'
 import type { TaskResult, SSEEvent }         from '@/lib/javari/team/execution-engine'
 import { getAuthUser }                        from '@/lib/auth'
@@ -41,6 +43,24 @@ interface SuccessResponse {
   status:       'complete' | 'partial' | 'failed'
 }
 
+// Roles whose tool-runner mapping is high-risk
+// Must stay in sync with ai-dispatcher.ts executeAgent routing
+const HIGH_RISK_ROLES = new Set(['deployer', 'builder'])
+
+// Returned as HTTP 202 when a plan contains high-risk tasks and approved=false
+interface ApprovalPayload {
+  status:        'requires_approval'
+  tools:         ApprovalToolItem[]
+  plan:          ExecutionPlan
+}
+
+interface ApprovalToolItem {
+  taskId:      string
+  role:        string
+  description: string
+  tool:        string
+}
+
 interface ErrorResponse {
   error:  string
   status: 'failed'
@@ -49,6 +69,27 @@ interface ErrorResponse {
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers
 // ─────────────────────────────────────────────────────────────────────────────
+
+// Scan a validated plan for tasks that will require tool approval.
+// Returns the list of tool items needing approval, or empty array if none.
+function scanForApprovals(plan: ExecutionPlan): ApprovalToolItem[] {
+  const items: ApprovalToolItem[] = []
+  const ROLE_TOOL_MAP: Record<string, string> = {
+    deployer: 'vercel.deploy',
+    builder:  'github.commit',
+  }
+  for (const task of plan.tasks) {
+    if (HIGH_RISK_ROLES.has(task.role)) {
+      items.push({
+        taskId:      task.id,
+        role:        task.role,
+        description: `${task.role}: ${task.objective.slice(0, 120)}`,
+        tool:        ROLE_TOOL_MAP[task.role] ?? task.role,
+      })
+    }
+  }
+  return items
+}
 
 function errorResponse(message: string, httpStatus: number): NextResponse<ErrorResponse> {
   return NextResponse.json<ErrorResponse>(
@@ -267,10 +308,33 @@ export async function POST(req: NextRequest): Promise<Response> {
   if (!parsed.ok) return parsed.response
   const { plan, graph } = parsed
 
-  // ── 5. Estimated cost sanity check (non-blocking warning in response) ──────
+  // ── 5. Pre-execution approval scan ────────────────────────────────────────
+  // If the plan contains high-risk tool roles AND the caller hasn't explicitly
+  // approved (req body field: approved=true), return 202 with approval payload.
+  // Client shows the approval modal, then re-POSTs with approved=true to proceed.
+  const approvedHeader = req.headers.get('x-javari-approved')
+  let   callerApproved = approvedHeader === 'true'
+
+  // Also check body for approved flag (set by UI re-POST)
+  // We already consumed req.text() in parseAndValidate — read from plan metadata
+  if ((plan as unknown as Record<string, unknown>)['approved'] === true) {
+    callerApproved = true
+  }
+
+  if (!callerApproved) {
+    const pendingTools = scanForApprovals(plan)
+    if (pendingTools.length > 0) {
+      return NextResponse.json<ApprovalPayload>(
+        { status: 'requires_approval', tools: pendingTools, plan },
+        { status: 202 }
+      )
+    }
+  }
+
+  // ── 6. Estimated cost sanity check (non-blocking warning in response) ──────
   const estimatedCost = estimatePlanCost(plan)
 
-  // ── 6. JSON mode (original behavior) ──────────────────────────────────────
+  // ── 7. JSON mode (original behavior) ──────────────────────────────────────
   if (!streaming) {
     let context: Awaited<ReturnType<typeof executePlan>>
     try {
@@ -305,7 +369,7 @@ export async function POST(req: NextRequest): Promise<Response> {
     )
   }
 
-  // ── 7. SSE streaming mode ──────────────────────────────────────────────────
+  // ── 8. SSE streaming mode ──────────────────────────────────────────────────
   const stream = new ReadableStream({
     async start(controller) {
       function send(event: SSEEvent): void {
