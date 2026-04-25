@@ -4,7 +4,7 @@
 // Sidebar: Avatar identity + status + agents stacked vertically
 // Main: Full-height dominant chat feed + execution log strip at bottom
 // Design: Fortune 50 dark ops — deep black, cyan/purple pill toggles, slide-in animations
-// Updated: April 24, 2026 — v12: investor demo mode (auto-execute, banner, slower pacing, completion message)
+// Updated: April 24, 2026 — v13: execution history panel (sidebar section + detail view in main panel)
 'use client'
 
 import {
@@ -58,6 +58,32 @@ interface TeamExecutionResult {
   status:       'running' | 'complete' | 'partial' | 'failed'
   results:      TeamTaskResult[]
   error?:       string
+}
+
+// Execution history types — mirrors /api/javari/executions response
+interface ExecHistoryRow {
+  id:           string
+  plan_id:      string
+  status:       string
+  total_cost:   number
+  created_at:   string
+  finalized_at: string | null
+}
+interface ExecDetailTask {
+  id:           string
+  execution_id: string
+  task_id:      string
+  role:         string
+  status:       string
+  cost_used:    number
+  output:       string | null
+  error:        string | null
+  started_at:   string
+  completed_at: string
+}
+interface ExecDetailResult {
+  execution: ExecHistoryRow
+  tasks:     ExecDetailTask[]
 }
 
 // SSE event shapes from /api/javari/team (streaming mode)
@@ -283,6 +309,10 @@ export default function JavariOSPage() {
   // Demo mode — not persisted, resets on refresh
   const [demoMode,   setDemoMode]   = useState(false)
   const [demoBanner, setDemoBanner] = useState(false)
+  // Execution history
+  const [executions,        setExecutions]        = useState<ExecHistoryRow[]>([])
+  const [selectedExecution, setSelectedExecution] = useState<ExecDetailResult | null>(null)
+  const [historyLoading,    setHistoryLoading]    = useState(false)
 
   // ── TEAM execution state ───────────────────────────────────────────────────
   const [isExecuting,     setIsExecuting]     = useState(false)
@@ -630,6 +660,8 @@ export default function JavariOSPage() {
             }])
           }, 1200)
         }
+        // Refresh history so sidebar shows the new execution
+        loadExecutionHistory()
         break
       }
 
@@ -645,6 +677,27 @@ export default function JavariOSPage() {
         break
     }
   }, [demoMode])
+
+  // ── Execution History ────────────────────────────────────────────────────
+  const loadExecutionHistory = useCallback(async () => {
+    try {
+      const res = await fetch('/api/javari/executions', { cache: 'no-store' })
+      if (!res.ok) return
+      const data = await res.json()
+      setExecutions(data.executions ?? [])
+    } catch { /* non-fatal — unavailable until DB migrated */ }
+  }, [])
+
+  const loadExecution = useCallback(async (id: string) => {
+    setHistoryLoading(true)
+    setSelectedExecution(null)
+    try {
+      const res = await fetch(`/api/javari/executions?id=${encodeURIComponent(id)}`, { cache: 'no-store' })
+      if (!res.ok) return
+      const data: ExecDetailResult = await res.json()
+      setSelectedExecution(data)
+    } catch { /* non-fatal */ } finally { setHistoryLoading(false) }
+  }, [])
 
   // ── TEAM Execution — SSE streaming via ReadableStream reader ─────────────
   const runTeamExecution = useCallback(async (plan: unknown) => {
@@ -752,6 +805,9 @@ export default function JavariOSPage() {
     const t = setTimeout(() => setDemoBanner(false), 5000)
     return () => clearTimeout(t)
   }, [demoBanner])
+
+  // Load execution history on mount
+  useEffect(() => { loadExecutionHistory() }, [loadExecutionHistory])
 
   // Primary action prompts — fill input on click
   const PRIMARY_ACTIONS: { label: string; prompt: string; icon: string }[] = [
@@ -1623,6 +1679,53 @@ export default function JavariOSPage() {
                 )}
               </div>
             </SideSection>
+          {/* ── Execution History section ─────────────────────────────── */}
+            <SideSection label="HISTORY" icon={<Activity size={10} />} accent="zinc" collapsible defaultOpen={false}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                {executions.length === 0 ? (
+                  <p style={{ fontFamily: 'monospace', fontSize: '11px', color: T.textFaint, textAlign: 'center', padding: '8px 0', letterSpacing: '0.1em' }}>No executions yet</p>
+                ) : (
+                  <div className="jv-scroll" style={{ maxHeight: '200px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                    {executions.map(exec => {
+                      const isSel = selectedExecution?.execution?.id === exec.id
+                      const sc    = exec.status === 'complete' ? '#34d399' : exec.status === 'failed' ? '#f87171' : exec.status === 'running' ? '#fbbf24' : T.textMuted
+                      return (
+                        <button
+                          key={exec.id}
+                          onClick={() => loadExecution(exec.id)}
+                          style={{
+                            width: '100%', padding: '8px 10px',
+                            background: isSel ? 'rgba(255,255,255,0.06)' : 'transparent',
+                            border: `1px solid ${isSel ? T.borderStrong : 'transparent'}`,
+                            borderRadius: '8px', cursor: 'pointer', textAlign: 'left',
+                            display: 'flex', flexDirection: 'column', gap: '3px',
+                            transition: 'all 0.15s ease',
+                          }}
+                          onMouseEnter={e => { if (!isSel) (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.03)' }}
+                          onMouseLeave={e => { if (!isSel) (e.currentTarget as HTMLElement).style.background = 'transparent' }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <span style={{ fontFamily: 'monospace', fontSize: '10px', color: sc, flexShrink: 0 }}>
+                              {exec.status === 'complete' ? '✓' : exec.status === 'failed' ? '✗' : '●'}
+                            </span>
+                            <span style={{ fontFamily: 'monospace', fontSize: '10px', color: T.textSecond, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
+                              {exec.plan_id.slice(0, 18)}
+                            </span>
+                            <span style={{ fontFamily: 'monospace', fontSize: '10px', color: T.textFaint, flexShrink: 0 }}>
+                              ${(exec.total_cost ?? 0).toFixed(5)}
+                            </span>
+                          </div>
+                          <span style={{ fontFamily: 'monospace', fontSize: '9px', color: T.textFaint, paddingLeft: '16px' }}>
+                            {new Date(exec.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                        </button>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+            </SideSection>
+
           </>)}{/* /sidebarOpen */}
           </aside>
           </div>{/* /sidebar-wrapper */}
@@ -1747,7 +1850,7 @@ export default function JavariOSPage() {
               {/* ── Message feed ───────────────────────────────────────────── */}
               <div
                 className="jv-scroll"
-                style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}
+                style={{ flex: 1, overflowY: 'auto', minHeight: 0, position: 'relative' }}
               >
                 {/* Demo banner */}
               {demoBanner && (
@@ -1851,6 +1954,74 @@ export default function JavariOSPage() {
                     </div>
                   )
                 })}
+
+                {/* ── Execution detail overlay ─────────────────────────────────── */}
+                {selectedExecution && !isExecuting && (
+                  <div className="jv-scroll" style={{ position: 'absolute', inset: 0, zIndex: 10, background: T.bg, overflowY: 'auto', padding: '24px 28px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                    {/* Header */}
+                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '16px' }}>
+                      <div style={{ flex: 1 }}>
+                        <h2 style={{ fontFamily: 'monospace', fontSize: '15px', fontWeight: 700, color: T.textPrimary, margin: '0 0 6px' }}>
+                          {selectedExecution.execution.plan_id}
+                        </h2>
+                        <div style={{ display: 'flex', gap: '14px', flexWrap: 'wrap' }}>
+                          {([
+                            { k: 'STATUS',  v: selectedExecution.execution.status.toUpperCase(), c: selectedExecution.execution.status === 'complete' ? '#34d399' : selectedExecution.execution.status === 'failed' ? '#f87171' : '#fbbf24' },
+                            { k: 'COST',    v: `$${(selectedExecution.execution.total_cost ?? 0).toFixed(6)}`, c: T.textMuted },
+                            { k: 'TASKS',   v: String(selectedExecution.tasks.length), c: T.textMuted },
+                            { k: 'CREATED', v: new Date(selectedExecution.execution.created_at).toLocaleString(), c: T.textFaint },
+                          ] as { k: string; v: string; c: string }[]).map(item => (
+                            <div key={item.k} style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                              <span style={{ fontFamily: 'monospace', fontSize: '9px', color: T.textFaint, letterSpacing: '0.15em' }}>{item.k}</span>
+                              <span style={{ fontFamily: 'monospace', fontSize: '11px', color: item.c, fontWeight: 600 }}>{item.v}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                      <button onClick={() => setSelectedExecution(null)} style={{ fontFamily: 'monospace', fontSize: '11px', color: T.textFaint, background: 'none', border: `1px solid ${T.borderMid}`, borderRadius: '6px', padding: '4px 10px', cursor: 'pointer', flexShrink: 0, letterSpacing: '0.1em', transition: 'all 0.15s' }}
+                        onMouseEnter={e => { const el=e.currentTarget as HTMLElement; el.style.color=T.textPrimary; el.style.borderColor=T.borderStrong }}
+                        onMouseLeave={e => { const el=e.currentTarget as HTMLElement; el.style.color=T.textFaint;    el.style.borderColor=T.borderMid    }}
+                      >✕ CLOSE</button>
+                    </div>
+                    <div style={{ height: '1px', background: T.border }} />
+                    {/* Task list */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                      <span style={{ fontFamily: 'monospace', fontSize: '11px', color: T.textFaint, letterSpacing: '0.2em' }}>TASK LOG</span>
+                      {selectedExecution.tasks.length === 0 && (
+                        <p style={{ fontFamily: 'monospace', fontSize: '12px', color: T.textFaint }}>No task records found.</p>
+                      )}
+                      {selectedExecution.tasks.map(task => {
+                        const tc = task.status === 'complete' ? '#34d399' : task.status === 'failed' ? '#f87171' : '#fbbf24'
+                        const outputText = task.error ?? (task.output
+                          ? (() => { try { return JSON.stringify(JSON.parse(task.output), null, 2) } catch { return task.output } })()
+                          : null)
+                        return (
+                          <div key={task.id} style={{ padding: '14px 16px', borderRadius: '10px', border: `1px solid ${T.border}`, background: T.bgPanel, display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                              <span style={{ fontFamily: 'monospace', fontSize: '11px', color: tc }}>{task.status === 'complete' ? '✓' : task.status === 'failed' ? '✗' : '◌'}</span>
+                              <strong style={{ fontFamily: 'monospace', fontSize: '13px', color: T.textPrimary, textTransform: 'capitalize' }}>{task.role}</strong>
+                              <span style={{ fontFamily: 'monospace', fontSize: '10px', color: T.textFaint }}>{task.task_id}</span>
+                              <span style={{ marginLeft: 'auto', fontFamily: 'monospace', fontSize: '10px', color: T.textFaint }}>${(task.cost_used ?? 0).toFixed(6)}</span>
+                              <span style={{ fontFamily: 'monospace', fontSize: '10px', padding: '2px 7px', borderRadius: '4px', background: task.status === 'complete' ? 'rgba(52,211,153,0.12)' : 'rgba(248,113,113,0.12)', color: tc }}>{task.status.toUpperCase()}</span>
+                            </div>
+                            {outputText && (
+                              <pre style={{ fontFamily: 'monospace', fontSize: '11px', color: task.error ? '#f87171' : T.textTertiary, whiteSpace: 'pre-wrap', wordBreak: 'break-word', margin: 0, lineHeight: 1.5, maxHeight: '140px', overflow: 'auto', background: 'rgba(0,0,0,0.15)', padding: '8px 10px', borderRadius: '6px' }}>
+                                {outputText}
+                              </pre>
+                            )}
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* History loading */}
+                {historyLoading && !selectedExecution && (
+                  <div style={{ position: 'absolute', inset: 0, zIndex: 10, background: T.bg, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <span className="av-blink" style={{ fontFamily: 'monospace', fontSize: '12px', color: T.textMuted, letterSpacing: '0.2em' }}>LOADING…</span>
+                  </div>
+                )}
 
                 {/* ── Guided empty state ─────────────────────────────────────── */}
                 {messages.filter(m => m.role !== 'system').length === 0 && !loading && (
