@@ -4,7 +4,7 @@
 // Sidebar: Avatar identity + status + agents stacked vertically
 // Main: Full-height dominant chat feed + execution log strip at bottom
 // Design: Fortune 50 dark ops — deep black, cyan/purple pill toggles, slide-in animations
-// Updated: April 24, 2026 — v14: execution replay (Run Again + Edit & Run from history detail)
+// Updated: April 24, 2026 — v15: selective retry (Retry Failed Tasks only)
 'use client'
 
 import {
@@ -743,6 +743,35 @@ export default function JavariOSPage() {
     setSelectedExecution(null)
     setReplayMsg('Plan loaded into input — edit and press ENTER or Run with AI Team')
     setTimeout(() => setReplayMsg(null), 4000)
+  }
+
+  function retryFailed(exec: ExecDetailResult) {
+    const failed = exec.tasks.filter(t => t.status === 'failed')
+    if (failed.length === 0) return
+    const retryPlan = {
+      plan_id:              `${exec.execution.plan_id.slice(0, 28)}-retry`,
+      created_at:           new Date().toISOString(),
+      total_estimated_cost: failed.reduce((s, t) => s + Math.max(t.cost_used ?? 0, 0.001), 0),
+      tasks: failed.map(t => ({
+        id:           `${t.task_id}-retry`,
+        role:         t.role,
+        objective:    t.output
+          ? (() => { try { const p = JSON.parse(t.output!); return p.blueprint ?? p.summary ?? t.output!.slice(0, 200) } catch { return t.output!.slice(0, 200) } })()
+          : t.error ?? 'Retry task',
+        inputs:       [],
+        outputs:      [],
+        dependencies: [],   // flat retry — no inter-task deps
+        model:        'gpt-4o-mini',
+        max_cost:     Math.max(t.cost_used ?? 0, 0.001),
+        status:       'pending' as const,
+      })),
+    }
+    setSelectedExecution(null)
+    setExecutionResult(null)
+    setReplayMsg(`Retrying ${failed.length} failed task${failed.length !== 1 ? 's' : ''}...`)
+    setTimeout(() => setReplayMsg(null), 3000)
+    runTeamExecution(retryPlan)
+    setSidebarOpen(true)
   }
 
   // ── TEAM Execution — SSE streaming via ReadableStream reader ─────────────
@@ -2044,7 +2073,20 @@ export default function JavariOSPage() {
                         </div>
                       </div>
                       {/* Action buttons */}
-                      <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
+                      <div style={{ display: 'flex', gap: '8px', flexShrink: 0, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                        {/* Retry Failed — only shown if there are failed tasks */}
+                        {selectedExecution.tasks.some(t => t.status === 'failed') && (
+                          <button
+                            onClick={() => retryFailed(selectedExecution)}
+                            disabled={isExecuting}
+                            style={{ fontFamily: 'monospace', fontSize: '11px', fontWeight: 600, color: isExecuting ? T.textFaint : '#f87171', background: isExecuting ? 'transparent' : 'rgba(239,68,68,0.08)', border: `1px solid ${isExecuting ? T.borderMid : 'rgba(248,113,113,0.35)'}`, borderRadius: '6px', padding: '4px 12px', cursor: isExecuting ? 'not-allowed' : 'pointer', flexShrink: 0, letterSpacing: '0.1em', transition: 'all 0.2s', opacity: isExecuting ? 0.4 : 1 }}
+                            onMouseEnter={e => { if (!isExecuting) { const el=e.currentTarget as HTMLElement; el.style.borderColor='rgba(248,113,113,0.65)'; el.style.background='rgba(239,68,68,0.14)' } }}
+                            onMouseLeave={e => { if (!isExecuting) { const el=e.currentTarget as HTMLElement; el.style.borderColor='rgba(248,113,113,0.35)'; el.style.background='rgba(239,68,68,0.08)' } }}
+                            title={`Retry ${selectedExecution.tasks.filter(t => t.status === 'failed').length} failed task(s)`}
+                          >
+                            ↺ RETRY FAILED ({selectedExecution.tasks.filter(t => t.status === 'failed').length})
+                          </button>
+                        )}
                         {/* Edit & Run */}
                         <button
                           onClick={() => editAndRun(selectedExecution)}
@@ -2090,6 +2132,22 @@ export default function JavariOSPage() {
                               <span style={{ fontFamily: 'monospace', fontSize: '10px', color: T.textFaint }}>{task.task_id}</span>
                               <span style={{ marginLeft: 'auto', fontFamily: 'monospace', fontSize: '10px', color: T.textFaint }}>${(task.cost_used ?? 0).toFixed(6)}</span>
                               <span style={{ fontFamily: 'monospace', fontSize: '10px', padding: '2px 7px', borderRadius: '4px', background: task.status === 'complete' ? 'rgba(52,211,153,0.12)' : 'rgba(248,113,113,0.12)', color: tc }}>{task.status.toUpperCase()}</span>
+                              {/* Per-task retry link */}
+                              {task.status === 'failed' && (
+                                <button
+                                  onClick={() => {
+                                    const singleRetry: ExecDetailResult = {
+                                      execution: selectedExecution.execution,
+                                      tasks:     [task],
+                                    }
+                                    retryFailed(singleRetry)
+                                  }}
+                                  disabled={isExecuting}
+                                  style={{ fontFamily: 'monospace', fontSize: '9px', color: isExecuting ? T.textFaint : '#f87171', background: 'none', border: 'none', cursor: isExecuting ? 'not-allowed' : 'pointer', padding: '0 4px', letterSpacing: '0.1em', textDecoration: 'underline', flexShrink: 0, opacity: isExecuting ? 0.4 : 1 }}
+                                >
+                                  retry
+                                </button>
+                              )}
                             </div>
                             {outputText && (
                               <pre style={{ fontFamily: 'monospace', fontSize: '11px', color: task.error ? '#f87171' : T.textTertiary, whiteSpace: 'pre-wrap', wordBreak: 'break-word', margin: 0, lineHeight: 1.5, maxHeight: '140px', overflow: 'auto', background: 'rgba(0,0,0,0.15)', padding: '8px 10px', borderRadius: '6px' }}>
