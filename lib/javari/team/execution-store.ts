@@ -4,6 +4,7 @@
 // Uses supabaseAdmin (service-role) — bypasses RLS, server-side only.
 // Never call from client components.
 // Created: April 24, 2026
+// Updated: April 24, 2026 — saveTaskResult uses upsert to prevent duplicate key errors on resume/replay
 
 import { supabaseAdmin } from '@/lib/supabase'
 import type { ExecutionPlan } from './execution-contract'
@@ -79,9 +80,16 @@ export async function createExecution(plan: ExecutionPlan): Promise<string> {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // saveTaskResult
-// Inserts a single task result into javari_team_execution_tasks.
-// Called after each task completes (success or failure).
-// Throws on DB error — callers must handle or the execution record stays dirty.
+// Upserts a single task result into javari_team_execution_tasks.
+// Uses onConflict('execution_id,task_id') — if a row already exists for this
+// execution + task combination (e.g. resume/replay with pre-seeded completed
+// tasks), the existing row is updated instead of throwing a duplicate key error.
+//
+// Requires the composite unique constraint to be present on the table:
+//   UNIQUE (execution_id, task_id)
+// See SQL migration reference at the bottom of this file.
+//
+// Throws on any other DB error — callers must handle or the execution record stays dirty.
 // ─────────────────────────────────────────────────────────────────────────────
 
 export async function saveTaskResult(
@@ -91,17 +99,20 @@ export async function saveTaskResult(
 ): Promise<void> {
   const { error } = await supabaseAdmin
     .from(TABLE_EXECUTION_TASKS)
-    .insert({
-      execution_id,
-      task_id:      task.task_id,
-      role,
-      status:       task.status,
-      cost_used:    task.cost_used,
-      output:       task.output   ?? null,
-      error:        task.error    ?? null,
-      started_at:   task.started_at,
-      completed_at: task.completed_at,
-    })
+    .upsert(
+      {
+        execution_id,
+        task_id:      task.task_id,
+        role,
+        status:       task.status,
+        cost_used:    task.cost_used,
+        output:       task.output   ?? null,
+        error:        task.error    ?? null,
+        started_at:   task.started_at,
+        completed_at: task.completed_at,
+      },
+      { onConflict: 'execution_id,task_id' }
+    )
 
   if (error) {
     throw new Error(
@@ -191,7 +202,10 @@ export async function getExecutionTasks(execution_id: string): Promise<Execution
 
 // ─────────────────────────────────────────────────────────────────────────────
 // SQL migration reference (DO NOT apply here — run in Supabase SQL editor)
+// Project: kteobfyferrukqeolofj
 // ─────────────────────────────────────────────────────────────────────────────
+//
+// -- Core tables (run first if not already present)
 //
 // create table if not exists javari_team_executions (
 //   id           uuid primary key default gen_random_uuid(),
@@ -217,3 +231,10 @@ export async function getExecutionTasks(execution_id: string): Promise<Execution
 //
 // create index if not exists idx_execution_tasks_execution_id
 //   on javari_team_execution_tasks(execution_id);
+//
+// -- REQUIRED for upsert onConflict('execution_id,task_id') to work:
+// -- Run this after creating the table if the constraint does not yet exist.
+//
+// alter table javari_team_execution_tasks
+//   add constraint if not exists unique_execution_task
+//   unique (execution_id, task_id);
