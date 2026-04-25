@@ -4,12 +4,13 @@
 // Simulated responses now — structured for zero-friction drop-in of real API calls.
 // Model policy: cheap-first with typed fallbacks per role.
 // Created: April 24, 2026
-// Updated: April 24, 2026 — executeAgent routes to tool-runner for real tool calls;
+// Updated: April 24, 2026 — executeAgent routes to tool-runner;
+//                            detects ApprovalRequired and surfaces it up the chain
 //                            simulation retained as fallback for non-tool roles.
 
 import type { AgentRole }    from './execution-contract'
-import { runTool }           from '@/lib/javari/tools/tool-runner'
-import type { ToolContext }  from '@/lib/javari/tools/tool-runner'
+import { runTool, isApprovalRequired } from '@/lib/javari/tools/tool-runner'
+import type { ToolContext, ApprovalRequired } from '@/lib/javari/tools/tool-runner'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -33,6 +34,22 @@ export interface AIResponse {
   latency_ms: number
   /** True when a real tool was invoked instead of a simulation */
   tool_used?: string
+}
+
+/** Returned by dispatchAI when a high-risk tool needs user approval before executing */
+export interface PendingApproval extends ApprovalRequired {
+  status:     'pending_approval'
+  role:       string
+  cost_used:  number
+  model:      string
+  latency_ms: number
+}
+
+export type AIDispatchResult = AIResponse | PendingApproval
+
+/** Type guard */
+export function isPendingApproval(r: AIDispatchResult): r is PendingApproval {
+  return (r as PendingApproval).status === 'pending_approval'
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -168,8 +185,9 @@ function simulateResponse(
 // ─────────────────────────────────────────────────────────────────────────────
 
 interface AgentExecuteResult {
-  output:    string
-  tool_used: string | null
+  output:      string
+  tool_used:   string | null
+  needsApproval?: ApprovalRequired   // set when tool returned requiresApproval
 }
 
 async function executeAgent(
@@ -190,26 +208,23 @@ async function executeAgent(
     try {
       const result = await runTool(
         'vercel.deploy',
-        {
-          projectId: 'craudiovizai',
-          ref:       'main',
-          target:    'preview',
-        },
-        { ...toolCtx, approved: true },  // deployer role = pre-approved
+        { projectId: 'craudiovizai', ref: 'main', target: 'preview' },
+        { ...toolCtx, approved: false },  // approval required — UI must confirm
       )
+      // ApprovalRequired: surface up the chain
+      if (isApprovalRequired(result)) {
+        return { output: '', tool_used: 'vercel.deploy', needsApproval: result }
+      }
       return {
         output:    JSON.stringify({ ...result.output, role: 'deployer', tool: 'vercel.deploy', cost_used: cost }),
         tool_used: 'vercel.deploy',
       }
     } catch (err: unknown) {
-      // Tool failed — return structured error output, do not throw
       return {
         output: JSON.stringify({
-          role:      'deployer',
-          tool:      'vercel.deploy',
-          error:     err instanceof Error ? err.message : String(err),
-          fallback:  'simulation',
-          cost_used: cost,
+          role: 'deployer', tool: 'vercel.deploy',
+          error: err instanceof Error ? err.message : String(err),
+          fallback: 'simulation', cost_used: cost,
         }),
         tool_used: 'vercel.deploy',
       }
@@ -219,7 +234,6 @@ async function executeAgent(
   // ── builder → github.commit ───────────────────────────────────────────────
   if (request.role === 'builder') {
     try {
-      // Use objective as commit message; content is a placeholder until AI generates it
       const result = await runTool(
         'github.commit',
         {
@@ -229,8 +243,11 @@ async function executeAgent(
           message: request.objective.slice(0, 72),
           branch:  'javari/builds',
         },
-        { ...toolCtx, approved: true },  // builder role = pre-approved
+        { ...toolCtx, approved: false },  // approval required — UI must confirm
       )
+      if (isApprovalRequired(result)) {
+        return { output: '', tool_used: 'github.commit', needsApproval: result }
+      }
       return {
         output:    JSON.stringify({ ...result.output, role: 'builder', tool: 'github.commit', cost_used: cost }),
         tool_used: 'github.commit',
@@ -238,11 +255,9 @@ async function executeAgent(
     } catch (err: unknown) {
       return {
         output: JSON.stringify({
-          role:      'builder',
-          tool:      'github.commit',
-          error:     err instanceof Error ? err.message : String(err),
-          fallback:  'simulation',
-          cost_used: cost,
+          role: 'builder', tool: 'github.commit',
+          error: err instanceof Error ? err.message : String(err),
+          fallback: 'simulation', cost_used: cost,
         }),
         tool_used: 'github.commit',
       }
@@ -301,7 +316,7 @@ async function executeAgent(
 // All original cost tracking, latency, and fallback logic preserved.
 // ─────────────────────────────────────────────────────────────────────────────
 
-export async function dispatchAI(request: AIRequest): Promise<AIResponse> {
+export async function dispatchAI(request: AIRequest): Promise<AIDispatchResult> {
   const startMs = Date.now()
 
   const policy = MODEL_POLICY[request.role]
@@ -325,6 +340,19 @@ export async function dispatchAI(request: AIRequest): Promise<AIResponse> {
 
   try {
     const result = await executeAgent(request, prompt, model, cost_used)
+    // Surface approval request — return before any execution
+    if (result.needsApproval) {
+      const latency_ms = Date.now() - startMs
+      const approval: PendingApproval = {
+        ...result.needsApproval,
+        status:     'pending_approval',
+        role:       request.role,
+        cost_used:  0,     // no cost incurred — nothing ran
+        model,
+        latency_ms,
+      }
+      return approval
+    }
     output    = result.output
     tool_used = result.tool_used
   } catch (err: unknown) {
@@ -353,7 +381,7 @@ export async function dispatchAI(request: AIRequest): Promise<AIResponse> {
   }
   if (tool_used) response.tool_used = tool_used
 
-  return response
+  return response as AIDispatchResult
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
