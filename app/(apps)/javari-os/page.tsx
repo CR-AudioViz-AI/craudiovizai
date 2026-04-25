@@ -4,7 +4,7 @@
 // Sidebar: Avatar identity + status + agents stacked vertically
 // Main: Full-height dominant chat feed + execution log strip at bottom
 // Design: Fortune 50 dark ops — deep black, cyan/purple pill toggles, slide-in animations
-// Updated: April 24, 2026 — v15: selective retry (Retry Failed Tasks only)
+// Updated: April 24, 2026 — v16: resume from failure (continuation engine)
 'use client'
 
 import {
@@ -771,6 +771,66 @@ export default function JavariOSPage() {
     setReplayMsg(`Retrying ${failed.length} failed task${failed.length !== 1 ? 's' : ''}...`)
     setTimeout(() => setReplayMsg(null), 3000)
     runTeamExecution(retryPlan)
+    setSidebarOpen(true)
+  }
+
+  function resumeExecution(exec: ExecDetailResult) {
+    const completed = exec.tasks.filter(t => t.status === 'complete')
+    const failed    = exec.tasks.filter(t => t.status === 'failed')
+    if (failed.length === 0) return
+
+    // Continuation plan:
+    // - Completed tasks are included as status:'complete' with cost 0
+    //   so the engine records them as already done without re-running
+    // - Failed tasks get -retry suffix, depend on all completed tasks,
+    //   and receive completed outputs as inputs
+    const completedOutputs = completed
+      .map(t => {
+        if (!t.output) return null
+        try { const p = JSON.parse(t.output); return p.blueprint ?? p.summary ?? t.output.slice(0, 200) }
+        catch { return t.output.slice(0, 200) }
+      })
+      .filter((v): v is string => v !== null)
+
+    const continuationPlan = {
+      plan_id:              `${exec.execution.plan_id.slice(0, 24)}-resume`,
+      created_at:           new Date().toISOString(),
+      total_estimated_cost: failed.reduce((s, t) => s + Math.max(t.cost_used ?? 0, 0.001), 0),
+      tasks: [
+        // Completed tasks — pre-seeded as done, cost 0, no deps
+        ...completed.map(t => ({
+          id:           t.task_id,
+          role:         t.role,
+          objective:    t.output
+            ? (() => { try { const p = JSON.parse(t.output!); return p.blueprint ?? p.summary ?? t.output!.slice(0, 200) } catch { return t.output!.slice(0, 200) } })()
+            : '',
+          inputs:       [],
+          outputs:      [],
+          dependencies: [],
+          model:        'gpt-4o-mini',
+          max_cost:     0,
+          status:       'complete' as const,
+        })),
+        // Failed tasks — depend on all completed tasks, receive their outputs as inputs
+        ...failed.map(t => ({
+          id:           `${t.task_id}-retry`,
+          role:         t.role,
+          objective:    t.error ?? t.output?.slice(0, 200) ?? 'Resume task',
+          inputs:       completedOutputs,
+          outputs:      [],
+          dependencies: completed.map(c => c.task_id),
+          model:        'gpt-4o-mini',
+          max_cost:     Math.max(t.cost_used ?? 0, 0.001),
+          status:       'pending' as const,
+        })),
+      ],
+    }
+
+    setSelectedExecution(null)
+    setExecutionResult(null)
+    setReplayMsg(`Resuming execution from failure — ${completed.length} task${completed.length !== 1 ? 's' : ''} carried forward...`)
+    setTimeout(() => setReplayMsg(null), 4000)
+    runTeamExecution(continuationPlan)
     setSidebarOpen(true)
   }
 
@@ -2085,6 +2145,19 @@ export default function JavariOSPage() {
                             title={`Retry ${selectedExecution.tasks.filter(t => t.status === 'failed').length} failed task(s)`}
                           >
                             ↺ RETRY FAILED ({selectedExecution.tasks.filter(t => t.status === 'failed').length})
+                          </button>
+                        )}
+                        {/* Resume Execution — only shown if failed tasks exist */}
+                        {selectedExecution.tasks.some(t => t.status === 'failed') && selectedExecution.tasks.some(t => t.status === 'complete') && (
+                          <button
+                            onClick={() => resumeExecution(selectedExecution)}
+                            disabled={isExecuting}
+                            style={{ fontFamily: 'monospace', fontSize: '11px', fontWeight: 600, color: isExecuting ? T.textFaint : '#60a5fa', background: isExecuting ? 'transparent' : 'rgba(59,130,246,0.08)', border: `1px solid ${isExecuting ? T.borderMid : 'rgba(96,165,250,0.35)'}`, borderRadius: '6px', padding: '4px 12px', cursor: isExecuting ? 'not-allowed' : 'pointer', flexShrink: 0, letterSpacing: '0.1em', transition: 'all 0.2s', opacity: isExecuting ? 0.4 : 1 }}
+                            onMouseEnter={e => { if (!isExecuting) { const el=e.currentTarget as HTMLElement; el.style.borderColor='rgba(96,165,250,0.65)'; el.style.background='rgba(59,130,246,0.14)' } }}
+                            onMouseLeave={e => { if (!isExecuting) { const el=e.currentTarget as HTMLElement; el.style.borderColor='rgba(96,165,250,0.35)'; el.style.background='rgba(59,130,246,0.08)' } }}
+                            title={`Resume: carry forward ${selectedExecution.tasks.filter(t => t.status === 'complete').length} completed tasks, retry ${selectedExecution.tasks.filter(t => t.status === 'failed').length} failed`}
+                          >
+                            ⟳ RESUME ({selectedExecution.tasks.filter(t => t.status === 'complete').length}✓ + {selectedExecution.tasks.filter(t => t.status === 'failed').length}✗)
                           </button>
                         )}
                         {/* Edit & Run */}
