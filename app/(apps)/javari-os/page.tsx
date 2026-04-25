@@ -4,7 +4,7 @@
 // Sidebar: Avatar identity + status + agents stacked vertically
 // Main: Full-height dominant chat feed + execution log strip at bottom
 // Design: Fortune 50 dark ops — deep black, cyan/purple pill toggles, slide-in animations
-// Updated: April 24, 2026 — v13: execution history panel (sidebar section + detail view in main panel)
+// Updated: April 24, 2026 — v14: execution replay (Run Again + Edit & Run from history detail)
 'use client'
 
 import {
@@ -313,6 +313,8 @@ export default function JavariOSPage() {
   const [executions,        setExecutions]        = useState<ExecHistoryRow[]>([])
   const [selectedExecution, setSelectedExecution] = useState<ExecDetailResult | null>(null)
   const [historyLoading,    setHistoryLoading]    = useState(false)
+  // Replay confirmation banner text — clears after 3s
+  const [replayMsg, setReplayMsg] = useState<string | null>(null)
 
   // ── TEAM execution state ───────────────────────────────────────────────────
   const [isExecuting,     setIsExecuting]     = useState(false)
@@ -697,6 +699,58 @@ export default function JavariOSPage() {
       const data: ExecDetailResult = await res.json()
       setSelectedExecution(data)
     } catch { /* non-fatal */ } finally { setHistoryLoading(false) }
+  }, [])
+
+  // ── Replay helpers ────────────────────────────────────────────────────────
+
+  // Rebuild a valid ExecutionPlan from a past execution's task rows.
+  // Dependencies are stripped (set to []) to make replay self-contained.
+  // max_cost defaults to the original cost_used or 0.001 as a floor.
+  const buildReplayPlan = useCallback((exec: ExecDetailResult) => {
+    return {
+      plan_id:              `replay-${exec.execution.plan_id.slice(0, 20)}-${Date.now().toString(36)}`,
+      created_at:           new Date().toISOString(),
+      total_estimated_cost: exec.tasks.reduce((s, t) => s + Math.max(t.cost_used ?? 0, 0.001), 0),
+      tasks: exec.tasks.map(t => ({
+        id:           t.task_id,
+        role:         t.role,
+        objective:    // Use original output content as context for re-run
+          t.output
+            ? (() => { try { const p = JSON.parse(t.output); return p.blueprint ?? p.summary ?? t.output.slice(0, 200) } catch { return t.output.slice(0, 200) } })()
+            : t.error ?? 'Re-run task',
+        inputs:       [],
+        outputs:      [],
+        dependencies: [],   // flat replay — no inter-task deps
+        model:        'gpt-4o-mini',
+        max_cost:     Math.max(t.cost_used ?? 0, 0.001),
+        status:       'pending' as const,
+      })),
+    }
+  }, [])
+
+  const replayExecution = useCallback((exec: ExecDetailResult) => {
+    const plan = buildReplayPlan(exec)
+    setSelectedExecution(null)
+    setExecutionResult(null)
+    setReplayMsg(`Re-running "${exec.execution.plan_id.slice(0, 30)}"...`)
+    setTimeout(() => setReplayMsg(null), 3000)
+    runTeamExecution(plan)
+    // Expand sidebar so the TEAM EXECUTE panel is visible
+    setSidebarOpen(true)
+  }, [buildReplayPlan, runTeamExecution])
+
+  const editAndRun = useCallback((exec: ExecDetailResult) => {
+    // Summarise the plan into a readable prompt and load it into the input box
+    const roles   = [...new Set(exec.tasks.map(t => t.role))].join(', ')
+    const summary = `Re-run: ${exec.execution.plan_id} — roles: ${roles} — ${exec.tasks.length} tasks`
+    setInput(summary)
+    if (textRef.current) {
+      textRef.current.value = summary
+      textRef.current.focus()
+    }
+    setSelectedExecution(null)
+    setReplayMsg('Plan loaded into input — edit and press ENTER or Run with AI Team')
+    setTimeout(() => setReplayMsg(null), 4000)
   }, [])
 
   // ── TEAM Execution — SSE streaming via ReadableStream reader ─────────────
@@ -1873,6 +1927,25 @@ export default function JavariOSPage() {
                 </div>
               )}
 
+              {/* Replay confirmation banner */}
+              {replayMsg && (
+                <div style={{
+                  flexShrink:   0,
+                  padding:      '10px 20px',
+                  background:   'linear-gradient(90deg, rgba(59,130,246,0.08) 0%, rgba(59,130,246,0.03) 100%)',
+                  borderBottom: `1px solid rgba(59,130,246,0.2)`,
+                  display:      'flex',
+                  alignItems:   'center',
+                  gap:          '10px',
+                  animation:    'jv-msg-in 0.25s ease forwards',
+                }}>
+                  <span style={{ color: '#60a5fa', fontSize: '14px', flexShrink: 0 }}>▶</span>
+                  <span style={{ fontFamily: 'monospace', fontSize: '12px', color: '#93c5fd', letterSpacing: '0.04em' }}>
+                    {replayMsg}
+                  </span>
+                </div>
+              )}
+
               {/* In-flight row */}
                 {loading && (
                   <div style={{
@@ -1978,10 +2051,32 @@ export default function JavariOSPage() {
                           ))}
                         </div>
                       </div>
-                      <button onClick={() => setSelectedExecution(null)} style={{ fontFamily: 'monospace', fontSize: '11px', color: T.textFaint, background: 'none', border: `1px solid ${T.borderMid}`, borderRadius: '6px', padding: '4px 10px', cursor: 'pointer', flexShrink: 0, letterSpacing: '0.1em', transition: 'all 0.15s' }}
-                        onMouseEnter={e => { const el=e.currentTarget as HTMLElement; el.style.color=T.textPrimary; el.style.borderColor=T.borderStrong }}
-                        onMouseLeave={e => { const el=e.currentTarget as HTMLElement; el.style.color=T.textFaint;    el.style.borderColor=T.borderMid    }}
-                      >✕ CLOSE</button>
+                      {/* Action buttons */}
+                      <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
+                        {/* Edit & Run */}
+                        <button
+                          onClick={() => editAndRun(selectedExecution)}
+                          disabled={isExecuting}
+                          style={{ fontFamily: 'monospace', fontSize: '11px', color: T.textMuted, background: 'none', border: `1px solid ${T.borderMid}`, borderRadius: '6px', padding: '4px 10px', cursor: isExecuting ? 'not-allowed' : 'pointer', flexShrink: 0, letterSpacing: '0.1em', transition: 'all 0.15s', opacity: isExecuting ? 0.4 : 1 }}
+                          onMouseEnter={e => { if (!isExecuting) { const el=e.currentTarget as HTMLElement; el.style.color=T.textPrimary; el.style.borderColor=T.borderStrong } }}
+                          onMouseLeave={e => { if (!isExecuting) { const el=e.currentTarget as HTMLElement; el.style.color=T.textMuted;    el.style.borderColor=T.borderMid    } }}
+                          title="Load this plan into the input box for editing"
+                        >✎ EDIT</button>
+                        {/* Run Again */}
+                        <button
+                          onClick={() => replayExecution(selectedExecution)}
+                          disabled={isExecuting}
+                          style={{ fontFamily: 'monospace', fontSize: '11px', fontWeight: 600, color: isExecuting ? T.textFaint : '#fbbf24', background: isExecuting ? 'transparent' : 'rgba(245,158,11,0.1)', border: `1px solid ${isExecuting ? T.borderMid : 'rgba(251,191,36,0.4)'}`, borderRadius: '6px', padding: '4px 12px', cursor: isExecuting ? 'not-allowed' : 'pointer', flexShrink: 0, letterSpacing: '0.1em', transition: 'all 0.2s' }}
+                          onMouseEnter={e => { if (!isExecuting) { const el=e.currentTarget as HTMLElement; el.style.borderColor='rgba(251,191,36,0.7)'; el.style.background='rgba(245,158,11,0.18)' } }}
+                          onMouseLeave={e => { if (!isExecuting) { const el=e.currentTarget as HTMLElement; el.style.borderColor='rgba(251,191,36,0.4)'; el.style.background='rgba(245,158,11,0.10)' } }}
+                          title="Re-execute this plan immediately"
+                        >▶ RUN AGAIN</button>
+                        {/* Close */}
+                        <button onClick={() => setSelectedExecution(null)} style={{ fontFamily: 'monospace', fontSize: '11px', color: T.textFaint, background: 'none', border: `1px solid ${T.borderMid}`, borderRadius: '6px', padding: '4px 10px', cursor: 'pointer', flexShrink: 0, letterSpacing: '0.1em', transition: 'all 0.15s' }}
+                          onMouseEnter={e => { const el=e.currentTarget as HTMLElement; el.style.color=T.textPrimary; el.style.borderColor=T.borderStrong }}
+                          onMouseLeave={e => { const el=e.currentTarget as HTMLElement; el.style.color=T.textFaint;    el.style.borderColor=T.borderMid    }}
+                        >✕ CLOSE</button>
+                      </div>
                     </div>
                     <div style={{ height: '1px', background: T.border }} />
                     {/* Task list */}
