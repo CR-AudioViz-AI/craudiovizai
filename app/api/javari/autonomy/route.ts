@@ -22,6 +22,7 @@
 //   A human must approve those tasks manually via the approval modal.
 //
 // Created: April 24, 2026
+// Updated: April 24, 2026 — strategic planner: auto-generates tasks when queue is empty
 
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin }             from '@/lib/supabase'
@@ -46,6 +47,9 @@ const TABLE_QUEUE           = 'javari_autonomy_tasks'
 
 // Roles that map to high-risk tools — never auto-approved in autonomy mode
 const HIGH_RISK_ROLES       = new Set(['deployer', 'builder'])
+
+// Max tasks the strategic planner may generate per cycle (safety cap)
+const MAX_GENERATED_PER_CYCLE = 3
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Queue row type
@@ -86,6 +90,130 @@ interface ErrorResponse {
 
 function errorResponse(message: string, httpStatus: number): NextResponse<ErrorResponse> {
   return NextResponse.json({ error: message, status: 'failed' as const }, { status: httpStatus })
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// generateStrategicPlan
+// Called when the queue is empty. Produces a bounded set of architect-level tasks
+// based on recent execution history — giving Javari something to act on autonomously.
+//
+// Safety rules enforced here:
+//   - Never generates deployer or builder tasks (high-risk — require human approval)
+//   - Capped at MAX_GENERATED_PER_CYCLE (3) tasks
+//   - max_cost per generated task capped at 0.002 (cheap architect calls only)
+//   - Returns null if no meaningful work can be identified
+//
+// Replace the stub logic below with real AI-generated planning when model
+// dispatch is wired — call dispatchAI({ role: 'architect', objective: ... })
+// and parse its output as a list of follow-up task objectives.
+// ─────────────────────────────────────────────────────────────────────────────
+
+interface StrategicTask {
+  id:           string
+  role:         string
+  objective:    string
+  inputs:       string[]
+  outputs:      string[]
+  dependencies: string[]
+  model:        string
+  max_cost:     number
+  status:       string
+}
+
+interface StrategicPlan {
+  plan_id:  string
+  tasks:    StrategicTask[]
+}
+
+async function generateStrategicPlan(
+  userId:    string,
+  totalCost: number,
+  maxCost:   number,
+): Promise<StrategicPlan | null> {
+  // Headroom check — don't generate if we're close to the cost ceiling
+  const remaining = maxCost - totalCost
+  if (remaining < 0.002) return null
+
+  // Read recent execution history to inform planning
+  const { data: recentExecs } = await supabaseAdmin
+    .from('javari_team_executions')
+    .select('plan_id, status, total_cost, created_at')
+    .eq('status', 'complete')
+    .order('created_at', { ascending: false })
+    .limit(5)
+
+  const recentQueue = await supabaseAdmin
+    .from(TABLE_QUEUE)
+    .select('id, status')
+    .eq('user_id', userId)
+    .in('status', ['complete', 'failed'])
+    .order('updated_at', { ascending: false })
+    .limit(10)
+
+  const completedCount = ((recentExecs ?? []) as unknown[]).length
+  const failedCount    = ((recentQueue.data ?? []) as Array<{status:string}>)
+    .filter(r => r.status === 'failed').length
+
+  // Build a focused set of architect tasks based on recent state
+  // These are safe: architect role maps to supabase.query (medium risk, no approval)
+  const tasks: StrategicTask[] = []
+  const ts = Date.now().toString(36)
+
+  // Task 1 — always: system audit
+  tasks.push({
+    id:           `auto-audit-${ts}`,
+    role:         'architect',
+    objective:    `Analyze the current system state. Recent completions: ${completedCount}. ` +
+                  `Recent failures: ${failedCount}. Identify the top 3 improvement opportunities ` +
+                  `and output a structured action list.`,
+    inputs:       [],
+    outputs:      ['audit-report'],
+    dependencies: [],
+    model:        'gpt-4o-mini',
+    max_cost:     0.002,
+    status:       'pending',
+  })
+
+  // Task 2 — if there were recent failures: targeted diagnosis
+  if (failedCount > 0 && tasks.length < MAX_GENERATED_PER_CYCLE) {
+    tasks.push({
+      id:           `auto-diagnose-${ts}`,
+      role:         'architect',
+      objective:    `${failedCount} recent task(s) failed. Diagnose common failure patterns ` +
+                    `and produce a remediation strategy. Output structured recommendations.`,
+      inputs:       [],
+      outputs:      ['diagnosis-report'],
+      dependencies: [],
+      model:        'gpt-4o-mini',
+      max_cost:     0.002,
+      status:       'pending',
+    })
+  }
+
+  // Task 3 — if completions are accumulating: optimization review
+  if (completedCount >= 3 && tasks.length < MAX_GENERATED_PER_CYCLE) {
+    tasks.push({
+      id:           `auto-optimize-${ts}`,
+      role:         'reviewer',
+      objective:    `Review the last ${completedCount} completed executions for quality, ` +
+                    `cost efficiency, and output consistency. Suggest optimizations.`,
+      inputs:       [],
+      outputs:      ['optimization-report'],
+      dependencies: [],
+      model:        'gpt-4o-mini',
+      max_cost:     0.002,
+      status:       'pending',
+    })
+  }
+
+  // Enforce: no high-risk roles generated (double-check even though we don't produce them)
+  const safe = tasks.filter(t => !HIGH_RISK_ROLES.has(t.role))
+  if (safe.length === 0) return null
+
+  return {
+    plan_id: `strategic-${ts}`,
+    tasks:   safe.slice(0, MAX_GENERATED_PER_CYCLE),
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -331,11 +459,50 @@ export async function POST(req: NextRequest): Promise<Response> {
       break
     }
 
-    // ── Get next task ─────────────────────────────────────────────────────────
+    // ── Get next task (or generate if queue empty) ───────────────────────────
     const queueTask = await getNextTask(authUser.id)
     if (!queueTask) {
-      cycleResult.stopped_reason = 'no_tasks'
-      break
+      // Queue is empty — ask the strategic planner to generate new work
+      const generated = await generateStrategicPlan(
+        authUser.id,
+        cycleResult.total_cost,
+        maxCostPerRun,
+      )
+
+      if (!generated || generated.tasks.length === 0) {
+        // Planner produced nothing — genuinely nothing to do
+        cycleResult.stopped_reason = 'no_tasks'
+        break
+      }
+
+      // Convert generated tasks to queue rows and enqueue
+      const rows = generated.tasks.map(t => ({
+        user_id:    authUser.id,
+        parent_id:  null,
+        priority:   3,           // strategic tasks get elevated priority
+        status:     'pending',
+        cost_used:  0,
+        error:      null,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        plan: JSON.stringify({
+          plan_id:              generated.plan_id,
+          created_at:           new Date().toISOString(),
+          total_estimated_cost: t.max_cost,
+          tasks: [t],
+        }),
+      }))
+
+      const queued = await queueTasks(rows)
+      if (queued === 0) {
+        // Failed to queue — stop to avoid infinite loop
+        cycleResult.stopped_reason = 'no_tasks'
+        break
+      }
+
+      cycleResult.follow_ups_queued += queued
+      // Continue — the next iteration will pick up the newly queued tasks
+      continue
     }
 
     cycleResult.tasks_processed++
