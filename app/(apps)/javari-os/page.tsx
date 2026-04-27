@@ -4,7 +4,7 @@
 // Sidebar: Avatar identity + status + agents stacked vertically
 // Main: Full-height dominant chat feed + execution log strip at bottom
 // Design: Fortune 50 dark ops — deep black, cyan/purple pill toggles, slide-in animations
-// Updated: April 24, 2026 — v18: tool approval modal (pre-execution approval, re-POST on approve)
+// Updated: April 26, 2026 — v19: targeted UI refinement (layout, typography, avatar circle, exec card, input UX)
 'use client'
 
 import {
@@ -170,22 +170,22 @@ function Avatar({ state }: { state: AvState }) {
       <div
         style={{
           position:     'relative',
-          width:        '100%',
-          maxWidth:     '180px',
-          aspectRatio:  '3/4',
-          borderRadius: '14px',
+          width:        '128px',
+          height:       '128px',
+          borderRadius: '50%',
           overflow:     'hidden',
           background:   'transparent',
           border:       `2px solid ${ringColor[state]}`,
           boxShadow:    glowColor[state],
           transition:   'border-color 0.5s ease, box-shadow 0.5s ease',
+          flexShrink:   0,
         }}
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src="/javari-portrait-v3.png"
           alt="Javari AI"
-          style={{ width: '100%', height: '100%', objectFit: 'contain', objectPosition: 'center top', display: 'block' }}
+          style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center top', display: 'block' }}
           draggable={false}
           onError={e => {
             // Portrait missing — swap to default avatar, then gradient on second fail
@@ -1097,6 +1097,13 @@ export default function JavariOSPage() {
         /* Chat message hover */
         .jv-chat-row:hover { background: rgba(255,255,255,0.02) }
 
+        /* ── v19 layout refinements ──────────────────────────────────── */
+        .jv-chat-center { max-width: 860px; width: 100%; margin: 0 auto; display: flex; flex-direction: column; height: 100%; }
+        .jv-exec-card { border-radius: 16px !important; margin: 0 12px 12px; border: 1px solid rgba(255,255,255,0.07) !important; background: rgba(0,0,0,0.3); }
+        .jv-side-section { border-bottom: none !important; margin-bottom: 2px }
+        .jv-side-section > button { padding: 10px 16px !important; border-bottom: none !important }
+        .jv-exec-row { min-height: 40px; padding: 10px 20px !important }
+
         /* Running task shimmer */
         @keyframes jv-shimmer {
           0%   { background-position: -200% center }
@@ -1953,7 +1960,7 @@ export default function JavariOSPage() {
                               ${(exec.total_cost ?? 0).toFixed(5)}
                             </span>
                           </div>
-                          <span style={{ fontFamily: 'monospace', fontSize: '9px', color: T.textFaint, paddingLeft: '16px' }}>
+                          <span style={{ fontFamily: 'monospace', fontSize: '11px', color: T.textFaint, paddingLeft: '16px' }}>
                             {new Date(exec.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                           </span>
                         </button>
@@ -1972,13 +1979,14 @@ export default function JavariOSPage() {
           <main style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
 
             {/* ── CHAT FEED — dominant, fills available height ──────────── */}
-            <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+            <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+              <div className="jv-chat-center">
 
               {/* Chat header */}
               <div style={{
                 flexShrink:   0,
                 padding:      '0 20px',
-                height:       '40px',
+                height:       '48px',
                 display:      'flex',
                 alignItems:   'center',
                 gap:          '12px',
@@ -2005,7 +2013,7 @@ export default function JavariOSPage() {
               {/* Input bar — fixed directly under chat header */}
               <div style={{
                 flexShrink:   0,
-                padding:      '8px 16px',
+                padding:      '10px 16px',
                 borderBottom: `1px solid ${T.border}`,
                 background:   T.bgHeader,
               }}>
@@ -2015,8 +2023,8 @@ export default function JavariOSPage() {
                   gap:         '10px',
                   background:  T.bgInput,
                   border:      `1px solid ${T.borderStrong}`,
-                  borderRadius:'10px',
-                  padding:     '12px 16px',
+                  borderRadius:'16px',
+                  padding:     '14px 18px',
                   transition:  'border-color 0.2s',
                 }}
                   onFocusCapture={e => { (e.currentTarget as HTMLElement).style.borderColor = mode === 'council' ? 'rgba(168,85,247,0.7)' : 'rgba(59,130,246,0.7)' }}
@@ -2029,7 +2037,7 @@ export default function JavariOSPage() {
                     value={input}
                     onChange={e => setInput(e.target.value)}
                     onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() } }}
-                    placeholder={mode === 'council' ? 'QUERY COUNCIL…' : 'QUERY JAVARI…'}
+                    placeholder={mode === 'council' ? 'Ask the AI Council...' : 'Tell Javari what to do...'}
                     style={{
                       flex:        1,
                       background:  'transparent',
@@ -2039,6 +2047,7 @@ export default function JavariOSPage() {
                       fontFamily:  'monospace',
                       fontSize:    '15px',
                       color:       '#e4e4e7',
+                      minHeight:   '48px',
                       minHeight:   '18px',
                       maxHeight:   '100px',
                       lineHeight:  '1.6',
@@ -2107,7 +2116,7 @@ export default function JavariOSPage() {
                     Javari is executing a multi-agent workflow in real time
                   </span>
                   <div style={{ flex: 1 }} />
-                  <span style={{ fontFamily: 'monospace', fontSize: '9px', color: 'rgba(245,158,11,0.45)', letterSpacing: '0.2em', flexShrink: 0 }}>DEMO</span>
+                  <span style={{ fontFamily: 'monospace', fontSize: '11px', color: 'rgba(245,158,11,0.45)', letterSpacing: '0.15em', flexShrink: 0 }}>DEMO</span>
                 </div>
               )}
 
@@ -2352,10 +2361,10 @@ export default function JavariOSPage() {
                     <div style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                       <h2 style={{
                         fontFamily:    'monospace',
-                        fontSize:      '20px',
+                        fontSize:      '22px',
                         fontWeight:    700,
                         color:         T.textPrimary,
-                        letterSpacing: '-0.01em',
+                        letterSpacing: '-0.02em',
                         margin:        0,
                       }}>
                         What do you want Javari to do?
@@ -2382,7 +2391,7 @@ export default function JavariOSPage() {
                             send(action.prompt)
                           }}
                           style={{
-                            padding:       '16px 18px',
+                            padding:       '18px 20px',
                             fontFamily:    'monospace',
                             fontSize:      '13px',
                             fontWeight:    600,
@@ -2440,11 +2449,11 @@ export default function JavariOSPage() {
                         disabled={isExecuting}
                         style={{
                           width:         '100%',
-                          padding:       '16px 24px',
+                          padding:       '18px 24px',
                           fontFamily:    'monospace',
-                          fontSize:      '15px',
+                          fontSize:      '16px',
                           fontWeight:    700,
-                          letterSpacing: '0.08em',
+                          letterSpacing: '0.06em',
                           color:         isExecuting ? '#92400e' : '#fbbf24',
                           background:    isExecuting
                             ? 'rgba(245,158,11,0.12)'
@@ -2493,6 +2502,7 @@ export default function JavariOSPage() {
               </div>
             </div>
 
+              </div>{/* /jv-chat-center */}
             {/* ── Step progress counter ─────────────────────────────────────── */}
             {isExecuting && executionResult && (
               <div style={{ flexShrink: 0, padding: '6px 20px', display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -2522,7 +2532,7 @@ export default function JavariOSPage() {
             )}
 
             {/* ── EXECUTION LOG — height expands when active ──────────────── */}
-            <div className="jv-exec-strip" style={{ flexShrink: 0, height: (execRows.length > 0 || execPulse || isExecuting) ? '180px' : '44px', minHeight: (execRows.length > 0 || execPulse || isExecuting) ? '180px' : '44px', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+            <div className="jv-exec-strip jv-exec-card" style={{ flexShrink: 0, height: (execRows.length > 0 || execPulse || isExecuting) ? '180px' : '44px', minHeight: (execRows.length > 0 || execPulse || isExecuting) ? '180px' : '44px', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
               {/* Exec header */}
               <div style={{
                 flexShrink:   0,
