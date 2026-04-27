@@ -23,6 +23,17 @@ export const dynamic = 'force-dynamic'
 const FALLBACK_SECRET = 'ZMcwZVo0nLQ4PKjMeEbxHqupvT3lJWX-YuASRWDsMm0'
 
 // ─────────────────────────────────────────────────────────────────────────────
+// CORS — required for cross-origin preflight from browser devtools / curl
+// ─────────────────────────────────────────────────────────────────────────────
+
+const CORS_HEADERS = {
+  'Access-Control-Allow-Origin':  '*',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'x-admin-secret, Content-Type',
+} as const
+
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Migration SQL — hardcoded, no user input accepted
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -124,6 +135,14 @@ const MIGRATION_STEPS = [
 ]
 
 // ─────────────────────────────────────────────────────────────────────────────
+// OPTIONS /api/admin/migrate — preflight handler
+// ─────────────────────────────────────────────────────────────────────────────
+
+export async function OPTIONS() {
+  return new NextResponse(null, { status: 200, headers: CORS_HEADERS })
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // POST /api/admin/migrate
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -134,7 +153,7 @@ export async function POST(req: NextRequest) {
 
   if (!provided || provided !== expected) {
     console.log('[migrate] rejected — invalid or missing x-admin-secret')
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401, headers: CORS_HEADERS })
   }
 
   // ── Supabase admin client ──────────────────────────────────────────────────
@@ -262,7 +281,7 @@ export async function POST(req: NextRequest) {
       ? 'Migration complete — DELETE THIS ROUTE NOW'
       : 'Migration incomplete — check steps for errors',
     projectRef,
-  })
+  }, { headers: CORS_HEADERS })
 }
 
 // Block all other methods
