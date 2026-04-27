@@ -274,6 +274,14 @@ export async function POST(req: NextRequest): Promise<Response> {
     return errorResponse('Authentication required to use TEAM execution', 401)
   }
 
+  // ── 1a. Admin early bypass — skips ALL billing gates ─────────────────────
+  // Checked explicitly here so admins never hit tier or credit checks,
+  // regardless of subscription state.
+  if (billing.adminBypass) {
+    console.log('[JAVARI ADMIN BYPASS]', billing.email)
+    // Fall through directly to plan parsing and execution below
+  }
+
   // ── 2. Tier gate — Free users cannot use TEAM mode ────────────────────────
   // Admin bypass skips all tier + credit checks.
   if (!billing.adminBypass) {
