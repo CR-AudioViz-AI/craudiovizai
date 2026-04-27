@@ -45,7 +45,8 @@ export const ADMIN_EMAILS: string[] = [
   'cindyhenderson@craudiovizai.com',
   'roy@craudiovizai.com',
   'cindy@craudiovizai.com',
-  'admin@craudiovizai.com'
+  'admin@craudiovizai.com',
+  'royhenders@gmail.com',        // Roy personal Gmail
 ];
 
 export function isAdmin(email: string | null | undefined): boolean {
