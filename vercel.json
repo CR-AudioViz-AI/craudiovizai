@@ -42,8 +42,12 @@
           "value": "max-age=31536000; includeSubDomains"
         },
         {
+          "key": "Permissions-Policy",
+          "value": "camera=(), microphone=(), geolocation=()"
+        },
+        {
           "key": "Content-Security-Policy",
-          "value": "connect-src 'self' https://javari-ai.vercel.app https://*.supabase.co https://*.vercel.app https://api.resend.com https://api.stripe.com https://www.paypal.com; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdnjs.cloudflare.com https://js.stripe.com https://www.paypal.com https://www.google-analytics.com https://www.googletagmanager.com https://static.cloudflareinsights.com; img-src 'self' data: https://*; frame-src 'self' https://javariai.com https://javari-ai.vercel.app https://js.stripe.com https://www.paypal.com; default-src 'self';"
+          "value": "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdnjs.cloudflare.com https://js.stripe.com https://www.paypal.com https://www.google-analytics.com https://www.googletagmanager.com https://static.cloudflareinsights.com https://vercel.live; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https://*; connect-src 'self' https://craudiovizai.com https://*.vercel.app https://*.supabase.co wss://*.supabase.co https://api.stripe.com https://api.paypal.com https://www.paypal.com https://api.openai.com https://api.anthropic.com https://generativelanguage.googleapis.com https://api.resend.com https://cloudflareinsights.com; frame-src 'self' https://javariai.com https://javari-ai.vercel.app https://js.stripe.com https://www.paypal.com; object-src 'none'; base-uri 'self';"
         }
       ]
     }
