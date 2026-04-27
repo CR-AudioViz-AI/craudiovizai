@@ -14,24 +14,24 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient }             from '@supabase/supabase-js'
 
 export const dynamic = 'force-dynamic'
+export const runtime = 'nodejs'   // prevents edge routing inconsistencies on Vercel
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Secret — checked against env var first, falls back to hardcoded constant.
-// This route does nothing if the wrong secret is supplied.
 // ─────────────────────────────────────────────────────────────────────────────
 
 const FALLBACK_SECRET = 'ZMcwZVo0nLQ4PKjMeEbxHqupvT3lJWX-YuASRWDsMm0'
 
 // ─────────────────────────────────────────────────────────────────────────────
-// CORS — required for cross-origin preflight from browser devtools / curl
+// CORS — applied to every response so preflight and the actual POST both work
 // ─────────────────────────────────────────────────────────────────────────────
 
-const CORS_HEADERS = {
-  'Access-Control-Allow-Origin':  '*',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'x-admin-secret, Content-Type',
-} as const
-
+function withCors(res: NextResponse): NextResponse {
+  res.headers.set('Access-Control-Allow-Origin',  '*')
+  res.headers.set('Access-Control-Allow-Methods', 'POST, OPTIONS')
+  res.headers.set('Access-Control-Allow-Headers', 'x-admin-secret, Content-Type')
+  return res
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Migration SQL — hardcoded, no user input accepted
@@ -139,7 +139,7 @@ const MIGRATION_STEPS = [
 // ─────────────────────────────────────────────────────────────────────────────
 
 export async function OPTIONS() {
-  return new NextResponse(null, { status: 200, headers: CORS_HEADERS })
+  return withCors(new NextResponse(null, { status: 200 }))
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -153,57 +153,27 @@ export async function POST(req: NextRequest) {
 
   if (!provided || provided !== expected) {
     console.log('[migrate] rejected — invalid or missing x-admin-secret')
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401, headers: CORS_HEADERS })
+    return withCors(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
   }
 
   // ── Supabase admin client ──────────────────────────────────────────────────
-  const supabaseUrl     = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const serviceRoleKey  = process.env.SUPABASE_SERVICE_ROLE_KEY
+  const supabaseUrl    = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
   if (!supabaseUrl || !serviceRoleKey) {
-    return NextResponse.json({
+    return withCors(NextResponse.json({
       error: 'Missing NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY',
-    }, { status: 500 })
+    }, { status: 500 }))
   }
 
   const db = createClient(supabaseUrl, serviceRoleKey, {
     auth: { persistSession: false },
   })
+  void db  // suppress unused-var warning — client retained for future use
 
-  // ── Run migration steps ────────────────────────────────────────────────────
-  const results: { label: string; ok: boolean; error?: string }[] = []
-
-  for (const step of MIGRATION_STEPS) {
-    try {
-      const { error } = await db.rpc('exec_sql', { sql: step.sql }).maybeSingle()
-        .catch(() => ({ error: null }))   // exec_sql may not exist — fall through
-
-      if (error) {
-        // Try via raw query using pg REST trick
-        const res = await fetch(
-          `${supabaseUrl}/rest/v1/rpc/exec_sql`,
-          {
-            method: 'POST',
-            headers: {
-              'Content-Type':  'application/json',
-              apikey:          serviceRoleKey,
-              Authorization:   `Bearer ${serviceRoleKey}`,
-            },
-            body: JSON.stringify({ sql: step.sql }),
-          }
-        )
-        if (!res.ok) throw new Error(`RPC exec_sql not available: ${res.status}`)
-      }
-      results.push({ label: step.label, ok: true })
-    } catch (err) {
-      // exec_sql RPC doesn't exist — use pg directly via Supabase Management API
-      results.push({ label: step.label, ok: false, error: String(err) })
-    }
-  }
-
-  // exec_sql doesn't exist — use Management API SQL endpoint
-  const mgmtResults: { label: string; ok: boolean; error?: string }[] = []
+  // ── Run migration via Supabase Management API ─────────────────────────────
   const projectRef = supabaseUrl.match(/https:\/\/([^.]+)\.supabase/)?.[1]
+  const mgmtResults: { label: string; ok: boolean; error?: string }[] = []
 
   for (const step of MIGRATION_STEPS) {
     try {
@@ -212,8 +182,8 @@ export async function POST(req: NextRequest) {
         {
           method: 'POST',
           headers: {
-            'Content-Type':  'application/json',
-            Authorization:   `Bearer ${serviceRoleKey}`,
+            'Content-Type': 'application/json',
+            Authorization:  `Bearer ${serviceRoleKey}`,
           },
           body: JSON.stringify({ query: step.sql }),
         }
@@ -272,7 +242,7 @@ export async function POST(req: NextRequest) {
     console.log('[migrate] SUCCESS — DELETE THIS ROUTE AFTER CONFIRMATION')
   }
 
-  return NextResponse.json({
+  return withCors(NextResponse.json({
     success:       allTablesExist,
     tables,
     steps:         mgmtResults,
@@ -281,10 +251,10 @@ export async function POST(req: NextRequest) {
       ? 'Migration complete — DELETE THIS ROUTE NOW'
       : 'Migration incomplete — check steps for errors',
     projectRef,
-  }, { headers: CORS_HEADERS })
+  }))
 }
 
 // Block all other methods
-export async function GET()    { return NextResponse.json({ error: 'Method not allowed' }, { status: 405 }) }
-export async function PUT()    { return NextResponse.json({ error: 'Method not allowed' }, { status: 405 }) }
-export async function DELETE() { return NextResponse.json({ error: 'Method not allowed' }, { status: 405 }) }
+export async function GET()    { return withCors(NextResponse.json({ error: 'Method not allowed' }, { status: 405 })) }
+export async function PUT()    { return withCors(NextResponse.json({ error: 'Method not allowed' }, { status: 405 })) }
+export async function DELETE() { return withCors(NextResponse.json({ error: 'Method not allowed' }, { status: 405 })) }
