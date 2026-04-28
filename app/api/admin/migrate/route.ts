@@ -11,7 +11,6 @@
 // Created: April 27, 2026
 
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient }             from '@supabase/supabase-js'
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'   // prevents edge routing inconsistencies on Vercel
@@ -156,20 +155,18 @@ export async function POST(req: NextRequest) {
     return withCors(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
   }
 
-  // ── Supabase admin client ──────────────────────────────────────────────────
+  // ── Supabase Management API credentials ─────────────────────────────────────
   const supabaseUrl    = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+  // SUPABASE_ACCESS_TOKEN = Management API personal access token
+  // (different from SUPABASE_SERVICE_ROLE_KEY which is for supabase-js db queries)
+  const accessToken    = process.env.SUPABASE_ACCESS_TOKEN
 
-  if (!supabaseUrl || !serviceRoleKey) {
+  if (!supabaseUrl || !accessToken) {
     return withCors(NextResponse.json({
-      error: 'Missing NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY',
+      error: 'Missing NEXT_PUBLIC_SUPABASE_URL or SUPABASE_ACCESS_TOKEN',
     }, { status: 500 }))
   }
 
-  const db = createClient(supabaseUrl, serviceRoleKey, {
-    auth: { persistSession: false },
-  })
-  void db  // suppress unused-var warning — client retained for future use
 
   // ── Run migration via Supabase Management API ─────────────────────────────
   const projectRef = supabaseUrl.match(/https:\/\/([^.]+)\.supabase/)?.[1]
@@ -183,7 +180,7 @@ export async function POST(req: NextRequest) {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            Authorization:  `Bearer ${serviceRoleKey}`,
+            Authorization:  `Bearer ${accessToken}`,
           },
           body: JSON.stringify({ query: step.sql }),
         }
