@@ -158,7 +158,7 @@ export async function POST(req: NextRequest) {
   // ── Supabase Management API credentials ─────────────────────────────────────
   const supabaseUrl    = process.env.NEXT_PUBLIC_SUPABASE_URL
   // SUPABASE_ACCESS_TOKEN = Management API personal access token
-  // (different from SUPABASE_SERVICE_ROLE_KEY which is for supabase-js db queries)
+  // (this is the Management API personal access token, not the supabase-js db key)
   const accessToken    = process.env.SUPABASE_ACCESS_TOKEN
 
   if (!supabaseUrl || !accessToken) {
