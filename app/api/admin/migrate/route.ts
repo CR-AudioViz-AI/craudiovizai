@@ -155,15 +155,13 @@ export async function POST(req: NextRequest) {
     return withCors(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
   }
 
-  // ── Supabase Management API credentials ─────────────────────────────────────
+  // ── Supabase credentials ─────────────────────────────────────────────────────
   const supabaseUrl    = process.env.NEXT_PUBLIC_SUPABASE_URL
-  // SUPABASE_ACCESS_TOKEN = Management API personal access token
-  // (this is the Management API personal access token, not the supabase-js db key)
-  const accessToken    = process.env.SUPABASE_ACCESS_TOKEN
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
-  if (!supabaseUrl || !accessToken) {
+  if (!supabaseUrl || !serviceRoleKey) {
     return withCors(NextResponse.json({
-      error: 'Missing NEXT_PUBLIC_SUPABASE_URL or SUPABASE_ACCESS_TOKEN',
+      error: 'Missing NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY',
     }, { status: 500 }))
   }
 
@@ -180,7 +178,7 @@ export async function POST(req: NextRequest) {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            Authorization:  `Bearer ${accessToken}`,
+            Authorization:  `Bearer ${serviceRoleKey}`,
           },
           body: JSON.stringify({ query: step.sql }),
         }
