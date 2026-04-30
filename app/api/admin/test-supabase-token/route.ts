@@ -31,13 +31,13 @@ export async function POST(req: NextRequest) {
     return withCors(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
   }
 
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+  const accessToken = process.env.SUPABASE_ACCESS_TOKEN
 
-  if (!serviceRoleKey) {
+  if (!accessToken) {
     return withCors(NextResponse.json({
       success: false,
       status:  null,
-      body:    'SUPABASE_SERVICE_ROLE_KEY is not set in environment',
+      body:    'SUPABASE_ACCESS_TOKEN is not set in environment',
       keyPresent: false,
     }))
   }
@@ -72,7 +72,7 @@ export async function POST(req: NextRequest) {
   const success = probeStatus >= 200 && probeStatus < 300
 
   // Log result without exposing token value
-  console.log(`[test-supabase-token] status=${probeStatus} success=${success}`)
+  console.log(`[test-supabase-token] status=${probeStatus} success=${success} keySource=SUPABASE_ACCESS_TOKEN`)
 
   return withCors(NextResponse.json({
     success,
